@@ -85,40 +85,51 @@ SEED_TICKETS = [
 ]
 
 
-def init_db(seed: bool = True) -> None:
-    """创建表结构并可选写入种子数据"""
+def init_db(
+    seed: bool = True,
+    custom_engine=None,
+    custom_session_factory=None,
+) -> None:
+    """创建表结构并可选写入种子数据 (支持自定义 engine 和 session 用于测试隔离)"""
+    target_engine = custom_engine or engine
+    target_session_factory = custom_session_factory or SessionLocal
+
     logger.info("开始初始化数据库结构...")
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=target_engine)
     logger.info("数据库表结构校验/创建完成 (tickets, assets, audit_logs, chat_history)")
 
     if not seed:
         return
 
-    db = SessionLocal()
+    db = target_session_factory()
     try:
-        # 1. 种子资产数据填充
-        existing_assets_count = db.query(Asset).count()
-        if existing_assets_count == 0:
-            logger.info("正在写入 5 条典型机房资产初始数据...")
-            for asset_data in SEED_ASSETS:
+        # 1. 种子资产数据幂等填充 (按唯一 asset_no 判定)
+        added_assets = 0
+        for asset_data in SEED_ASSETS:
+            exists = db.query(Asset).filter(Asset.asset_no == asset_data["asset_no"]).first()
+            if not exists:
                 asset = Asset(**asset_data)
                 db.add(asset)
+                added_assets += 1
+        if added_assets > 0:
             db.commit()
-            logger.info("资产种子数据写入成功！")
+            logger.info("已成功预置 %d 条典型机房资产初始数据！", added_assets)
         else:
-            logger.info("资产表已存在 %d 条记录，跳过初始数据填充。", existing_assets_count)
+            logger.info("所有机房资产种子数据均已存在，跳过初始数据填充。")
 
-        # 2. 种子工单数据填充
-        existing_tickets_count = db.query(Ticket).count()
-        if existing_tickets_count == 0:
-            logger.info("正在写入 2 条典型机房运维工单初始数据...")
-            for ticket_data in SEED_TICKETS:
+        # 2. 种子工单数据幂等填充 (按唯一 ticket_no 判定)
+        added_tickets = 0
+        for ticket_data in SEED_TICKETS:
+            exists = db.query(Ticket).filter(Ticket.ticket_no == ticket_data["ticket_no"]).first()
+            if not exists:
                 ticket = Ticket(**ticket_data)
                 db.add(ticket)
+                added_tickets += 1
+        if added_tickets > 0:
             db.commit()
-            logger.info("工单种子数据写入成功！")
+            logger.info("已成功预置 %d 条典型机房运维工单初始数据！", added_tickets)
         else:
-            logger.info("工单表已存在 %d 条记录，跳过初始数据填充。", existing_tickets_count)
+            logger.info("所有运维工单种子数据均已存在，跳过初始数据填充。")
 
     except Exception as e:
         db.rollback()

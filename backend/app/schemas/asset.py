@@ -21,6 +21,8 @@ class AssetBase(BaseModel):
     borrower: Optional[str] = Field(default=None, description="借用人或使用部门")
     specs: Optional[str] = Field(default=None, description="硬件规格参数说明")
 
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
 
 class AssetCreate(AssetBase):
     """资产创建请求模型"""
@@ -28,7 +30,7 @@ class AssetCreate(AssetBase):
 
 
 class AssetUpdate(BaseModel):
-    """资产更新请求模型 (所有字段均可选)"""
+    """资产更新请求模型 (所有字段均可选，禁止未定义字段)"""
 
     name: Optional[str] = Field(default=None, min_length=1, max_length=128)
     category: Optional[str] = Field(default=None, min_length=1, max_length=64)
@@ -37,6 +39,8 @@ class AssetUpdate(BaseModel):
     borrow_status: Optional[BorrowStatusType] = Field(default=None)
     borrower: Optional[str] = Field(default=None)
     specs: Optional[str] = Field(default=None)
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
 class AssetResponse(AssetBase):

@@ -9,6 +9,8 @@ venv/
 .venv/
 ENV/
 *.db
+*.db-wal
+*.db-shm
 .pytest_cache/
 .coverage
 htmlcov/

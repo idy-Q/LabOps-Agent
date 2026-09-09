@@ -1,9 +1,10 @@
 """机房资产设备 RESTful API 路由"""
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, or_
+from sqlalchemy.exc import IntegrityError
 
 from app.db.session import get_db
 from app.db.models import Asset
@@ -22,9 +23,10 @@ router = APIRouter()
     "/",
     response_model=List[AssetResponse],
     summary="查询资产台账列表",
-    description="支持按分类、位置、健康状态、借用状态以及关键词组合过滤。",
+    description="支持按资产编号、分类、位置、健康状态、借用状态以及关键词组合过滤。",
 )
 def list_assets(
+    asset_no: Optional[str] = Query(default=None, description="按资产编号精确过滤"),
     category: Optional[str] = Query(default=None, description="按设备分类过滤"),
     location: Optional[str] = Query(default=None, description="按机房位置模糊过滤"),
     health_status: Optional[HealthStatusType] = Query(default=None, description="按健康状态过滤"),
@@ -35,6 +37,8 @@ def list_assets(
     db: Session = Depends(get_db),
 ):
     query = db.query(Asset)
+    if asset_no:
+        query = query.filter(Asset.asset_no == asset_no)
     if category:
         query = query.filter(Asset.category == category)
     if location:
@@ -51,7 +55,12 @@ def list_assets(
             )
         )
 
-    assets = query.order_by(desc(Asset.created_at)).offset(skip).limit(limit).all()
+    assets = (
+        query.order_by(desc(Asset.created_at), desc(Asset.id))
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
     return assets
 
 
@@ -84,9 +93,19 @@ def create_asset(
         borrower=asset_in.borrower,
         specs=asset_in.specs,
     )
-    db.add(asset)
-    db.commit()
-    db.refresh(asset)
+    try:
+        db.add(asset)
+        db.commit()
+        db.refresh(asset)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"资产编号 '{asset_in.asset_no}' 已存在或数据冲突",
+        )
+    except Exception:
+        db.rollback()
+        raise
     return asset
 
 
@@ -130,14 +149,19 @@ def update_asset(
     for field, value in update_data.items():
         setattr(asset, field, value)
 
-    db.commit()
-    db.refresh(asset)
+    try:
+        db.commit()
+        db.refresh(asset)
+    except Exception:
+        db.rollback()
+        raise
     return asset
 
 
 @router.delete(
     "/{asset_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="删除资产记录",
 )
 def delete_asset(
@@ -150,6 +174,10 @@ def delete_asset(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"ID 为 {asset_id} 的资产不存在",
         )
-    db.delete(asset)
-    db.commit()
-    return None
+    try:
+        db.delete(asset)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
