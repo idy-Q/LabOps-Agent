@@ -15,7 +15,7 @@ from fastapi.responses import RedirectResponse
 
 from app.config import settings
 from app.db.init_db import init_db
-from app.api import tickets, assets
+from app.api import tickets, assets, chat, metrics
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,8 @@ app.add_middleware(
 )
 
 # 挂载业务路由
+app.include_router(chat.router, prefix="/api/chat", tags=["Agent 对话交互"])
+app.include_router(metrics.router, prefix="/api/metrics", tags=["机房运行监控大盘"])
 app.include_router(tickets.router, prefix="/api/tickets", tags=["运维工单管理"])
 app.include_router(assets.router, prefix="/api/assets", tags=["机房资产管理"])
 

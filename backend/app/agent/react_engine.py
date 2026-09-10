@@ -74,11 +74,28 @@ class MockDecisionBrain:
                 except Exception:
                     tool_results[t_name] = {}
 
-        # 提取关键实体
+        # 提取关键实体 (当前轮次优先，若无则从多轮会话历史逆向回溯提取)
         device_match = re.search(r"(DEV[_-][A-Z0-9]+-[0-9]+|DEV-[A-Z]+-[0-9]+)", user_prompt, re.IGNORECASE)
-        device_id = device_match.group(1).upper().replace("_", "-") if device_match else "DEV-SRV-201"
-
         ticket_match = re.search(r"(TK-[0-9]{8}-[A-Za-z0-9]+)", user_prompt, re.IGNORECASE)
+
+        # 多轮会话实体回溯溯源 (代词如“它”、“刚才的设备”、“刚才的工单”)
+        if not device_match:
+            for m in reversed(messages[:-1]):
+                content_txt = str(m.get("content", "") or "")
+                dm = re.search(r"(DEV[_-][A-Z0-9]+-[0-9]+|DEV-[A-Z]+-[0-9]+)", content_txt, re.IGNORECASE)
+                if dm:
+                    device_match = dm
+                    break
+
+        if not ticket_match:
+            for m in reversed(messages[:-1]):
+                content_txt = str(m.get("content", "") or "")
+                tm = re.search(r"(TK-[0-9]{8}-[A-Za-z0-9]+)", content_txt, re.IGNORECASE)
+                if tm:
+                    ticket_match = tm
+                    break
+
+        device_id = device_match.group(1).upper().replace("_", "-") if device_match else "DEV-SRV-201"
         ticket_no = ticket_match.group(1).upper() if ticket_match else None
 
         # -------------------------------------------------------------
@@ -579,6 +596,28 @@ class ReActEngine:
         limit_steps = max_steps or self.max_steps
         tools_schemas = get_tools_schemas()
 
+        messages: List[Dict[str, Any]] = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+        ]
+
+        # 若属于多轮会话，加载历史上下文增强代词解析与记忆连续性
+        if db is not None and session_id:
+            try:
+                prior_records = (
+                    db.query(ChatHistory)
+                    .filter(ChatHistory.session_id == active_session_id)
+                    .order_by(ChatHistory.created_at.desc(), ChatHistory.id.desc())
+                    .limit(10)
+                    .all()
+                )
+                for rec in reversed(prior_records):
+                    messages.append({
+                        "role": rec.role,
+                        "content": rec.content,
+                    })
+            except Exception as e:
+                logger.warning("加载历史会话上下文失败: %s", str(e))
+
         # 持久化用户初始提问到 ChatHistory
         if db is not None:
             try:
@@ -593,10 +632,7 @@ class ReActEngine:
                 db.rollback()
                 logger.warning("记录用户会话历史失败: %s", str(e))
 
-        messages: List[Dict[str, Any]] = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ]
+        messages.append({"role": "user", "content": user_prompt})
 
         step = 0
         final_content = ""
@@ -653,7 +689,7 @@ class ReActEngine:
                     # 推送 tool_start 事件
                     yield AgentEvent(
                         type="tool_start",
-                        data={"name": t_name, "args": args_dict, "step": step},
+                        data={"name": t_name, "args": args_dict, "step": step, "tool_call_id": call_id},
                     ).to_dict()
 
                     # 统一分发执行工具并持久化 AuditLog
@@ -667,8 +703,67 @@ class ReActEngine:
                     # 推送 tool_end 事件
                     yield AgentEvent(
                         type="tool_end",
-                        data={"name": t_name, "result": result, "step": step},
+                        data={"name": t_name, "result": result, "step": step, "tool_call_id": call_id},
                     ).to_dict()
+
+                    # 细粒度业务衍生事件推送 (供前端 SSE 实时联动)
+                    # 1. 规章制度引用溯源事件
+                    if t_name == "query_regulations":
+                        content_str = ""
+                        if isinstance(result, str):
+                            content_str = result
+                        elif isinstance(result, dict):
+                            content_str = str(result.get("data", "") or result.get("message", "") or "")
+
+                        if content_str:
+                            matches = re.findall(r"\[来源:《(.*?)》(.*?)\]\s*([\s\S]*?)(?=(?:\[来源:《|$))", content_str)
+                            if matches:
+                                for doc_name, sec_clause, snippet in matches:
+                                    yield AgentEvent(
+                                        type="citation",
+                                        data={
+                                            "source": doc_name.strip(),
+                                            "section": sec_clause.strip(),
+                                            "content": snippet.strip(),
+                                            "step": step,
+                                        },
+                                    ).to_dict()
+                            elif not content_str.startswith("未找到"):
+                                yield AgentEvent(
+                                    type="citation",
+                                    data={
+                                        "source": "机房管理规章制度",
+                                        "section": "",
+                                        "content": content_str.strip(),
+                                        "step": step,
+                                    },
+                                ).to_dict()
+
+                    # 2. 工单状态突变事件 (创建或流转)
+                    if t_name in ("create_ticket", "update_ticket_status") and isinstance(result, dict) and result.get("status") == "success":
+                        ticket_data = result.get("ticket")
+                        yield AgentEvent(
+                            type="ticket_mutation",
+                            data={
+                                "action": "create" if t_name == "create_ticket" else "update",
+                                "ticket": ticket_data,
+                                "ticket_no": ticket_data.get("ticket_no") if isinstance(ticket_data, dict) else None,
+                                "step": step,
+                            },
+                        ).to_dict()
+
+                    # 3. 资产状态突变事件 (借还或健康变更)
+                    if t_name in ("borrow_asset", "return_asset", "update_asset_health") and isinstance(result, dict) and result.get("status") in ("success", "warning"):
+                        asset_data = result.get("asset")
+                        yield AgentEvent(
+                            type="asset_mutation",
+                            data={
+                                "action": t_name,
+                                "asset": asset_data,
+                                "asset_no": asset_data.get("asset_no") if isinstance(asset_data, dict) else None,
+                                "step": step,
+                            },
+                        ).to_dict()
 
                     # 将对应工具的执行结果接入会话上下文
                     messages.append({

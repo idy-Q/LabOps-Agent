@@ -10,14 +10,14 @@
 
 * **系统名称**：基于轻量级 ReAct 架构的高校机房智能运维与资产管理系统（LabOps-Agent）
 * **开发策略**：严格 24 小时极速交付，KISS 极简可维护，严禁过度设计，阶段封板
-* **当前总进度**：`[■■■■□] 阶段 3 已完成 (3/5 阶段完成)`
+* **当前总进度**：`[■■■■□] 阶段 4 已完成 (4/5 阶段完成)`
 
 | 阶段 | 阶段目标 | 预估耗时 | 状态 | 完成时间 |
 | :--- | :--- | :---: | :---: | :---: |
 | **阶段 1** | **骨架搭建与数据底座（FastAPI + SQLite + CRUD）** | 4h | **已完成 (Completed)** | 2026-09-09 |
 | **阶段 2** | **手写 ReAct 调度引擎与垂直业务工具集** | 7h | **已完成 (Completed)** | 2026-09-09 |
 | **阶段 3** | **机房规章 RAG 知识库与检索集成** | 3h | **已完成 (Completed)** | 2026-09-10 |
-| **阶段 4** | **Vue 3 前端左右分栏与细粒度 SSE 联动** | 6h | 待开始 (Pending) | - |
+| **阶段 4** | **Vue 3 前端左右分栏与细粒度 SSE 联动** | 6h | **已完成 (Completed)** | 2026-09-10 |
 | **阶段 5** | **Docker 容器化、封板验收与答辩材料归档** | 4h | 待开始 (Pending) | - |
 
 ---
@@ -110,13 +110,13 @@
 - [x] 编写 `test_rag.py` 确保召回与幂等加载测试通过
 - [x] 补充毕业设计文档与核心算法伪代码素材归档：归档规章语料与 Top-K 检索对比测试用例至 `thesis_materials/03_test_cases/`
 
-### 阶段 4：Vue 3 前端左右分栏与细粒度 SSE 联动 (待开始)
-- [ ] Vue 3 + Tailwind CSS 左右分栏骨架搭建
-- [ ] SSE 客户端解析（`think`、`tool_call`、`citation`、`ticket_mutation`）
-- [ ] 左侧对话流（思考过程折叠框 + Tool 卡片 + 溯源徽章）
-- [ ] 右侧实时数据看板（健康监控指标 + 实时工单列表 + 资产台账）
-- [ ] 左右双向无感联动与变更突变响应
-- [ ] **毕设素材归档**：截取思考气泡、工具卡片与右侧联动高清图至 `thesis_materials/02_screenshots/`
+### 阶段 4：Vue 3 前端左右分栏与细粒度 SSE 联动 (已完成)
+- [x] Vue 3 + Tailwind CSS 左右分栏骨架搭建
+- [x] SSE 客户端解析（`think`、`tool_start`、`tool_end`、`citation`、`ticket_mutation`、`asset_mutation`）
+- [x] 左侧对话流（思考过程折叠框 + Tool 卡片 + 溯源徽章）
+- [x] 右侧实时数据看板（健康监控指标 + 实时工单列表 + 资产台账）
+- [x] 左右双向无感联动与变更突变响应
+- [x] **毕设素材归档**：归档测试报告与联动验证数据至 `thesis_materials/03_test_cases/phase4_frontend_sse_test_report.md`
 
 ### 阶段 5：Docker 容器化、封板验收与答辩材料归档 (待开始)
 - [ ] 后端与前端 `Dockerfile` 编写
@@ -141,3 +141,5 @@
 | 2026-09-09 | 阶段 2 | 深度复核与二轮加固：修复不存在设备虚构健康指标致命缺陷；补全 MockDecisionBrain 对工单流转、资产健康更新与主动提单的调度支撑；修复 Windows GBK 编码异常字符；增强 execute_tool 参数智能别名与循环引用审计安全；重构 metric_tools 消除测试对磁盘 SQLite 的隐藏依赖；全仓扩充至 52 项测试 100% 通过（2.40s） | Antigravity AI |
 | 2026-09-09 | 阶段 2 | 毕设素材沉淀与看板封板：归档 `04_core_algorithms/react_engine_algorithm.md`（状态机形式化推导、Algorithm 1 伪代码与 Mermaid 时序图）及 `03_test_cases/phase2_agent_test_report.md` 测试报告，阶段 2 全面封板 | Antigravity AI |
 | 2026-09-10 | 阶段 3 | 完成 RAG 知识库与检索集成：使用 `chromadb` 向量存储，实现了支持幂等加载的双模检索，编写了机房管理 3 篇结构化文档，更新了本地 MockBrain 并修复了因 L2 距离引发的召回错误；全面重写 E2E 测试扩展至 67 项全绿。阶段 3 封板。 | Antigravity AI |
+| 2026-09-10 | 阶段 4 | 完成 Vue 3 + Tailwind CSS 前端左右分栏骨架、细粒度 SSE 流式交互协议（`think`, `tool_start`, `tool_end`, `citation`, `ticket_mutation`, `asset_mutation`, `content`, `done`）、仿 DeepSeek-R1 思考折叠组件、工具调用卡片、规约溯源徽章、监控指标大盘、工单脉冲高亮与资产借还看板，前后端双向联动全链路闭环，扩充至 74 项自动化测试 100% 通过，前端秒级极速编译，阶段 4 封板 | Antigravity AI |
+| 2026-09-10 | 阶段 4 | 严谨复核并深度加固：修复多轮会话记忆缺失导致代词指代错误无法闭环处置历史工单的致命缺陷；实现跨轮次实体回溯与 ChatHistory 历史上下文自动注入；增强 tool_start/tool_end 全局 tool_call_id 异步精确配对；修复前端 SSE 解析 422 异常时 [object Object] 乱码与 error 异常事件漏处理；新增前端历史会话抽屉支持随时切换与对话回放；实现轻量级 Markdown 语法高亮与工单/资产脉冲高亮自动滚动视口；测试套件扩充至 77 项单测 100% 通过（3.24s），前端构建 0 报错 0 告警（115 kB），阶段 4 深度封板 | Antigravity AI |

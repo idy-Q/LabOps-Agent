@@ -3,7 +3,7 @@
 from app.schemas.ticket import TicketBase, TicketCreate, TicketUpdate, TicketResponse
 from app.schemas.asset import AssetBase, AssetCreate, AssetUpdate, AssetResponse
 from app.schemas.audit import AuditLogBase, AuditLogCreate, AuditLogResponse
-from app.schemas.chat import ChatHistoryBase, ChatHistoryCreate, ChatHistoryResponse
+from app.schemas.chat import ChatHistoryBase, ChatHistoryCreate, ChatHistoryResponse, ChatStreamRequest
 
 __all__ = [
     "TicketBase",
@@ -20,4 +20,5 @@ __all__ = [
     "ChatHistoryBase",
     "ChatHistoryCreate",
     "ChatHistoryResponse",
+    "ChatStreamRequest",
 ]
