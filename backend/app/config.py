@@ -43,10 +43,12 @@ class Settings(BaseSettings):
     # 数据库配置 (默认 SQLite 嵌入式文件)
     DATABASE_URL: str = f"sqlite:///{DEFAULT_DB_FILE.as_posix()}"
 
-    # LLM 与 ReAct 引擎配置 (预留阶段 2 使用)
+    # LLM 与 ReAct 引擎配置
     OPENAI_API_KEY: str = ""
     OPENAI_BASE_URL: str = "https://api.deepseek.com/v1"
     OPENAI_MODEL_NAME: str = "deepseek-chat"
+    REACT_MAX_STEPS: int = 6
+    AGENT_MOCK_MODE: str = "auto"  # auto (无Key自动Mock), mock (强制Mock), real (强制真实LLM)
 
     # 数据持久化目录
     DATA_DIR: Path = DEFAULT_DATA_DIR
