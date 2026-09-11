@@ -15,6 +15,7 @@ from fastapi.responses import RedirectResponse
 
 from app.config import settings
 from app.db.init_db import init_db
+from app.tools.regulation_tools import _init_kb
 from app.api import tickets, assets, chat, metrics
 
 logger = logging.getLogger(__name__)
@@ -22,10 +23,11 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期管理器：启动时自动校验数据库并预置种子数据"""
+    """应用生命周期管理器：启动时自动校验数据库并预置种子数据与向量知识库"""
     logger.info("正在启动 %s (v%s)...", settings.APP_NAME, settings.APP_VERSION)
     init_db(seed=True)
-    logger.info("数据底座初始化完毕，服务准备就绪。")
+    _init_kb()
+    logger.info("数据底座与规章知识库初始化完毕，服务准备就绪。")
     yield
     logger.info("服务关闭完成。")
 

@@ -1,7 +1,7 @@
 """LabOps-Agent 全局配置管理模块"""
 
 from pathlib import Path
-from typing import List, Any
+from typing import List, Any, Union
 import json
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    # 跨域设置 (支持逗号分隔或 JSON 格式列表)
-    CORS_ORIGINS: List[str] = ["*"]
+    # 跨域设置 (支持逗号分隔、* 通配符或 JSON 格式列表)
+    CORS_ORIGINS: Union[List[str], str] = ["*"]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

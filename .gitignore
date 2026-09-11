@@ -11,6 +11,8 @@ ENV/
 *.db
 *.db-wal
 *.db-shm
+*.sqlite3
+chroma_db/
 .pytest_cache/
 .coverage
 htmlcov/
@@ -22,12 +24,15 @@ dist/
 dist-ssr/
 *.local
 
-# IDE
+# IDE & Agents
 .idea/
 .vscode/
 *.swp
 *.swo
+.agent/*
+!.agent/skills/
 
 # OS
 Thumbs.db
 .DS_Store
+

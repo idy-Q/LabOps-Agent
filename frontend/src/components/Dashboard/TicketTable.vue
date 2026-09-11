@@ -1,30 +1,30 @@
 <template>
-  <div class="rounded-2xl bg-slate-900/80 border border-slate-800 p-4 space-y-3 shadow-sm flex flex-col">
+  <div class="rounded-xl glass-panel border p-4 space-y-3.5 shadow-sm transition-colors flex flex-col">
     <!-- 头部栏与过滤控制 -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pb-2 border-b border-white/[0.06]">
       <div class="flex items-center space-x-2">
-        <span class="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <span class="p-1 rounded-md bg-zinc-900/90 border border-white/[0.08] text-amber-400">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
           </svg>
         </span>
-        <h3 class="text-xs sm:text-sm font-semibold text-slate-100">机房运维工单看板</h3>
-        <span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[11px] font-mono">
-          {{ filteredTickets.length }} 条
+        <h3 class="text-xs sm:text-sm font-medium text-zinc-100 glass-text">机房运维工单流转库</h3>
+        <span class="px-2 py-0.5 rounded-md bg-zinc-900/80 border border-white/[0.08] text-zinc-400 text-[10px] font-mono">
+          共 {{ filteredTickets.length }} 条记录
         </span>
       </div>
 
-      <!-- 状态过滤胶囊 -->
-      <div class="flex items-center space-x-1 text-xs">
+      <!-- 状态过滤胶囊 (Linear Segmented Pills) -->
+      <div class="flex items-center space-x-1 text-xs bg-zinc-900/60 p-0.5 rounded-lg border border-white/[0.06]">
         <button
           v-for="s in statusOptions"
           :key="s.value"
           @click="selectedStatus = s.value"
           :class="[
-            'px-2 py-1 rounded-lg text-[11px] transition-all',
+            'px-2.5 py-1 rounded-md text-[11px] transition-all',
             selectedStatus === s.value
-              ? 'bg-amber-500/20 text-amber-300 font-medium border border-amber-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              ? 'bg-zinc-800 text-zinc-100 font-medium shadow-sm border border-white/[0.08]'
+              : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50 border border-transparent'
           ]"
         >
           {{ s.label }}
@@ -32,109 +32,135 @@
       </div>
     </div>
 
-    <!-- 搜索栏 -->
-    <div class="relative">
-      <input
-        v-model="keyword"
-        type="text"
-        placeholder="搜索工单号、标题、关联设备..."
-        class="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500/60 transition-colors"
-      />
-      <span v-if="keyword" @click="keyword = ''" class="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300 text-xs cursor-pointer">
-        ✕
-      </span>
+    <!-- 搜索栏与刷新栏 -->
+    <div class="flex items-center space-x-2">
+      <div class="relative flex-1">
+        <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-zinc-500">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input
+          v-model="keyword"
+          type="text"
+          placeholder="搜索工单编号、故障描述、关联设备或报修内容..."
+          class="w-full bg-black/25 backdrop-blur-sm border border-white/[0.08] focus:border-indigo-500/60 rounded-lg pl-8 pr-8 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none transition-colors"
+        />
+        <button
+          v-if="keyword"
+          @click="keyword = ''"
+          class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors"
+          title="清空搜索"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <button
+        @click="$emit('refresh')"
+        class="px-2.5 py-1.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-white/[0.08] hover:border-white/[0.15] text-xs flex items-center space-x-1 transition-all shrink-0 active:scale-95 shadow-sm"
+        title="刷新工单列表"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span class="hidden sm:inline">刷新</span>
+      </button>
     </div>
 
-    <!-- 表格区域 -->
-    <div ref="tableContainerRef" class="overflow-x-auto rounded-xl border border-slate-800/80 max-h-72 overflow-y-auto">
-      <table class="w-full text-left text-xs text-slate-300 border-collapse">
-        <thead class="bg-slate-950/80 text-[11px] text-slate-400 sticky top-0 uppercase tracking-wider border-b border-slate-800">
+    <!-- 表格区域 (Linear Dark Table) -->
+    <div ref="tableContainerRef" class="overflow-x-auto rounded-xl border border-white/[0.08] min-h-[300px] max-h-[580px] overflow-y-auto bg-black/25 backdrop-blur-sm shadow-sm">
+      <table class="w-full text-left text-xs text-zinc-300 border-separate border-spacing-0">
+        <thead class="bg-black/50 text-[11px] text-zinc-300 sticky top-0 uppercase tracking-wider border-b border-white/[0.06] backdrop-blur-md z-10">
           <tr>
-            <th class="py-2.5 px-3">工单编号</th>
-            <th class="py-2.5 px-3">工单标题与排查内容</th>
-            <th class="py-2.5 px-2 text-center">优先级</th>
-            <th class="py-2.5 px-2 text-center">状态</th>
-            <th class="py-2.5 px-3">关联设备</th>
-            <th class="py-2.5 px-3 text-right">流转操作</th>
+            <th class="py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">工单编号</th>
+            <th class="py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">工单标题与处置内容</th>
+            <th class="py-2.5 px-2 text-center border-b border-white/[0.06] font-medium glass-text">等级</th>
+            <th class="py-2.5 px-2 text-center border-b border-white/[0.06] font-medium glass-text">流转状态</th>
+            <th class="py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">关联设备</th>
+            <th class="py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text">处置操作</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-800/60 font-sans">
+        <tbody class="font-sans">
           <tr v-if="filteredTickets.length === 0">
-            <td colspan="6" class="py-6 text-center text-slate-500 text-xs">
-              暂无匹配工单记录
+            <td colspan="6" class="py-12 text-center text-zinc-500 text-xs">
+              未检索到符合条件的运维工单
             </td>
           </tr>
           <tr
             v-for="t in filteredTickets"
             :key="t.id"
             :class="[
-              'transition-colors hover:bg-slate-800/40 text-xs',
+              'transition-all duration-300 hover:bg-white/[0.06] text-xs border-b border-white/[0.04]',
               t.ticket_no === highlightedTicketNo
-                ? 'bg-amber-500/25 ring-2 ring-amber-400 animate-pulse font-semibold'
+                ? 'animate-pulse-ticket font-medium text-amber-200'
                 : ''
             ]"
           >
             <!-- 工单编号 -->
-            <td class="py-2.5 px-3 font-mono text-[11px] text-amber-300 whitespace-nowrap">
+            <td class="py-2.5 px-3 font-mono text-[11px] text-zinc-300 whitespace-nowrap">
               <span
                 @click="$emit('inspectTicket', t.ticket_no)"
-                class="hover:underline cursor-pointer flex items-center gap-1"
-                title="点击在对话中查询该工单详情"
+                class="hover:underline hover:text-amber-400 cursor-pointer flex items-center gap-1.5 transition-colors"
+                title="点击在左侧对话中查询此工单进展"
               >
+                <span class="w-1.5 h-1.5 rounded-full" :class="t.status === 'RESOLVED' || t.status === 'CLOSED' ? 'bg-zinc-600' : 'bg-amber-400'"></span>
                 {{ t.ticket_no }}
               </span>
             </td>
 
             <!-- 标题与排查要求 -->
-            <td class="py-2.5 px-3 max-w-xs">
-              <div class="font-medium text-slate-200 truncate">{{ t.title }}</div>
-              <div class="text-[10px] text-slate-400 truncate">{{ t.description }}</div>
+            <td class="py-2.5 px-3 max-w-sm">
+              <div class="font-medium text-zinc-200 truncate">{{ t.title }}</div>
+              <div class="text-[11px] text-zinc-500 truncate">{{ t.description }}</div>
             </td>
 
-            <!-- 优先级 -->
+            <!-- 优先级 (Linear Badge) -->
             <td class="py-2.5 px-2 text-center whitespace-nowrap">
-              <span :class="['px-1.5 py-0.5 rounded text-[10px] font-medium font-mono', priorityClass(t.priority)]">
+              <span :class="['px-2 py-0.5 rounded text-[10px] font-mono', priorityClass(t.priority)]">
                 {{ t.priority }}
               </span>
             </td>
 
-            <!-- 状态 -->
+            <!-- 状态 (Linear Badge) -->
             <td class="py-2.5 px-2 text-center whitespace-nowrap">
-              <span :class="['px-1.5 py-0.5 rounded text-[10px] font-medium font-mono', statusClass(t.status)]">
-                {{ t.status }}
+              <span :class="['px-2 py-0.5 rounded text-[10px] font-mono', statusClass(t.status)]">
+                {{ statusLabel(t.status) }}
               </span>
             </td>
 
             <!-- 关联设备 -->
-            <td class="py-2.5 px-3 font-mono text-[11px] text-slate-300 whitespace-nowrap">
+            <td class="py-2.5 px-3 font-mono text-[11px] text-zinc-400 whitespace-nowrap">
               {{ t.device_id || '-' }}
             </td>
 
-            <!-- 快速推进操作 -->
+            <!-- 快速流转推进 (Linear Buttons) -->
             <td class="py-2.5 px-3 text-right whitespace-nowrap">
-              <div class="flex items-center justify-end space-x-1">
+              <div class="flex items-center justify-end space-x-1.5">
                 <button
                   v-if="t.status === 'PENDING'"
                   @click="$emit('updateStatus', t.id, 'PROCESSING')"
-                  class="px-2 py-0.5 rounded bg-blue-900/60 hover:bg-blue-800 text-blue-200 border border-blue-500/30 text-[10px] transition-colors"
+                  class="px-2.5 py-0.5 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 text-[11px] transition-all active:scale-95 shadow-sm font-mono"
                 >
                   受理
                 </button>
                 <button
                   v-if="t.status === 'PROCESSING'"
                   @click="$emit('updateStatus', t.id, 'RESOLVED')"
-                  class="px-2 py-0.5 rounded bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 border border-emerald-500/30 text-[10px] transition-colors"
+                  class="px-2.5 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[11px] transition-all active:scale-95 shadow-sm font-mono"
                 >
                   办结
                 </button>
                 <button
                   v-if="t.status === 'RESOLVED'"
                   @click="$emit('updateStatus', t.id, 'CLOSED')"
-                  class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] transition-colors"
+                  class="px-2.5 py-0.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-white/[0.08] text-[11px] transition-all active:scale-95 shadow-sm font-mono"
                 >
                   归档
                 </button>
-                <span v-if="t.status === 'CLOSED'" class="text-[10px] text-slate-500">已闭环</span>
+                <span v-if="t.status === 'CLOSED'" class="text-[11px] text-zinc-500 font-mono">已闭环</span>
               </div>
             </td>
           </tr>
@@ -169,6 +195,7 @@ watch(
   (newVal) => {
     if (newVal) {
       selectedStatus.value = 'ALL'
+      keyword.value = ''
       nextTick(() => {
         if (tableContainerRef.value) {
           tableContainerRef.value.scrollTop = 0
@@ -203,33 +230,48 @@ const filteredTickets = computed(() => {
   })
 })
 
+function statusLabel(status) {
+  switch (status) {
+    case 'PENDING':
+      return '待处理'
+    case 'PROCESSING':
+      return '处理中'
+    case 'RESOLVED':
+      return '已解决'
+    case 'CLOSED':
+      return '已关闭'
+    default:
+      return status
+  }
+}
+
 function priorityClass(priority) {
   switch (priority) {
     case 'CRITICAL':
-      return 'bg-rose-950/80 text-rose-300 border border-rose-500/40'
+      return 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
     case 'HIGH':
-      return 'bg-amber-950/80 text-amber-300 border border-amber-500/40'
+      return 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
     case 'MEDIUM':
-      return 'bg-blue-950/80 text-blue-300 border border-blue-500/30'
+      return 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
     case 'LOW':
-      return 'bg-slate-800 text-slate-400 border border-slate-700'
+      return 'bg-zinc-800 text-zinc-400 border border-white/[0.06]'
     default:
-      return 'bg-slate-800 text-slate-300'
+      return 'bg-zinc-800 text-zinc-400 border border-white/[0.06]'
   }
 }
 
 function statusClass(status) {
   switch (status) {
     case 'PENDING':
-      return 'bg-amber-950/80 text-amber-300 border border-amber-500/30'
+      return 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
     case 'PROCESSING':
-      return 'bg-blue-950/80 text-blue-300 border border-blue-500/30'
+      return 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
     case 'RESOLVED':
-      return 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/30'
+      return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
     case 'CLOSED':
-      return 'bg-slate-800 text-slate-400 border border-slate-700'
+      return 'bg-zinc-800 text-zinc-500 border border-white/[0.06]'
     default:
-      return 'bg-slate-800 text-slate-300'
+      return 'bg-zinc-800 text-zinc-400 border border-white/[0.06]'
   }
 }
 </script>

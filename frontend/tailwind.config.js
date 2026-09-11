@@ -6,24 +6,24 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        brand: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-        },
-      },
       keyframes: {
-        pulseHighlight: {
-          '0%, 100%': { backgroundColor: 'transparent' },
-          '50%': { backgroundColor: 'rgba(234, 179, 8, 0.25)' },
+        pulseHighlightAmber: {
+          '0%, 100%': { backgroundColor: 'rgba(245, 158, 11, 0.06)', boxShadow: 'inset 0 0 0 1px rgba(245, 158, 11, 0.25)' },
+          '50%': { backgroundColor: 'rgba(245, 158, 11, 0.18)', boxShadow: 'inset 0 0 0 1px rgba(245, 158, 11, 0.6), 0 0 20px rgba(245, 158, 11, 0.25)' },
+        },
+        pulseHighlightSky: {
+          '0%, 100%': { backgroundColor: 'rgba(6, 182, 212, 0.06)', boxShadow: 'inset 0 0 0 1px rgba(6, 182, 212, 0.25)' },
+          '50%': { backgroundColor: 'rgba(6, 182, 212, 0.18)', boxShadow: 'inset 0 0 0 1px rgba(6, 182, 212, 0.6), 0 0 20px rgba(6, 182, 212, 0.25)' },
+        },
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
       animation: {
-        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'pulse-highlight': 'pulseHighlight 2s ease-in-out infinite',
+        'pulse-ticket': 'pulseHighlightAmber 2s ease-in-out infinite',
+        'pulse-asset': 'pulseHighlightSky 2s ease-in-out infinite',
+        'fade-in': 'fadeIn 0.2s ease-out forwards',
       },
     },
   },

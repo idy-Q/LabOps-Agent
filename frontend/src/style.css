@@ -2,18 +2,113 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 自定义细腻滚动条 */
-::-webkit-scrollbar {
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Codex 玻璃拟态设计令牌 (由 GlassController 动态调节并持久化同步) */
+  --glass-opacity: 0.35;
+  --glass-blur: 12px;
+  --glass-bg: rgba(12, 12, 16, 0.35);
+  --glass-panel-bg: rgba(12, 12, 16, 0.35);
+  --glass-card-bg: rgba(18, 18, 24, 0.47);
+  --glass-card-hover-bg: rgba(26, 26, 36, 0.57);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.16);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --glass-sub-bg: rgba(255, 255, 255, 0.03);
+}
+
+body {
+  background-color: #08080a;
+  color: #fafafa;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: rgba(99, 102, 241, 0.4);
+  color: #ffffff;
+}
+
+/* 全景动态玻璃面板 (主框架容器、导航栏、侧栏、表格容器) */
+.glass-panel {
+  background-color: var(--glass-panel-bg, var(--glass-bg));
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  transition: background-color 0.2s ease, border-color 0.2s ease, backdrop-filter 0.2s ease;
+}
+
+/* 动态玻璃卡片 (KPI 磁贴、图表卡片、事件流卡片、弹窗) */
+.glass-card {
+  background-color: var(--glass-card-bg);
+  backdrop-filter: blur(calc(var(--glass-blur) * 0.75));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.75));
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.glass-card:hover {
+  border-color: var(--glass-border-hover);
+}
+
+/* 玻璃子卡片 (卡片内网格项、快捷按钮、节点列表项) */
+.glass-card-sub {
+  background-color: var(--glass-sub-bg);
+  border-color: rgba(255, 255, 255, 0.06);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-card-sub:hover {
+  background-color: rgba(255, 255, 255, 0.065);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* 双层光学镀膜与防眩光文字阴影 (保障高透光下 100% 锐利可读) */
+.glass-text,
+.glass-panel table,
+.glass-panel pre,
+.glass-card pre {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+/* 分栏拖拽手柄 */
+.split-handle {
   width: 6px;
-  height: 6px;
+  cursor: col-resize;
+  position: relative;
+  transition: background-color 0.2s ease;
+  user-select: none;
+}
+
+.split-handle:hover,
+.split-handle.is-dragging {
+  background-color: rgba(99, 102, 241, 0.5);
+}
+
+/* 极客极简控制台滚动条 */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.5);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.8);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* 隐藏横向滚动条工具类 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

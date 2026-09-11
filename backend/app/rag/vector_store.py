@@ -10,6 +10,8 @@ try:
 except ImportError:
     CHROMA_AVAILABLE = False
 
+from app.config import settings
+
 def cosine_similarity(v1: List[float], v2: List[float]) -> float:
     dot_product = sum(a * b for a, b in zip(v1, v2))
     norm_v1 = math.sqrt(sum(a * a for a in v1))
@@ -24,8 +26,10 @@ class KnowledgeBase:
     优先使用 ChromaDB，回退至内存余弦相似度检索
     """
     
-    def __init__(self, persist_directory: str = "backend/app/data/chroma_db"):
-        self.persist_directory = persist_directory
+    def __init__(self, persist_directory: Optional[str] = None):
+        if persist_directory is None:
+            persist_directory = str(settings.DATA_DIR / "chroma_db")
+        self.persist_directory = str(persist_directory)
         self.use_chroma = CHROMA_AVAILABLE
         self.collection_name = "regulations"
         self.memory_store = []

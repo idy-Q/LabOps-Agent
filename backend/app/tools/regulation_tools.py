@@ -3,14 +3,24 @@ from app.tools.registry import tool
 from app.rag.chunking import MarkdownChunker
 from app.rag.vector_store import KnowledgeBase
 
+from typing import Optional
+
 # Ensure we have a global KB instance for tools to use
 # We also initialize chunks to guarantee idempotent setup in this mock environment
 
-_kb = KnowledgeBase()
+_kb: Optional[KnowledgeBase] = None
 _kb_initialized = False
 
+def get_kb() -> KnowledgeBase:
+    global _kb
+    if _kb is None:
+        _kb = KnowledgeBase()
+    return _kb
+
 def _init_kb():
-    global _kb_initialized
+    global _kb, _kb_initialized
+    if _kb is None:
+        _kb = KnowledgeBase()
     if _kb_initialized:
         return
     chunker = MarkdownChunker()

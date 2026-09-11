@@ -8,7 +8,7 @@
 
 ## 一、 项目总览与里程碑进度
 
-* **系统名称**：基于轻量级 ReAct 架构的高校机房智能运维与资产管理系统（LabOps-Agent）
+* **系统名称**：基于轻量级 ReAct 架构的智能自治运维系统（LabOps-Agent）
 * **开发策略**：严格 24 小时极速交付，KISS 极简可维护，严禁过度设计，阶段封板
 * **当前总进度**：`[■■■■□] 阶段 4 已完成 (4/5 阶段完成)`
 
@@ -54,8 +54,8 @@
   - [x] 测试运行 FastAPI 服务，验证 Swagger UI (`/docs`) 与 REST 接口 CRUD 正常
   - [x] 阶段 1 封板并更新任务清单
 
-- [x] **Task 1.6 阶段一毕设素材沉淀与归档 (thesis_materials/)**
-  - [x] 创建 `thesis_materials/` 目录树（01~05 子目录结构）
+- [x] **Task 1.6 阶段一毕设素材沉淀与归档 (docs/thesis_materials/)**
+  - [x] 创建 `docs/thesis_materials/` 目录树（01~05 子目录结构）
   - [x] 导出 `01_database_design/schema.sql` 建表脚本与 `database_data_dictionary.md` 逻辑设计数据字典
   - [x] 归档 `03_test_cases/phase1_api_test_report.md`（15 个接口自动化测试用例报告，论文直接复用）
   - [x] 编写 `02_screenshots/README.md` 阶段一必备截图指引
@@ -92,8 +92,8 @@
   - [x] 运行全局自动化回归测试，全仓 52 项测试 100% 通过（耗时 2.40s）
 
 - [x] **Task 2.6 阶段二毕设素材沉淀与看板封板**
-  - [x] 编写 [thesis_materials/04_core_algorithms/react_engine_algorithm.md](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/thesis_materials/04_core_algorithms/react_engine_algorithm.md)（状态机形式化定义、Algorithm 1 伪代码、Mermaid 时序图）
-  - [x] 编写 [thesis_materials/03_test_cases/phase2_agent_test_report.md](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/thesis_materials/03_test_cases/phase2_agent_test_report.md)（阶段二完整测试报告，论文直接复用）
+  - [x] 编写 [docs/thesis_materials/04_core_algorithms/react_engine_algorithm.md](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/thesis_materials/04_core_algorithms/react_engine_algorithm.md)（状态机形式化定义、Algorithm 1 伪代码、Mermaid 时序图）
+  - [x] 编写 [docs/thesis_materials/03_test_cases/phase2_agent_test_report.md](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/thesis_materials/03_test_cases/phase2_agent_test_report.md)（阶段二完整测试报告，论文直接复用）
   - [x] 更新任务看板，阶段 2 代码全面封板
 
 ---
@@ -108,7 +108,7 @@
 - [x] 实现 `@tool` `query_regulations` 并暴露注册
 - [x] 更新提示词与 `react_engine.py` 支持规章意图识别与溯源引用
 - [x] 编写 `test_rag.py` 确保召回与幂等加载测试通过
-- [x] 补充毕业设计文档与核心算法伪代码素材归档：归档规章语料与 Top-K 检索对比测试用例至 `thesis_materials/03_test_cases/`
+- [x] 补充毕业设计文档与核心算法伪代码素材归档：归档规章语料与 Top-K 检索对比测试用例至 `docs/thesis_materials/03_test_cases/`
 
 ### 阶段 4：Vue 3 前端左右分栏与细粒度 SSE 联动 (已完成)
 - [x] Vue 3 + Tailwind CSS 左右分栏骨架搭建
@@ -116,13 +116,13 @@
 - [x] 左侧对话流（思考过程折叠框 + Tool 卡片 + 溯源徽章）
 - [x] 右侧实时数据看板（健康监控指标 + 实时工单列表 + 资产台账）
 - [x] 左右双向无感联动与变更突变响应
-- [x] **毕设素材归档**：归档测试报告与联动验证数据至 `thesis_materials/03_test_cases/phase4_frontend_sse_test_report.md`
+- [x] **毕设素材归档**：归档测试报告与联动验证数据至 `docs/thesis_materials/03_test_cases/phase4_frontend_sse_test_report.md`
 
 ### 阶段 5：Docker 容器化、封板验收与答辩材料归档 (待开始)
 - [ ] 后端与前端 `Dockerfile` 编写
 - [ ] 根目录 `docker-compose.yml` 与 Nginx 反代配置
 - [ ] 一键启动测试与 24h 极速开发封板
-- [ ] **录制 3 分钟中期检查/答辩免死金牌演示视频**并存入 `thesis_materials/05_demo_video/`
+- [ ] **录制 3 分钟中期检查/答辩免死金牌演示视频**并存入 `docs/thesis_materials/05_demo_video/`
 
 ---
 
@@ -143,3 +143,7 @@
 | 2026-09-10 | 阶段 3 | 完成 RAG 知识库与检索集成：使用 `chromadb` 向量存储，实现了支持幂等加载的双模检索，编写了机房管理 3 篇结构化文档，更新了本地 MockBrain 并修复了因 L2 距离引发的召回错误；全面重写 E2E 测试扩展至 67 项全绿。阶段 3 封板。 | Antigravity AI |
 | 2026-09-10 | 阶段 4 | 完成 Vue 3 + Tailwind CSS 前端左右分栏骨架、细粒度 SSE 流式交互协议（`think`, `tool_start`, `tool_end`, `citation`, `ticket_mutation`, `asset_mutation`, `content`, `done`）、仿 DeepSeek-R1 思考折叠组件、工具调用卡片、规约溯源徽章、监控指标大盘、工单脉冲高亮与资产借还看板，前后端双向联动全链路闭环，扩充至 74 项自动化测试 100% 通过，前端秒级极速编译，阶段 4 封板 | Antigravity AI |
 | 2026-09-10 | 阶段 4 | 严谨复核并深度加固：修复多轮会话记忆缺失导致代词指代错误无法闭环处置历史工单的致命缺陷；实现跨轮次实体回溯与 ChatHistory 历史上下文自动注入；增强 tool_start/tool_end 全局 tool_call_id 异步精确配对；修复前端 SSE 解析 422 异常时 [object Object] 乱码与 error 异常事件漏处理；新增前端历史会话抽屉支持随时切换与对话回放；实现轻量级 Markdown 语法高亮与工单/资产脉冲高亮自动滚动视口；测试套件扩充至 77 项单测 100% 通过（3.24s），前端构建 0 报错 0 告警（115 kB），阶段 4 深度封板 | Antigravity AI |
+| 2026-09-11 | 运维治理 | **工作区目录妥善整理与职责分离**：<br>1. **毕设项目与文档物理分离**：将散落在根目录的答辩与测试材料统一归拢至 `docs/thesis_materials/`，彻底分清“工程代码”与“论文交付文档”；<br>2. **Agent Skill 规范化就位**：遵循 Antigravity 官方标准，在 `.agent/skills/` 规范化部署 `ui-ux-pro-max` 及 6 项子技能套件，彻底清除冗余软链与临时源码；<br>3. **根因修复与坏味清除**：修复 `vector_store.py` 路径推导与 `regulation_tools.py` 模块导入期即触碰磁盘 ChromaDB 的副作用，在 `conftest.py` 实现测试期向量库物理隔离，根治测试跑批污染 Git 状态，清除根目录 `.pytest_cache` 污染并完善 `.gitignore`；<br>4. **项目运行保障**：全仓 77 项单测 100% 通过（测试零副作用、零脏状态），前端生产构建零报错，业务运行丝滑稳定。 | Antigravity AI |
+| 2026-09-11 | 前端升级 | **智能自治运维 UI/UX 深度现代化重塑**：<br>1. **标题与定位升级**：系统浏览器标题及规范定名更新为“LabOps-Agent \| 智能自治运维”；<br>2. **Codex 动态流体背景与交互式 ASCII 矩阵**：纯原生 Canvas 2D 硬件加速实现 60FPS 极光色彩流幕与鼠标动力学字符水滴（`-`、`>`、`o` 凝聚演变）；<br>3. **全景透明玻璃化与三档调节**：全面升级为 Glassmorphism 界面，提供【纯透清澈 / 平衡毛玻璃 / 深邃亚克力】3 档预设及不透明度与模糊度无级滑块，支持本地记忆与沉稳纯色平滑淡出过渡；<br>4. **导航栏与看板极简精修**：重塑“齿轮+交叉扳手螺丝刀”高保真矢量 Logo，删除全景大盘所有冗余修饰小字（`Realtime Telemetry`、`Telemetry Nodes`、`1-Click` 等），历史与新建会话纯图标化，欢迎卡片同步精简纯净；<br>5. **工程质量保障**：生产构建 0 错误 0 告警，77 项单测全绿，前后端链路稳定流畅。 | Antigravity AI |
+
+
