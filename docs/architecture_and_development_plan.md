@@ -26,43 +26,43 @@
 ### 2.1 整体架构图
 ```mermaid
 graph TD
-    User([用户 / 机房管理员]) <-->|HTTP / SSE 响应| WebUI[前端界面: Vue 3 + Tailwind CSS]
+    User(["用户 / 机房管理员"]) <--> WebUI["前端界面: Vue 3 + Tailwind CSS"]
     
-    subgraph Frontend [前端呈现层 (左右分栏联动)]
-        ChatPanel[左侧: 交互流 (思考框 + Tool卡片 + 规章溯源)]
-        BoardPanel[右侧: 实时业务看板 (设备监控指标 + 待办工单表 + 资产借还表)]
+    subgraph Frontend ["前端呈现层 (左右分栏联动)"]
+        ChatPanel["左侧: 交互流 (思考框 + Tool卡片 + 规章溯源)"]
+        BoardPanel["右侧: 实时业务看板 (设备监控指标 + 待办工单表 + 资产借还表)"]
     end
     WebUI --> ChatPanel
     WebUI --> BoardPanel
 
-    subgraph Backend [后端服务层: FastAPI]
-        API[REST / SSE 接口层]
-        ReActEngine[手写 ReAct 调度引擎 (状态机循环)]
-        ToolsRegistry[工具注册中心 (Function Calling)]
-        RAGModule[轻量 RAG 模块 (检索规程)]
+    subgraph Backend ["后端服务层: FastAPI"]
+        API["REST / SSE 接口层"]
+        ReActEngine["手写 ReAct 调度引擎 (状态机循环)"]
+        ToolsRegistry["工具注册中心 (Function Calling)"]
+        RAGModule["轻量 RAG 模块 (检索规程)"]
     end
-    ChatPanel <-->|SSE 流式事件| API
-    BoardPanel <-->|REST 轮询/事件触发更新| API
+    ChatPanel -->|SSE 流式事件| API
+    BoardPanel -->|REST 轮询 / 状态更新| API
     API --> ReActEngine
-    ReActEngine <-->|OpenAI 协议 Tools Payload| LLM[商业大模型 API (DeepSeek / 通义千问)]
+    ReActEngine -->|调用 Tools / 返回响应| LLM["商业大模型 API (DeepSeek / 通义千问)"]
     ReActEngine --> ToolsRegistry
 
-    subgraph Tools [垂直业务工具集]
-        T1[get_server_metrics (服务器监控查询)]
-        T2[create_ticket (自动创建运维工单)]
-        T3[manage_asset (资产查询与借还登记)]
-        T4[query_regulations (检索安全规章)]
+    subgraph Tools ["垂直业务工具集"]
+        T1["get_server_metrics (服务器监控查询)"]
+        T2["create_ticket (自动创建运维工单)"]
+        T3["manage_asset (资产查询与借还登记)"]
+        T4["query_regulations (检索安全规章)"]
     end
     ToolsRegistry --> T1
     ToolsRegistry --> T2
     ToolsRegistry --> T3
     ToolsRegistry --> T4
 
-    subgraph Storage [数据持久层]
-        SQLite[(SQLite 关系型数据库: 会话/工单/资产/审计日志)]
-        ChromaDB[(ChromaDB 本地向量库: 机房规范/应急规程文档)]
+    subgraph Storage ["数据持久层"]
+        SQLite[("SQLite 关系型数据库: 会话/工单/资产/审计日志")]
+        ChromaDB[("ChromaDB 本地向量库: 机房规范/应急规程文档")]
     end
-    T1 -.->|读取模拟指标/系统监控| HostOS[宿主机监控]
+    T1 -.->|读取监控指标| HostOS["宿主机监控"]
     T2 --> SQLite
     T3 --> SQLite
     T4 --> RAGModule

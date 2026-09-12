@@ -6,8 +6,12 @@
       class="px-2.5 py-1.5 rounded-lg border text-xs flex items-center space-x-1.5 transition-all shadow-sm active:scale-95 select-none"
       :class="[
         isOpen
-          ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-200 shadow-indigo-500/10'
-          : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border-white/[0.08] hover:border-white/[0.15]'
+          ? (theme === 'light'
+              ? 'bg-indigo-50/90 border-indigo-400/80 text-indigo-700 shadow-sm'
+              : 'bg-indigo-500/20 border-indigo-500/40 text-indigo-200 shadow-indigo-500/10')
+          : (theme === 'light'
+              ? 'bg-white/90 hover:bg-indigo-50/80 text-slate-700 hover:text-indigo-600 border-slate-200 hover:border-indigo-400/60'
+              : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border-white/[0.08] hover:border-white/[0.15]')
       ]"
       title="调节界面透明玻璃质感与背景动效"
     >
@@ -68,11 +72,20 @@
             :class="[
               'p-2 rounded-xl border text-left transition-all flex flex-col justify-between group',
               activePreset === p.id
-                ? 'bg-indigo-500/15 border-indigo-500/40 text-white shadow-sm ring-1 ring-indigo-500/20'
+                ? (theme === 'light'
+                    ? 'bg-indigo-50/90 border-indigo-400/80 text-indigo-700 shadow-sm ring-1 ring-indigo-200 font-medium'
+                    : 'bg-indigo-500/15 border-indigo-500/40 text-white shadow-sm ring-1 ring-indigo-500/20')
                 : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.06] text-zinc-400 hover:text-zinc-200'
             ]"
           >
-            <span class="font-medium text-[11px] block text-zinc-200 group-hover:text-white">{{ p.name }}</span>
+            <span
+              :class="[
+                'font-medium text-[11px] block',
+                activePreset === p.id && theme === 'light'
+                  ? 'text-indigo-900'
+                  : 'text-zinc-200 group-hover:text-white'
+              ]"
+            >{{ p.name }}</span>
             <span class="text-[9px] text-zinc-500 font-mono mt-1">{{ p.desc }}</span>
           </button>
         </div>
@@ -180,6 +193,10 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  theme: {
+    type: String,
+    default: 'dark',
+  },
 })
 
 const emit = defineEmits(['update:bgAnimation'])
@@ -223,35 +240,49 @@ const STORAGE_KEY = 'labops_glass_config'
 // 应用 CSS 变量到 :root
 function applyGlassCSS() {
   const root = document.documentElement
+  const isLight = props.theme === 'light'
   const op = opacityPercent.value / 100
   const blur = blurRadius.value
 
   root.style.setProperty('--glass-opacity', op.toFixed(2))
   root.style.setProperty('--glass-blur', `${blur}px`)
 
-  // 面板与卡片背景半透色彩
-  root.style.setProperty('--glass-bg', `rgba(12, 12, 16, ${op.toFixed(2)})`)
-  root.style.setProperty('--glass-panel-bg', `rgba(12, 12, 16, ${op.toFixed(2)})`)
-  
-  // 卡片略增不透明度保障微反差层级
-  const cardOp = Math.min(op + 0.12, 0.95).toFixed(2)
-  const hoverOp = Math.min(op + 0.22, 0.98).toFixed(2)
-  root.style.setProperty('--glass-card-bg', `rgba(18, 18, 24, ${cardOp})`)
-  root.style.setProperty('--glass-card-hover-bg', `rgba(26, 26, 36, ${hoverOp})`)
+  if (isLight) {
+    // 明亮模式冰晶白微透设计令牌
+    const panelOp = Math.min(op + 0.45, 0.88).toFixed(2)
+    const cardOp = Math.min(op + 0.55, 0.94).toFixed(2)
+    const hoverOp = Math.min(op + 0.65, 0.98).toFixed(2)
 
-  // 动态边框半透光
-  const borderOp = Math.max(0.06, 0.15 - op * 0.08).toFixed(2)
-  const borderHoverOp = Math.max(0.12, 0.24 - op * 0.08).toFixed(2)
-  root.style.setProperty('--glass-border', `rgba(255, 255, 255, ${borderOp})`)
-  root.style.setProperty('--glass-border-hover', `rgba(255, 255, 255, ${borderHoverOp})`)
+    root.style.setProperty('--glass-bg', `rgba(255, 255, 255, ${panelOp})`)
+    root.style.setProperty('--glass-panel-bg', `rgba(255, 255, 255, ${panelOp})`)
+    root.style.setProperty('--glass-card-bg', `rgba(255, 255, 255, ${cardOp})`)
+    root.style.setProperty('--glass-card-hover-bg', `rgba(255, 255, 255, ${hoverOp})`)
 
-  // 子卡片微背景
-  const subOp = Math.max(0.02, 0.06 - op * 0.03).toFixed(2)
-  root.style.setProperty('--glass-sub-bg', `rgba(255, 255, 255, ${subOp})`)
+    root.style.setProperty('--glass-border', 'rgba(203, 213, 225, 0.75)')
+    root.style.setProperty('--glass-border-hover', 'rgba(99, 102, 241, 0.45)')
+    root.style.setProperty('--glass-sub-bg', 'rgba(241, 245, 249, 0.75)')
+    root.style.setProperty('--glass-shadow', '0 10px 30px -4px rgba(99, 102, 241, 0.08), 0 4px 12px 0 rgba(0, 0, 0, 0.04)')
+  } else {
+    // 暗黑模式深空通透设计令牌
+    root.style.setProperty('--glass-bg', `rgba(12, 12, 16, ${op.toFixed(2)})`)
+    root.style.setProperty('--glass-panel-bg', `rgba(12, 12, 16, ${op.toFixed(2)})`)
 
-  // 动态高质感投影
-  const shadowOp = (0.2 + op * 0.25).toFixed(2)
-  root.style.setProperty('--glass-shadow', `0 8px 32px 0 rgba(0, 0, 0, ${shadowOp})`)
+    const cardOp = Math.min(op + 0.12, 0.95).toFixed(2)
+    const hoverOp = Math.min(op + 0.22, 0.98).toFixed(2)
+    root.style.setProperty('--glass-card-bg', `rgba(18, 18, 24, ${cardOp})`)
+    root.style.setProperty('--glass-card-hover-bg', `rgba(26, 26, 36, ${hoverOp})`)
+
+    const borderOp = Math.max(0.06, 0.15 - op * 0.08).toFixed(2)
+    const borderHoverOp = Math.max(0.12, 0.24 - op * 0.08).toFixed(2)
+    root.style.setProperty('--glass-border', `rgba(255, 255, 255, ${borderOp})`)
+    root.style.setProperty('--glass-border-hover', `rgba(255, 255, 255, ${borderHoverOp})`)
+
+    const subOp = Math.max(0.02, 0.06 - op * 0.03).toFixed(2)
+    root.style.setProperty('--glass-sub-bg', `rgba(255, 255, 255, ${subOp})`)
+
+    const shadowOp = (0.2 + op * 0.25).toFixed(2)
+    root.style.setProperty('--glass-shadow', `0 8px 32px 0 rgba(0, 0, 0, ${shadowOp})`)
+  }
 }
 
 // 保存持久化配置
@@ -336,6 +367,13 @@ watch(
   () => props.bgAnimation,
   (val) => {
     isBgAnimationActive.value = val
+  }
+)
+
+watch(
+  () => props.theme,
+  () => {
+    applyGlassCSS()
   }
 )
 

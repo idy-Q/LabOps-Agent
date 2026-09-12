@@ -1,16 +1,26 @@
 <template>
   <div
-    class="flex flex-col h-screen w-screen overflow-hidden bg-transparent text-zinc-100 font-sans relative selection:bg-indigo-500/30 selection:text-white"
-    :class="{ 'select-none': isDragging }"
+    class="flex flex-col h-screen w-screen overflow-hidden bg-transparent font-sans relative selection:bg-indigo-500/30 selection:text-white"
+    :class="[
+      currentTheme === 'light' ? 'text-zinc-900' : 'text-zinc-100',
+      { 'select-none': isDragging }
+    ]"
   >
     <!-- Codex 专属原生 HTML5 Canvas 2D 动态极光流体与鼠标 ASCII 水滴粒子背景 -->
-    <CodexCanvasBackground :isPaused="!isBgAnimationActive" />
+    <CodexCanvasBackground :isPaused="!isBgAnimationActive" :theme="currentTheme" />
 
     <!-- 顶部全局导航栏 (Codex Glass Minimalist Bar) -->
     <header class="h-14 border-b glass-panel px-4 flex items-center justify-between shrink-0 z-20 relative">
       <div class="flex items-center space-x-3">
         <!-- 品牌标识 SVG (机房运维意向：齿轮 + 交叉扳手螺丝刀) -->
-        <div class="w-8 h-8 rounded-lg bg-zinc-900/90 border border-indigo-500/20 flex items-center justify-center shadow-sm group hover:border-indigo-500/40 transition-colors">
+        <div
+          class="w-8 h-8 rounded-lg border flex items-center justify-center shadow-sm group transition-colors"
+          :class="[
+            currentTheme === 'light'
+              ? 'bg-white/90 border-slate-200 hover:border-indigo-500/40'
+              : 'bg-zinc-900/90 border-indigo-500/20 hover:border-indigo-500/40'
+          ]"
+        >
           <svg class="w-5 h-5 transition-transform duration-300 group-hover:scale-105" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="labops-nav-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -35,7 +45,7 @@
           </svg>
         </div>
         <div>
-          <h1 class="text-sm font-semibold text-zinc-100 tracking-wide glass-text">
+          <h1 class="text-sm font-semibold tracking-wide glass-text">
             LabOps-Agent
           </h1>
         </div>
@@ -43,8 +53,30 @@
 
       <!-- 右侧全局控制与状态 -->
       <div class="flex items-center space-x-2 text-xs">
+        <!-- 风格切换按钮：清晰指示“明亮”或“暗黑”，每点击一下切换一次风格 -->
+        <button
+          @click="toggleTheme"
+          class="px-2.5 py-1.5 rounded-lg border text-xs flex items-center space-x-1.5 transition-all shadow-sm active:scale-95 select-none"
+          :class="[
+            currentTheme === 'light'
+              ? 'bg-amber-50/90 hover:bg-amber-100/90 text-amber-800 border-amber-300/80 hover:border-amber-400'
+              : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white border-white/[0.08] hover:border-indigo-500/30'
+          ]"
+          :title="`当前为${currentTheme === 'light' ? '明亮' : '暗黑'}风格，点击切换为${currentTheme === 'light' ? '暗黑' : '明亮'}风格`"
+        >
+          <!-- 太阳矢量 SVG (明亮风格图标) -->
+          <svg v-if="currentTheme === 'light'" class="w-3.5 h-3.5 text-amber-600 animate-fade-in" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <!-- 月亮矢量 SVG (暗黑风格图标) -->
+          <svg v-else class="w-3.5 h-3.5 text-indigo-400 animate-fade-in" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+          <span class="font-medium">{{ currentTheme === 'light' ? '明亮' : '暗黑' }}</span>
+        </button>
+
         <!-- 玻璃视效与背景动力学控制器 -->
-        <GlassController v-model:bgAnimation="isBgAnimationActive" />
+        <GlassController v-model:bgAnimation="isBgAnimationActive" :theme="currentTheme" />
 
         <!-- 后端服务动态连接状态 -->
         <div
@@ -59,7 +91,12 @@
 
         <button
           @click="openSessionDrawer"
-          class="p-2 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-white/[0.08] hover:border-white/[0.15] transition-all shadow-sm active:scale-95"
+          class="p-2 rounded-lg border transition-all shadow-sm active:scale-95"
+          :class="[
+            currentTheme === 'light'
+              ? 'bg-white/90 hover:bg-indigo-50/80 text-slate-700 hover:text-indigo-600 border-slate-200 hover:border-indigo-400/60'
+              : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-white/[0.08] hover:border-white/[0.15]'
+          ]"
           title="历史会话"
         >
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -69,19 +106,30 @@
           </svg>
         </button>
 
+        <!-- 新建会话加号按钮 (图二调优：半透微光质感，自适应页面深浅色彩，告别突兀实白方块) -->
         <button
           @click="startNewSession"
-          class="p-2 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 font-medium transition-all shadow-sm active:scale-95"
+          class="p-2 rounded-lg border transition-all shadow-sm active:scale-95"
+          :class="[
+            currentTheme === 'light'
+              ? 'bg-white/90 hover:bg-indigo-50/80 text-indigo-600 border-slate-200 hover:border-indigo-400/60'
+              : 'bg-zinc-900/90 hover:bg-zinc-800 text-indigo-300 border-white/[0.08] hover:border-indigo-500/30'
+          ]"
           title="新建会话"
         >
-          <svg class="w-3.5 h-3.5 text-zinc-950" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 4v16m8-8H4" />
           </svg>
         </button>
 
         <button
           @click="refreshAllData"
-          class="p-2 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-white/[0.08] hover:border-white/[0.15] transition-all active:scale-95 shadow-sm"
+          class="p-2 rounded-lg border transition-all active:scale-95 shadow-sm"
+          :class="[
+            currentTheme === 'light'
+              ? 'bg-white/90 hover:bg-indigo-50/80 text-slate-700 hover:text-indigo-600 border-slate-200 hover:border-indigo-400/60'
+              : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-white/[0.08] hover:border-white/[0.15]'
+          ]"
           title="刷新大盘全部数据"
         >
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -119,10 +167,13 @@
           ref="chatStreamRef"
           :messages="messages"
           :isStreaming="isStreaming"
+          @select="handleSendMessage"
+          @fill="handleFillInput"
         />
 
         <!-- 输入框组件 -->
         <ChatInput
+          ref="chatInputRef"
           :isLoading="isStreaming"
           @send="handleSendMessage"
           @abort="handleAbortStream"
@@ -360,6 +411,41 @@ import AssetTable from './components/Dashboard/AssetTable.vue'
 import { api } from './api/client'
 import { fetchSSE } from './api/sse'
 
+// 全站深色 / 明亮双模态主题系统 (持久化同步 localStorage)
+const THEME_STORAGE_KEY = 'labops_theme_mode'
+
+function getSavedTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY)
+    if (saved === 'light' || saved === 'dark') return saved
+  } catch {}
+  return 'dark'
+}
+
+const currentTheme = ref(getSavedTheme())
+
+function applyTheme(theme) {
+  const root = document.documentElement
+  if (theme === 'light') {
+    root.classList.add('light')
+    root.classList.remove('dark')
+  } else {
+    root.classList.add('dark')
+    root.classList.remove('light')
+  }
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme)
+  } catch {}
+}
+
+function toggleTheme() {
+  currentTheme.value = currentTheme.value === 'light' ? 'dark' : 'light'
+  applyTheme(currentTheme.value)
+}
+
+// 顶层立即执行一次，避免初次渲染时闪烁
+applyTheme(currentTheme.value)
+
 // Codex 动态背景启停状态 (同步读取 localStorage 避免冷启动闪烁)
 function getSavedBgAnimation() {
   try {
@@ -379,6 +465,7 @@ const currentTraceId = ref('')
 const messages = ref([])
 const isStreaming = ref(false)
 const chatStreamRef = ref(null)
+const chatInputRef = ref(null)
 let abortController = null
 
 // 分栏宽度与拖拽状态 (30% ~ 70%，默认 46%)
@@ -443,6 +530,10 @@ function handleQuickAction(prompt) {
   handleSendMessage(prompt)
 }
 
+function handleFillInput(prompt) {
+  chatInputRef.value?.setInput(prompt)
+}
+
 // 后端服务连通状态
 const backendConnected = ref(false)
 
@@ -482,9 +573,13 @@ onUnmounted(() => {
 })
 
 function startNewSession() {
+  if (isStreaming.value) {
+    handleAbortStream()
+  }
   currentSessionId.value = `sess-${Date.now().toString(36)}`
   currentTraceId.value = ''
   messages.value = []
+  chatInputRef.value?.clear()
 }
 
 async function openSessionDrawer() {
@@ -500,9 +595,13 @@ async function openSessionDrawer() {
 }
 
 async function switchToSession(sessionId) {
+  if (isStreaming.value) {
+    handleAbortStream()
+  }
   currentSessionId.value = sessionId
   currentTraceId.value = ''
   showSessionDrawer.value = false
+  chatInputRef.value?.clear()
   try {
     const historyRecords = await api.getChatHistory(sessionId)
     messages.value = (historyRecords || []).map((h) => ({
@@ -561,6 +660,7 @@ async function loadAssets() {
 // -------------------------------------------------------------
 async function handleSendMessage(promptText) {
   if (isStreaming.value || !promptText.trim()) return
+  chatInputRef.value?.clear()
 
   // 1. 追加用户消息
   const userMsgId = `usr-${Date.now()}`

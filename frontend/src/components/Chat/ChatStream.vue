@@ -3,7 +3,7 @@
     <!-- 欢迎状态卡片 (Linear Minimalist 风格) -->
     <div
       v-if="messages.length === 0"
-      class="h-full flex flex-col items-center justify-center text-center p-6 space-y-4 max-w-md mx-auto my-auto"
+      class="min-h-full flex flex-col items-center justify-center text-center px-4 py-6 sm:py-8 space-y-4 max-w-lg mx-auto w-full select-none"
     >
       <div class="w-14 h-14 rounded-2xl bg-zinc-900/90 border border-indigo-500/20 flex items-center justify-center shadow-lg group hover:border-indigo-500/40 transition-colors">
         <svg class="w-8 h-8 transition-transform duration-300 group-hover:scale-105" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -29,30 +29,85 @@
           <path d="M 40.3,29.4 L 37.2,14.2 L 34.4,12.1 L 31.1,10.9 L 27.6,10.7 L 24.2,11.5 L 21.2,13.3 L 18.8,15.8 L 17.3,19.0 L 24.8,12.4 L 30.4,18.1 L 31.5,25.5 L 24.1,24.4 L 18.4,18.8 L 25.0,11.3 L 21.8,12.8 L 19.3,15.2 L 17.5,18.2 L 16.7,21.6 L 16.9,25.1 L 18.1,28.4 L 20.2,31.2 L 35.4,34.3 L 62.3,61.2 L 65.4,76.4 L 66.9,77.6 L 68.5,78.6 L 70.2,79.3 L 72.0,79.8 L 73.9,79.9 L 75.8,79.8 L 77.6,79.3 L 77.8,78.2 L 72.2,72.5 L 71.1,65.1 L 78.5,66.2 L 84.2,71.8 L 85.3,71.6 L 85.8,69.8 L 85.9,67.9 L 85.8,66.0 L 85.3,64.2 L 84.6,62.5 L 83.6,60.9 L 82.4,59.4 L 67.2,56.3 Z" fill="url(#labops-stream-logo-grad)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" stroke-linejoin="round" />
         </svg>
       </div>
-      <div>
+      <div class="space-y-1">
         <h2 class="text-base font-semibold text-zinc-100 tracking-wide glass-text">LabOps-Agent</h2>
+        <p class="text-xs text-zinc-400">数据中心智能自治运维系统 · 点击典型场景即刻体验</p>
       </div>
+
+      <!-- 典型运维场景推荐卡片 (可点击/支持直接提问与填入编辑) -->
       <div class="w-full pt-1 grid grid-cols-1 gap-2.5 text-left text-xs">
-        <div class="p-3.5 rounded-xl glass-card-sub border border-white/[0.06] hover:border-white/[0.14] transition-colors flex items-start space-x-2.5 shadow-sm">
-          <span class="p-1 rounded-md bg-emerald-500/10 text-emerald-400 shrink-0">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </span>
-          <div>
-            <div class="font-medium text-zinc-200 glass-text">全白盒推理感知</div>
-            <div class="text-[11px] text-zinc-500 mt-0.5">细粒度展现 ReAct 深度思考过程与函数工具入参返回值</div>
+        <div
+          v-for="scenario in recommendedScenarios"
+          :key="scenario.id"
+          @click="triggerScenario(scenario.prompt)"
+          role="button"
+          tabindex="0"
+          @keydown.enter.self.prevent="triggerScenario(scenario.prompt)"
+          @keydown.space.self.prevent="triggerScenario(scenario.prompt)"
+          class="p-3.5 rounded-xl glass-card-sub border border-white/[0.08] hover:border-indigo-500/40 hover:bg-white/[0.06] hover:-translate-y-0.5 hover:shadow-md hover:shadow-indigo-500/10 transition-all duration-200 flex items-center justify-between shadow-sm cursor-pointer active:scale-[0.99] group focus:outline-none focus:ring-1 focus:ring-indigo-500/40 select-none"
+          :class="{ 'opacity-50 cursor-not-allowed': isStreaming }"
+          :title="`一键提问: ${scenario.prompt}`"
+        >
+          <div class="flex items-start space-x-3 min-w-0 pr-2">
+            <span
+              class="p-2 rounded-lg border shrink-0 transition-transform duration-200 group-hover:scale-110 flex items-center justify-center shadow-sm"
+              :class="[scenario.iconBg, scenario.iconColor]"
+            >
+              <!-- 矢量 SVG 图标 -->
+              <!-- 超温告警图标 -->
+              <svg v-if="scenario.iconType === 'overheat'" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343a7.975 7.975 0 012.343 5.657c0 2.12-.835 4.16-2.342 5.657z" />
+              </svg>
+              <!-- 算力借用图标 -->
+              <svg v-else-if="scenario.iconType === 'borrow'" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              <!-- 规程检索图标 -->
+              <svg v-else-if="scenario.iconType === 'regulation'" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </span>
+
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center space-x-2">
+                <span class="font-medium text-zinc-100 group-hover:text-indigo-400 transition-colors glass-text text-xs sm:text-sm truncate">
+                  {{ scenario.title }}
+                </span>
+                <span
+                  class="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 border"
+                  :class="scenario.badgeClass"
+                >
+                  {{ scenario.category }}
+                </span>
+              </div>
+              <p class="text-[11px] text-zinc-400 group-hover:text-zinc-300 mt-1 line-clamp-2 leading-relaxed">
+                {{ scenario.prompt }}
+              </p>
+            </div>
           </div>
-        </div>
-        <div class="p-3.5 rounded-xl glass-card-sub border border-white/[0.06] hover:border-white/[0.14] transition-colors flex items-start space-x-2.5 shadow-sm">
-          <span class="p-1 rounded-md bg-cyan-500/10 text-cyan-400 shrink-0">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </span>
-          <div>
-            <div class="font-medium text-zinc-200 glass-text">左右看板双向联动</div>
-            <div class="text-[11px] text-zinc-500 mt-0.5">智能提单与借还操作即时同步右侧 SQLite 真实业务大盘</div>
+
+          <!-- 右侧操作区：支持填入输入框与一键直接提问 -->
+          <div class="flex items-center space-x-1 shrink-0 ml-1.5">
+            <button
+              type="button"
+              @click.stop="handleFill(scenario.prompt)"
+              @keydown.enter.stop.prevent="handleFill(scenario.prompt)"
+              @keydown.space.stop.prevent="handleFill(scenario.prompt)"
+              class="opacity-70 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus:opacity-100 p-1.5 rounded-lg hover:bg-white/[0.1] text-zinc-400 hover:text-zinc-200 transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+              title="填入输入框二次编辑"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <div
+              class="p-1 text-zinc-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all"
+              title="一键直接提问"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </div>
           </div>
         </div>
       </div>
@@ -164,6 +219,51 @@ const props = defineProps({
     default: false,
   },
 })
+
+const emit = defineEmits(['select', 'fill'])
+
+const recommendedScenarios = [
+  {
+    id: 'overheat',
+    iconType: 'overheat',
+    title: '超温告警排查',
+    category: '监控 · 闭环提单',
+    prompt: 'DEV-SRV-201 告警超温，查一下并按规章自动提单',
+    iconColor: 'text-rose-400',
+    iconBg: 'bg-rose-500/10 border-rose-500/20',
+    badgeClass: 'text-rose-400 border-rose-500/20 bg-rose-500/10',
+  },
+  {
+    id: 'borrow',
+    iconType: 'borrow',
+    title: '算力节点借用',
+    category: '资源 · 借还登记',
+    prompt: '借用 DEV-SRV-202 服务器，用途为大模型微调实验，期限 3 天',
+    iconColor: 'text-cyan-400',
+    iconBg: 'bg-cyan-500/10 border-cyan-500/20',
+    badgeClass: 'text-cyan-400 border-cyan-500/20 bg-cyan-500/10',
+  },
+  {
+    id: 'regulation',
+    iconType: 'regulation',
+    title: '用电防火规程',
+    category: '合规 · 规程溯源',
+    prompt: '查一下机房用电安全和防火巡检的相关规定',
+    iconColor: 'text-emerald-400',
+    iconBg: 'bg-emerald-500/10 border-emerald-500/20',
+    badgeClass: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10',
+  },
+]
+
+function triggerScenario(prompt) {
+  if (props.isStreaming) return
+  emit('select', prompt)
+}
+
+function handleFill(prompt) {
+  if (props.isStreaming) return
+  emit('fill', prompt)
+}
 
 const containerRef = ref(null)
 

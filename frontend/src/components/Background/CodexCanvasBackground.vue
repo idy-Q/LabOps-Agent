@@ -1,5 +1,8 @@
 <template>
-  <div class="fixed inset-0 pointer-events-none z-0 w-full h-full overflow-hidden bg-[#09090b]">
+  <div
+    class="fixed inset-0 pointer-events-none z-0 w-full h-full overflow-hidden transition-colors duration-500 ease-in-out"
+    :class="theme === 'light' ? 'bg-[#f8fafc]' : 'bg-[#08080a]'"
+  >
     <canvas
       ref="canvasRef"
       class="w-full h-full block transition-opacity duration-700 ease-in-out"
@@ -16,6 +19,10 @@ const props = defineProps({
   isPaused: {
     type: Boolean,
     default: false,
+  },
+  theme: {
+    type: String,
+    default: 'dark',
   },
 })
 
@@ -181,31 +188,63 @@ function stopAnimation() {
 function renderFrame(time, dt) {
   if (!ctx || width === 0 || height === 0) return
 
-  // 1. 清屏与深色底衬
+  const isLight = props.theme === 'light'
+
+  // 1. 清屏与底衬 (明亮模式为柔和清雅冰晶白底，暗黑模式为深空暗黑底)
   ctx.globalCompositeOperation = 'source-over'
   ctx.globalAlpha = 1.0
-  ctx.fillStyle = '#08080a'
+  ctx.fillStyle = isLight ? '#f8fafc' : '#08080a'
   ctx.fillRect(0, 0, width, height)
 
-  // 2. 绘制底层 Codex 极光色彩流动画布 (采用 screen 滤色叠加渲染极光通透质感)
+  // 2. 绘制底层 Codex 极光色彩流动画布
   const minDim = Math.min(width, height)
-  ctx.globalCompositeOperation = 'screen'
 
-  for (let i = 0; i < orbs.length; i++) {
-    const orb = orbs[i]
-    const ox = (orb.baseXRatio + Math.sin(time * orb.speedX + orb.phase) * orb.ampX) * width
-    const oy = (orb.baseYRatio + Math.cos(time * orb.speedY + orb.phase) * orb.ampY) * height
-    const or = orb.radiusRatio * minDim
+  if (isLight) {
+    // 明亮模式：清雅明亮的高级极光色相 (珍珠白、淡蓝紫、冰青流彩)
+    ctx.globalCompositeOperation = 'source-over'
+    const lightOrbs = [
+      { ...orbs[0], r: 129, g: 140, b: 248, alpha: 0.22 }, // 淡蓝紫
+      { ...orbs[1], r: 196, g: 181, b: 253, alpha: 0.24 }, // 柔薰衣草紫
+      { ...orbs[2], r: 147, g: 197, b: 253, alpha: 0.20 }, // 珍珠淡天蓝
+      { ...orbs[3], r: 103, g: 232, b: 249, alpha: 0.22 }, // 冰青流彩
+    ]
 
-    const grad = ctx.createRadialGradient(ox, oy, 0, ox, oy, or)
-    grad.addColorStop(0, `rgba(${orb.r}, ${orb.g}, ${orb.b}, 0.36)`)
-    grad.addColorStop(0.45, `rgba(${orb.r}, ${orb.g}, ${orb.b}, 0.15)`)
-    grad.addColorStop(1, `rgba(${orb.r}, ${orb.g}, ${orb.b}, 0)`)
+    for (let i = 0; i < lightOrbs.length; i++) {
+      const orb = lightOrbs[i]
+      const ox = (orb.baseXRatio + Math.sin(time * orb.speedX + orb.phase) * orb.ampX) * width
+      const oy = (orb.baseYRatio + Math.cos(time * orb.speedY + orb.phase) * orb.ampY) * height
+      const or = orb.radiusRatio * minDim
 
-    ctx.fillStyle = grad
-    ctx.beginPath()
-    ctx.arc(ox, oy, or, 0, Math.PI * 2)
-    ctx.fill()
+      const grad = ctx.createRadialGradient(ox, oy, 0, ox, oy, or)
+      grad.addColorStop(0, `rgba(${orb.r}, ${orb.g}, ${orb.b}, ${orb.alpha})`)
+      grad.addColorStop(0.5, `rgba(${orb.r}, ${orb.g}, ${orb.b}, ${orb.alpha * 0.45})`)
+      grad.addColorStop(1, `rgba(${orb.r}, ${orb.g}, ${orb.b}, 0)`)
+
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.arc(ox, oy, or, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  } else {
+    // 暗黑模式：采用 screen 滤色叠加渲染极光通透质感
+    ctx.globalCompositeOperation = 'screen'
+
+    for (let i = 0; i < orbs.length; i++) {
+      const orb = orbs[i]
+      const ox = (orb.baseXRatio + Math.sin(time * orb.speedX + orb.phase) * orb.ampX) * width
+      const oy = (orb.baseYRatio + Math.cos(time * orb.speedY + orb.phase) * orb.ampY) * height
+      const or = orb.radiusRatio * minDim
+
+      const grad = ctx.createRadialGradient(ox, oy, 0, ox, oy, or)
+      grad.addColorStop(0, `rgba(${orb.r}, ${orb.g}, ${orb.b}, 0.36)`)
+      grad.addColorStop(0.45, `rgba(${orb.r}, ${orb.g}, ${orb.b}, 0.15)`)
+      grad.addColorStop(1, `rgba(${orb.r}, ${orb.g}, ${orb.b}, 0)`)
+
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.arc(ox, oy, or, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
 
   // 恢复标准图层混合模式绘制粒子
@@ -279,7 +318,7 @@ function renderFrame(time, dt) {
   const moveAngle = Math.atan2(dy, dx)
   const moveLen = Math.hypot(dx, dy)
 
-  // 预置各层级常量色彩，依靠 ctx.globalAlpha 控制透明度，实现零 GC 极速渲染
+  // 逐层演进字符色彩配置 (明亮模式采用高对比科技靛青，暗黑模式采用纯白/紫蓝)
   for (let c = minCol; c <= maxCol; c++) {
     for (let r = minRow; r <= maxRow; r++) {
       const cx = c * cellW + cellW * 0.5
@@ -304,30 +343,30 @@ function renderFrame(time, dt) {
       // 根据归一化距离逐层演进字符: o (核心) -> > (内圈) -> - (中圈) -> _ (外轮廓)
       if (normDist < 0.22) {
         const alpha = Math.min(0.9, (1 - normDist / 0.22) * 0.5 + 0.45)
-        ctx.fillStyle = '#ffffff'
+        ctx.fillStyle = isLight ? '#312e81' : '#ffffff'
         ctx.globalAlpha = alpha
         ctx.fillText('o', cx, cy)
       } else if (normDist < 0.48) {
         const alpha = Math.min(0.75, (1 - (normDist - 0.22) / 0.26) * 0.4 + 0.3)
-        ctx.fillStyle = '#c7d2fe'
+        ctx.fillStyle = isLight ? '#4338ca' : '#c7d2fe'
         ctx.globalAlpha = alpha
         ctx.fillText('>', cx, cy)
       } else if (normDist < 0.76) {
         const alpha = Math.min(0.55, (1 - (normDist - 0.48) / 0.28) * 0.3 + 0.2)
-        ctx.fillStyle = '#a5b4fc'
+        ctx.fillStyle = isLight ? '#4f46e5' : '#a5b4fc'
         ctx.globalAlpha = alpha
         ctx.fillText('-', cx, cy)
       } else if (normDist <= 1.0) {
         const alpha = Math.min(0.35, (1 - (normDist - 0.76) / 0.24) * 0.25 + 0.08)
-        ctx.fillStyle = '#818cf8'
+        ctx.fillStyle = isLight ? '#6366f1' : '#818cf8'
         ctx.globalAlpha = alpha
         ctx.fillText('_', cx, cy)
       }
     }
   }
 
-  // 5. 渲染扩散的波纹涟漪字符圈
-  ctx.fillStyle = '#93c5fd'
+  // 5. 渲染扩散的波纹涟漪字符圈 (明亮模式高对比度皇家蓝，暗黑模式浅天蓝)
+  ctx.fillStyle = isLight ? '#2563eb' : '#93c5fd'
   for (let i = 0; i < ripples.length; i++) {
     const rip = ripples[i]
     const ripMinCol = Math.max(0, Math.floor((rip.x - rip.radius - 20) / cellW))
@@ -359,7 +398,7 @@ function renderFrame(time, dt) {
   const ambientCols = Math.floor(width / (cellW * sparseStepX))
   const ambientRows = Math.floor(height / (cellH * sparseStepY))
 
-  ctx.fillStyle = '#6366f1'
+  ctx.fillStyle = isLight ? '#4f46e5' : '#6366f1'
   for (let ac = 0; ac <= ambientCols; ac++) {
     for (let ar = 0; ar <= ambientRows; ar++) {
       const ax = ac * cellW * sparseStepX + cellW * 0.5
@@ -371,7 +410,7 @@ function renderFrame(time, dt) {
 
       const twinkle = Math.sin(time * 0.0015 + ac * 0.7 + ar * 0.5)
       if (twinkle > 0.2) {
-        ctx.globalAlpha = (twinkle - 0.2) * 0.12
+        ctx.globalAlpha = (twinkle - 0.2) * (isLight ? 0.16 : 0.12)
         ctx.fillText('-', ax, ay)
       }
     }
@@ -381,6 +420,15 @@ function renderFrame(time, dt) {
 }
 
 let fadeTimer = null
+
+watch(
+  () => props.theme,
+  () => {
+    if (ctx) {
+      renderFrame(performance.now(), 16)
+    }
+  }
+)
 
 watch(
   () => props.isPaused,

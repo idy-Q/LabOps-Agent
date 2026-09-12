@@ -1,4 +1,4 @@
-﻿"""全局 Pytest 测试配置与环境隔离 Fixture"""
+"""全局 Pytest 测试配置与环境隔离 Fixture"""
 
 import os
 import shutil
@@ -25,3 +25,14 @@ def isolate_test_knowledge_base():
     regulation_tools._kb = original_kb
     regulation_tools._kb_initialized = original_initialized
     shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def isolate_test_agent_mock():
+    """测试会话级别强制隔离为 mock 模式，确保单元测试确定性、离线可重复性与零外部依赖"""
+    from app.config import settings
+
+    original_mode = settings.AGENT_MOCK_MODE
+    settings.AGENT_MOCK_MODE = "mock"
+    yield
+    settings.AGENT_MOCK_MODE = original_mode
