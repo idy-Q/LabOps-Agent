@@ -14,6 +14,10 @@
 export async function fetchSSE({
   prompt,
   sessionId,
+  user,
+  userRole,
+  userName,
+  userDepartment,
   onEvent,
   onError,
   onFinish,
@@ -42,6 +46,9 @@ export async function fetchSSE({
       body: JSON.stringify({
         prompt,
         session_id: sessionId || undefined,
+        user_role: user?.role || userRole || 'ADMIN',
+        user_name: user?.real_name || userName || '管理员',
+        user_department: user?.department || userDepartment || undefined,
       }),
       signal,
     })

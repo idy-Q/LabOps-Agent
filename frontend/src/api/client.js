@@ -99,4 +99,18 @@ export const api = {
   getChatHistory: (sessionId) =>
     request(`/chat/history${sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''}`),
   listChatSessions: () => request('/chat/sessions'),
+
+  // 5. 用户认证与典型账号
+  login: (credentials) =>
+    request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
+  register: (payload) =>
+    request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getDemoUsers: () => request('/auth/demo-users'),
 }
+

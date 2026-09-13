@@ -476,3 +476,84 @@ def test_ticket_creation_concurrency_retry(test_db):
     assert res1["ticket"]["ticket_no"] != res2["ticket"]["ticket_no"]
 
 
+def test_get_server_metrics_offline(test_db):
+    """验证离线设备 (OFFLINE) 硬件探针的零功耗、零转速、环境室温与离线告警指标"""
+    # 1. 数据库注入模式下的离线资产 (DEV-SRV-205, DEV-NET-304)
+    res1 = get_server_metrics(device_id="DEV-SRV-205", db=test_db)
+    assert res1["status"] == "success"
+    assert res1["health_status"] == "OFFLINE"
+    assert res1["power_watts"] == 0
+    assert res1["cpu_usage"] == 0.0
+    assert res1["memory_usage"] == 0.0
+    assert res1["fan_speed_rpm"] == 0
+    assert res1["temperature"] == 22.0
+    assert res1["alert"] is True
+    assert res1["alert_level"] == "WARNING"
+    assert "离线脱网预警" in res1["alert_message"]
+
+    res2 = get_server_metrics(device_id="DEV-NET-304", db=test_db)
+    assert res2["status"] == "success"
+    assert res2["health_status"] == "OFFLINE"
+    assert res2["power_watts"] == 0
+
+    # 2. 无 DB 注入模式下的纯净模拟离线兜底
+    res_standalone = get_server_metrics(device_id="DEV-SRV-205", db=None)
+    assert res_standalone["status"] == "success"
+    assert res_standalone["health_status"] == "OFFLINE"
+    assert res_standalone["power_watts"] == 0
+    assert res_standalone["fan_speed_rpm"] == 0
+
+
+def test_query_assets_offline_and_coverage(test_db):
+    """验证机房资产台账全面覆盖 4 种健康状态，点击离线时能够检索出对应设备"""
+    # 筛选 OFFLINE 状态设备
+    res_offline = query_assets(health_status="OFFLINE", db=test_db)
+    assert res_offline["status"] == "success"
+    assert len(res_offline["assets"]) >= 2
+    assert all(a["health_status"] == "OFFLINE" for a in res_offline["assets"])
+
+    # 验证资产总台账已扩充到 15 台
+    res_all = query_assets(limit=50, db=test_db)
+    assert res_all["status"] == "success"
+    assert len(res_all["assets"]) >= 15
+
+
+def test_query_tickets_lifecycle_status_coverage(test_db):
+    """验证工单系统全面覆盖 RESOLVED 和 CLOSED 状态，消除前端已解决/已关闭空页面"""
+    res_resolved = query_tickets(status="RESOLVED", db=test_db)
+    assert res_resolved["status"] == "success"
+    assert len(res_resolved["tickets"]) >= 2
+    assert all(t["status"] == "RESOLVED" for t in res_resolved["tickets"])
+
+    res_closed = query_tickets(status="CLOSED", db=test_db)
+    assert res_closed["status"] == "success"
+    assert len(res_closed["tickets"]) >= 2
+    assert all(t["status"] == "CLOSED" for t in res_closed["tickets"])
+
+    res_critical = query_tickets(priority="CRITICAL", db=test_db)
+    assert res_critical["status"] == "success"
+    assert len(res_critical["tickets"]) >= 1
+    assert any(t["priority"] == "CRITICAL" for t in res_critical["tickets"])
+
+
+def test_get_server_metrics_all_seeded_standalone():
+    """验证全部 15 台预置种子设备在无 DB 注入独立模式下均可准确识别并返回对应健康指标"""
+    from app.db.init_db import SEED_ASSETS
+
+    assert len(SEED_ASSETS) == 15
+    for asset in SEED_ASSETS:
+        res = get_server_metrics(device_id=asset["asset_no"], db=None)
+        assert res["status"] == "success"
+        assert res["health_status"] == asset["health_status"]
+        assert res["device_name"] == asset["name"]
+        if asset["health_status"] == "OFFLINE":
+            assert res["power_watts"] == 0
+            assert res["fan_speed_rpm"] == 0
+            assert res["alert"] is True
+            assert "离线脱网预警" in res["alert_message"]
+        elif asset["health_status"] == "WARNING":
+            assert res["alert"] is True
+            assert res["alert_level"] == "WARNING"
+
+
+

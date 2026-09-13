@@ -55,12 +55,33 @@ class MockDecisionBrain:
     """
 
     @classmethod
-    def decide(cls, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def decide(
+        cls,
+        messages: List[Dict[str, Any]],
+        user_role: Optional[str] = None,
+        user_name: Optional[str] = None,
+        user_department: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """根据当前对话历史和工具返回结果，决定下一步行为 (思考/调工具/最终回复)"""
+        system_content = ""
         user_prompt = ""
         for m in messages:
-            if m.get("role") == "user":
+            if m.get("role") == "system":
+                system_content = m.get("content", "")
+            elif m.get("role") == "user":
                 user_prompt = m.get("content", "")
+
+        # 若未直接传参，则从 system 提示词中回溯提取注入的身份元数据
+        if not user_role or not user_name:
+            id_match = re.search(r"【当前交互用户身份】：(.*?)\s*\(角色:\s*([A-Za-z_]+)(?:,\s*归属:\s*(.*?))?\)", system_content)
+            if id_match:
+                user_name = user_name or id_match.group(1).strip()
+                user_role = user_role or id_match.group(2).strip()
+                user_department = user_department or (id_match.group(3).strip() if id_match.group(3) else None)
+
+        role = (user_role or "ADMIN").upper()
+        name = user_name or "管理员"
+        dept_desc = f" ({user_department})" if user_department else ""
 
         # 收集已执行过的工具名与结果
         executed_tools: List[str] = []
@@ -99,30 +120,99 @@ class MockDecisionBrain:
         ticket_no = ticket_match.group(1).upper() if ticket_match else None
 
         # -------------------------------------------------------------
+        # 决策逻辑 0：规章制度与应急规范问答检索 (query_regulations) 优先判断
+        # 避免用户咨询规程、借用规则、办结流程、应急预案时误触发操作或权限拦截
+        # -------------------------------------------------------------
+        is_query_regulations = (
+            any(kw in user_prompt for kw in ["规章", "制度", "规范", "用电", "应急", "PDU", "功率", "功耗", "审批流程", "上限", "维保", "预案", "滤网", "巡检要求", "巡检时间", "巡检频次", "巡检周期", "空调故障"])
+            or any(kw in user_prompt for kw in ["借用规则", "借调规则", "借用流程", "借调流程", "归还规则", "归还流程", "办结流程", "关闭流程", "流转流程", "维修流程", "报修流程", "借用规程", "借用制度", "借用规定"])
+            or ("巡检" in user_prompt and any(kw in user_prompt for kw in ["规定", "要求", "怎么做", "时间", "周期", "频次", "标准", "指引", "规则"]))
+            or (any(kw in user_prompt for kw in ["怎么处理", "如何处理", "处置流程", "处置预案", "处理预案", "应急方案", "应急措施"]) and not device_match)
+            or (any(kw in user_prompt for kw in ["规则是什么", "规定是什么", "流程是什么", "怎么借", "如何借", "怎么还", "如何还", "可以借吗", "能否借用", "借用要求", "借用标准"]))
+        ) and not any(kw in user_prompt for kw in ["查询工单", "创建工单", "新建工单"])
+        if is_query_regulations:
+            if "query_regulations" not in executed_tools:
+                return {
+                    "thought": "用户询问机房管理规章制度、操作规程或应急规范，调用 query_regulations 工具进行检索。",
+                    "tool_calls": [
+                        {
+                            "id": f"call_{uuid.uuid4().hex[:8]}",
+                            "function": {
+                                "name": "query_regulations",
+                                "arguments": json.dumps({"query": user_prompt}, ensure_ascii=False),
+                            },
+                        }
+                    ],
+                }
+
+            r_res = tool_results.get("query_regulations", "")
+            if isinstance(r_res, dict):
+                reg_text = r_res.get("data") or r_res.get("message") or str(r_res)
+            else:
+                reg_text = str(r_res)
+            return {
+                "thought": "检索到相关规章制度与应急预案，根据条款回答用户并标注来源。",
+                "content": f"【规章制度查询结果】\n{reg_text}",
+            }
+
+        # -------------------------------------------------------------
         # 决策逻辑 1：工单状态推进流转 (update_ticket_status)
         # -------------------------------------------------------------
+        is_ticket_inquiry = any(kw in user_prompt for kw in ["查询", "查看", "检索", "详情", "进展", "进度", "情况", "是什么", "看下", "有哪些"])
         is_ticket_update = (
-            any(kw in user_prompt for kw in ["更新工单", "修改工单", "办结工单", "办结", "结单", "关闭工单", "解决工单", "处理工单"])
-            or (ticket_no and any(kw in user_prompt for kw in ["更新", "改", "处理", "解决", "关闭", "办结", "推进", "状态"]))
-        )
+            any(kw in user_prompt for kw in ["更新工单", "修改工单", "办结工单", "关闭工单", "解决工单", "处理工单", "受理工单", "认领工单", "流转工单", "推进工单", "结单"])
+            or (
+                ticket_no
+                and any(kw in user_prompt for kw in ["更新为", "修改为", "改为", "设为", "推进为", "标记为", "变更为", "设成", "改成", "办结", "关闭", "归档", "受理", "认领"])
+            )
+            or (
+                ticket_no
+                and any(kw in user_prompt for kw in ["更新", "推进", "关闭", "办结", "解决"])
+                and not is_ticket_inquiry
+            )
+        ) and not is_query_regulations
         if is_ticket_update:
-            if "update_ticket_status" not in executed_tools:
-                target_status = "RESOLVED"
-                if any(kw in user_prompt for kw in ["关闭", "办结", "CLOSED", "归档"]):
-                    target_status = "CLOSED"
-                elif any(kw in user_prompt for kw in ["解决", "RESOLVED", "已解决"]):
-                    target_status = "RESOLVED"
-                elif any(kw in user_prompt for kw in ["处理中", "进行中", "PROCESSING"]):
-                    target_status = "PROCESSING"
-                elif any(kw in user_prompt for kw in ["待办", "PENDING"]):
-                    target_status = "PENDING"
+            # RBAC 拦截 A: 学生角色对工单严格只读，无权流转或办结工单
+            if role == "STUDENT":
+                return {
+                    "thought": f"检测到当前交互用户角色为学生（{name}），根据机房运维分权管理规程，学生对工单仅具备只读权限，无权更新或办结工单，执行权限硬拦截。",
+                    "content": (
+                        f"【权限拦截警报】工单流转操作已被系统拦截！\n\n"
+                        f"- 当前操作用户：{name}（角色: 学生 STUDENT{dept_desc}）\n"
+                        f"- 拦截原因：学生角色对机房运维工单仅具备只读查看权限，无权受理、推进、关闭或办结运维工单。\n"
+                        f"- 处置指引：如需反馈设备故障或跟进维修进度，请联系机房巡视教师或专职管理员跟进处置。"
+                    ),
+                }
 
+            target_status = "RESOLVED"
+            if any(kw in user_prompt for kw in ["关闭", "办结", "CLOSED", "归档"]):
+                target_status = "CLOSED"
+            elif any(kw in user_prompt for kw in ["解决", "RESOLVED", "已解决"]):
+                target_status = "RESOLVED"
+            elif any(kw in user_prompt for kw in ["处理中", "进行中", "PROCESSING", "受理", "认领"]):
+                target_status = "PROCESSING"
+            elif any(kw in user_prompt for kw in ["待办", "PENDING"]):
+                target_status = "PENDING"
+
+            # RBAC 拦截 B: 教师角色禁止直接办结/关闭/归档工单（需机房主管实地验收核验闭环）
+            if role == "TEACHER" and (target_status in ("CLOSED", "RESOLVED") or any(kw in user_prompt for kw in ["办结", "关闭", "归档", "CLOSED", "解决", "RESOLVED", "已解决"])):
+                return {
+                    "thought": f"检测到当前用户为教师（{name}），请求办结/关闭工单。根据机房闭环验收规范，工单办结需机房专职主管验收核验闭环，执行拦截。",
+                    "content": (
+                        f"【权限拦截警报】工单办结/归档操作已被系统拦截！\n\n"
+                        f"- 当前操作用户：{name}（角色: 教师 TEACHER{dept_desc}）\n"
+                        f"- 拦截原因：工单办结需机房专职主管验收核验闭环，教师仅可将工单认领受理推进至处理中（PROCESSING），无权直接办结或归档工单。\n"
+                        f"- 处置指引：如检修维保已完成，请将工单受理状态标记为处理中，并联系机房专职主管（王主管）进行现场实地验收与终审闭环关单。"
+                    ),
+                }
+
+            if "update_ticket_status" not in executed_tools:
                 target_tk = ticket_no or "TK-20260901-001"
                 append_match = re.search(r"(?:说明|记录|备注|处置|追加)[：:\s]*([^\n，。]+)", user_prompt)
-                desc_append = append_match.group(1).strip() if append_match else "管理员指令推进工单状态"
+                desc_append = append_match.group(1).strip() if append_match else f"{name}指令推进工单状态"
 
                 return {
-                    "thought": f"管理员请求推进工单状态，调用 update_ticket_status 将工单 {target_tk} 更新为 {target_status}。",
+                    "thought": f"用户（{name}，角色: {role}）请求推进工单状态，调用 update_ticket_status 将工单 {target_tk} 更新为 {target_status}。",
                     "tool_calls": [
                         {
                             "id": f"call_{uuid.uuid4().hex[:8]}",
@@ -144,21 +234,45 @@ class MockDecisionBrain:
             u_res = tool_results.get("update_ticket_status", {})
             msg = u_res.get("message", "工单状态已更新")
             return {
-                "thought": "已完成工单状态更新并留痕，向管理员返回流转结果。",
+                "thought": "已完成工单状态更新并留痕，向操作用户返回流转结果。",
                 "content": f"【工单状态流转通知】\n{msg}",
             }
 
         # -------------------------------------------------------------
         # 决策逻辑 2：资产健康状态变更 (update_asset_health)
         # -------------------------------------------------------------
+        is_health_inquiry = any(q in user_prompt for q in ["查询", "查看", "是什么", "如何", "怎样", "巡检", "排查", "监控", "指标"])
         is_asset_health_update = (
-            any(kw in user_prompt for kw in ["更新设备健康", "变更健康", "修改健康", "健康状态改为", "状态改为健康", "标记为健康", "标记为良好", "标记为正常", "设为正常", "设为良好", "恢复健康"])
-            or (device_match and any(kw in user_prompt for kw in ["健康状态更新为", "健康更新为", "设为"]) and any(h in user_prompt for h in ["HEALTHY", "WARNING", "OVERHEAT", "OFFLINE", "良好", "正常", "预警", "过热", "离线"]))
-        )
+            any(kw in user_prompt for kw in [
+                "更新设备健康", "变更健康", "修改健康", "恢复健康", "更新健康", "调整健康",
+                "健康状态改为", "状态改为健康", "标记为健康", "标记为良好", "标记为正常", "设为正常", "设为良好",
+                "标记为预警", "标记为过热", "标记为离线", "设为预警", "设为过热", "设为离线",
+                "改为良好", "改为正常", "改为预警", "改为过热", "改为离线", "改为健康",
+                "改成良好", "改成正常", "改成预警", "改成过热", "改成离线", "改成健康",
+            ])
+            or (
+                (device_match or "设备" in user_prompt)
+                and any(kw in user_prompt for kw in ["健康状态更新为", "健康更新为", "状态更新为", "状态改为", "健康改为", "设为", "改为", "改成", "标记为"])
+                and any(h in user_prompt for h in ["HEALTHY", "WARNING", "OVERHEAT", "OFFLINE", "良好", "正常", "预警", "过热", "离线", "健康"])
+            )
+        ) and not is_query_regulations and not is_health_inquiry
         if is_asset_health_update:
+            # RBAC 权限硬拦截: 仅专职管理员 ADMIN 可修改健康状态，STUDENT 与 TEACHER 严正拦截
+            if role != "ADMIN":
+                role_label = "学生 STUDENT" if role == "STUDENT" else "教师 TEACHER"
+                return {
+                    "thought": f"检测到当前交互用户角色为{role_label}（{name}），无权修改硬件健康度，执行权限硬拦截并驳回。",
+                    "content": (
+                        f"【权限拦截警报】设备健康状态变更已被系统拦截！\n\n"
+                        f"- 当前操作用户：{name}（角色: {role_label}{dept_desc}）\n"
+                        f"- 拦截原因：机房服务器硬件健康度标定与状态变更属于机房专职主管管理权限，非管理员用户禁止擅自篡改硬件健康台账。\n"
+                        f"- 处置指引：如发现设备存在超温、脱网或硬件故障，请发起运维报修工单，由机房专职主管实地检修并统一标定状态。"
+                    ),
+                }
+
             if "update_asset_health" not in executed_tools:
                 target_health = "HEALTHY"
-                if any(kw in user_prompt for kw in ["HEALTHY", "良好", "正常"]):
+                if any(kw in user_prompt for kw in ["HEALTHY", "良好", "正常", "健康"]):
                     target_health = "HEALTHY"
                 elif any(kw in user_prompt for kw in ["WARNING", "预警"]):
                     target_health = "WARNING"
@@ -192,19 +306,41 @@ class MockDecisionBrain:
         # -------------------------------------------------------------
         # 决策逻辑 3：设备资产借用登记 (borrow_asset)
         # -------------------------------------------------------------
-        if any(kw in user_prompt for kw in ["借用", "借出", "借走"]):
+        is_borrow = (
+            any(kw in user_prompt for kw in ["借用", "借出", "借走", "借调", "借领", "租借"])
+            or ("借" in user_prompt and any(w in user_prompt for w in ["我要", "我想", "申请", "帮", "给", "办理", "借一台", "借个", "借一下", "DEV-", "服务器", "设备"]))
+        ) and not is_query_regulations
+        if is_borrow:
+            # RBAC 拦截 A: 学生坚决不调用 borrow_asset 工具，直接返回严正权限拦截通知
+            if role == "STUDENT":
+                return {
+                    "thought": f"检测到当前交互用户角色为学生（{name}），根据机房资产管理条例，在读学生无权借调机房服务器或固定设备，坚决不调用 borrow_asset 工具，执行权限硬拦截。",
+                    "content": (
+                        f"【权限拦截警报】借调申请已被系统拦截！\n\n"
+                        f"- 当前操作用户：{name}（角色: 学生 STUDENT{dept_desc}）\n"
+                        f"- 拦截原因：根据《高校机房资产安全管理条例》，在读学生无权直接办理机房服务器及固定资产的借调出库手续。\n"
+                        f"- 处置指引：如需开展课程实验或学术科研，需指导教师办理，请联系您的导师或实验课程主讲教师登录系统进行设备借调登记。"
+                    ),
+                }
+
             if "borrow_asset" not in executed_tools:
-                borrower = "科研教师"
-                name_match = re.search(r"([^\s，。]+?(?:老师|同学|教授|工程师|工)|张三|李四|王五)", user_prompt)
-                if name_match and name_match.group(1).strip():
-                    borrower = name_match.group(1).strip()
+                if role == "TEACHER":
+                    # RBAC 防冒名硬绑定: 教师借用设备时，borrower 自动强制锁定为教师姓名，禁止伪造他人
+                    borrower = name
                 else:
-                    alt_match = re.search(r"(?:帮|给|借给|借用人[是：:\s]*)([^\s，。]+?)(?:办理|借)", user_prompt)
+                    borrower = name
+                    # 1. 优先提取 "帮/给/借给 X [办理/借]"（支持带教研室括号与空格）
+                    alt_match = re.search(r"(?:帮|给|借给|借用人[是：:\s]*)\s*([^\s，。（）\(\)]+?)(?:\s*\(.*?\))?\s*(?:办理|借)", user_prompt)
                     if alt_match and alt_match.group(1).strip():
                         borrower = alt_match.group(1).strip()
+                    else:
+                        # 2. 匹配常见姓名与角色称谓
+                        name_match = re.search(r"([^\s，。（）\(\)]+?(?:老师|同学|教授|工程师|主管|主任|院长|员|工)|张三|李四|王五)", user_prompt)
+                        if name_match and name_match.group(1).strip():
+                            borrower = name_match.group(1).strip()
 
                 return {
-                    "thought": f"管理员发起资产借用申请，调用 borrow_asset 工具办理设备 {device_id} 的借用登记。",
+                    "thought": f"用户（{name}，角色: {role}）发起资产借用申请，已锁定借调人为「{borrower}」，调用 borrow_asset 工具办理设备 {device_id} 的借用登记。",
                     "tool_calls": [
                         {
                             "id": f"call_{uuid.uuid4().hex[:8]}",
@@ -224,10 +360,23 @@ class MockDecisionBrain:
         # -------------------------------------------------------------
         # 决策逻辑 4：设备资产归还 (return_asset)
         # -------------------------------------------------------------
-        if "归还" in user_prompt:
+        is_return = any(kw in user_prompt for kw in ["归还", "还设备", "还入库", "归还资产"]) and not is_query_regulations
+        if is_return:
+            # RBAC 拦截: 学生无权办理归还出入库
+            if role == "STUDENT":
+                return {
+                    "thought": f"检测到当前交互用户角色为学生（{name}），学生无设备资产借还出入库权限，执行权限硬拦截。",
+                    "content": (
+                        f"【权限拦截警报】资产归还登记已被系统拦截！\n\n"
+                        f"- 当前操作用户：{name}（角色: 学生 STUDENT{dept_desc}）\n"
+                        f"- 拦截原因：在读学生无设备台账借还出入库权限。\n"
+                        f"- 处置指引：请由借调教师本人或机房专职管理员统一办理资产归还交接入库手续。"
+                    ),
+                }
+
             if "return_asset" not in executed_tools:
                 return {
-                    "thought": f"管理员发起设备归还申请，调用 return_asset 工具恢复设备 {device_id} 为可用状态。",
+                    "thought": f"用户（{name}，角色: {role}）发起设备归还申请，调用 return_asset 工具恢复设备 {device_id} 为可用状态。",
                     "tool_calls": [
                         {
                             "id": f"call_{uuid.uuid4().hex[:8]}",
@@ -242,39 +391,6 @@ class MockDecisionBrain:
             return {
                 "thought": "资产归还已入库，向管理员同步台账状态。",
                 "content": f"【资产归还登记通知】\n{r_res.get('message', '归还操作已处理')}",
-            }
-
-        # -------------------------------------------------------------
-        # 决策逻辑 5：规章制度与规范检索 (query_regulations)
-        # -------------------------------------------------------------
-        is_query_regulations = (
-            any(kw in user_prompt for kw in ["规章", "制度", "规范", "用电", "应急", "PDU", "功率", "功耗", "借用规则", "审批流程", "上限", "维保", "预案", "滤网", "巡检要求", "巡检时间", "巡检频次", "巡检周期", "空调故障"])
-            or ("巡检" in user_prompt and any(kw in user_prompt for kw in ["规定", "要求", "怎么做", "时间", "周期", "频次", "标准", "指引"]))
-            or (any(kw in user_prompt for kw in ["怎么处理", "如何处理", "处置流程", "处置预案", "处理预案", "应急方案", "应急措施"]) and not device_match)
-        ) and not any(kw in user_prompt for kw in ["查询工单", "创建工单"])
-        if is_query_regulations:
-            if "query_regulations" not in executed_tools:
-                return {
-                    "thought": "用户询问机房管理规章制度或应急规范，调用 query_regulations 工具进行检索。",
-                    "tool_calls": [
-                        {
-                            "id": f"call_{uuid.uuid4().hex[:8]}",
-                            "function": {
-                                "name": "query_regulations",
-                                "arguments": json.dumps({"query": user_prompt}, ensure_ascii=False),
-                            },
-                        }
-                    ],
-                }
-            
-            r_res = tool_results.get("query_regulations", "")
-            if isinstance(r_res, dict):
-                reg_text = r_res.get("data") or r_res.get("message") or str(r_res)
-            else:
-                reg_text = str(r_res)
-            return {
-                "thought": "检索到相关规章制度与应急预案，根据条款回答用户并标注来源。",
-                "content": f"【规章制度查询结果】\n{reg_text}",
             }
 
         # -------------------------------------------------------------
@@ -344,6 +460,24 @@ class MockDecisionBrain:
                     f"- 研判等级：**{status_code}**（严重过热警报）\n"
                     f"- 闭环操作：系统已自动为您生成高优先级维修工单（工单号：`{t_no}`），并持久化写入数据库。\n"
                     f"- 处置建议：请通知后勤运维人员现场核验散热风扇与机房空调温控。"
+                )
+            elif status_code == "OFFLINE":
+                content = (
+                    f"【机房设备离线告警汇报】\n"
+                    f"- 目标设备：`{device_id}` ({metrics.get('device_name', '设备')})\n"
+                    f"- 物理位置：{metrics.get('location', '实训楼')}\n"
+                    f"- 核心指标：探针失联（功耗 0W，风扇 0 RPM，环境室温 {temp}℃）\n"
+                    f"- 研判等级：**OFFLINE**（离线脱网告警）\n"
+                    f"- 处置建议：{metrics.get('alert_message', '设备处于离线失联状态，请现场排查网络连接与供电电源。')}"
+                )
+            elif status_code == "WARNING":
+                content = (
+                    f"【机房设备亚健康预警汇报】\n"
+                    f"- 目标设备：`{device_id}` ({metrics.get('device_name', '设备')})\n"
+                    f"- 物理位置：{metrics.get('location', '实训楼')}\n"
+                    f"- 核心指标：温度 **{temp}℃**（接近40℃警戒线），CPU占用率 {metrics.get('cpu_usage', 65.0)}%\n"
+                    f"- 研判等级：**WARNING**（亚健康预警）\n"
+                    f"- 处置建议：{metrics.get('alert_message', '设备负载或温度偏高，建议持续关注运行负荷并安排巡检。')}"
                 )
             else:
                 content = (
@@ -459,10 +593,16 @@ class MockDecisionBrain:
             }
 
         # -------------------------------------------------------------
-        # 决策逻辑 8：查询工单列表 (query_tickets)
+        # 决策逻辑 8：查询工单列表与工单状态进展 (query_tickets)
         # -------------------------------------------------------------
-        if any(kw in user_prompt for kw in ["查询工单", "工单列表", "待办工单", "历史工单", "所有工单", "查看工单", "检索工单"]) or (
-            "工单" in user_prompt and any(kw in user_prompt for kw in ["查询", "查看", "检索", "列表", "有哪些", "待办"]) and not any(kw in user_prompt for kw in ["创建", "新建", "提交", "提工单", "发起"])
+        if (
+            any(kw in user_prompt for kw in ["查询工单", "工单列表", "待办工单", "历史工单", "所有工单", "查看工单", "检索工单", "工单进展", "工单进度", "工单详情"])
+            or (ticket_no and is_ticket_inquiry)
+            or (
+                "工单" in user_prompt
+                and any(kw in user_prompt for kw in ["查询", "查看", "检索", "列表", "有哪些", "待办", "进展", "进度", "状态", "详情"])
+                and not any(kw in user_prompt for kw in ["创建", "新建", "提交", "提工单", "发起", "更新为", "修改为", "改为", "设为", "推进为", "标记为"])
+            )
         ):
             if "query_tickets" not in executed_tools:
                 t_args: Dict[str, Any] = {"limit": 5}
@@ -541,10 +681,22 @@ class ReActEngine:
         # auto 模式下：若无 Key 则默认自动降级为 Mock 大脑
         return not bool((settings.OPENAI_API_KEY or "").strip())
 
-    def _call_llm(self, messages: List[Dict[str, Any]], tools_schemas: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _call_llm(
+        self,
+        messages: List[Dict[str, Any]],
+        tools_schemas: List[Dict[str, Any]],
+        user_role: str = "ADMIN",
+        user_name: str = "管理员",
+        user_department: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """统一调用决策大脑（真实 OpenAI 协议 API 或确定性 Mock 大脑）"""
         if self._should_use_mock():
-            return MockDecisionBrain.decide(messages)
+            return MockDecisionBrain.decide(
+                messages,
+                user_role=user_role,
+                user_name=user_name,
+                user_department=user_department,
+            )
 
         try:
             from openai import OpenAI
@@ -581,7 +733,12 @@ class ReActEngine:
             }
         except Exception as exc:
             logger.warning("调用远程大模型 API 失败，自动容灾回退至本地 Mock 大脑: %s", str(exc))
-            return MockDecisionBrain.decide(messages)
+            return MockDecisionBrain.decide(
+                messages,
+                user_role=user_role,
+                user_name=user_name,
+                user_department=user_department,
+            )
 
     def stream_run(
         self,
@@ -589,6 +746,9 @@ class ReActEngine:
         session_id: Optional[str] = None,
         db: Optional[Session] = None,
         max_steps: Optional[int] = None,
+        user_role: str = "ADMIN",
+        user_name: str = "管理员",
+        user_department: Optional[str] = None,
     ) -> Generator[Dict[str, Any], None, None]:
         """流式生成器：执行 ReAct 状态机循环并实时产出结构化事件 (供 SSE 使用)"""
         active_session_id = session_id or f"sess-{uuid.uuid4().hex[:8]}"
@@ -596,8 +756,11 @@ class ReActEngine:
         limit_steps = max_steps or self.max_steps
         tools_schemas = get_tools_schemas()
 
+        dept_str = user_department or "公共机房中心"
+        system_content = f"{SYSTEM_PROMPT}\n\n【当前交互用户身份】：{user_name} (角色: {user_role}, 归属: {dept_str})"
+
         messages: List[Dict[str, Any]] = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_content},
         ]
 
         # 若属于多轮会话，加载历史上下文增强代词解析与记忆连续性
@@ -640,7 +803,13 @@ class ReActEngine:
 
         while step < limit_steps:
             step += 1
-            decision = self._call_llm(messages, tools_schemas)
+            decision = self._call_llm(
+                messages,
+                tools_schemas,
+                user_role=user_role,
+                user_name=user_name,
+                user_department=user_department,
+            )
 
             # 1. 产生思考过程事件
             thought_text = decision.get("thought", "")
@@ -823,6 +992,9 @@ class ReActEngine:
         session_id: Optional[str] = None,
         db: Optional[Session] = None,
         max_steps: Optional[int] = None,
+        user_role: str = "ADMIN",
+        user_name: str = "管理员",
+        user_department: Optional[str] = None,
     ) -> AgentResult:
         """同步执行入口：聚合流式事件并返回完整结果"""
         final_content = ""
@@ -832,7 +1004,15 @@ class ReActEngine:
         trace_id = ""
         steps = 0
 
-        for event in self.stream_run(user_prompt=user_prompt, session_id=session_id, db=db, max_steps=max_steps):
+        for event in self.stream_run(
+            user_prompt=user_prompt,
+            session_id=session_id,
+            db=db,
+            max_steps=max_steps,
+            user_role=user_role,
+            user_name=user_name,
+            user_department=user_department,
+        ):
             e_type = event.get("type")
             if e_type == "think":
                 thoughts.append(event.get("thought", ""))

@@ -411,3 +411,271 @@ def test_engine_query_tickets_with_status_filter(engine_test_db):
     assert "工单列表检索结果" in res.content
 
 
+def test_engine_offline_device_diagnosis_report(engine_test_db):
+    """验证 ReAct 调度引擎对 OFFLINE 设备进行指标排查时，客观如实汇报离线失联预警，杜绝误报为 HEALTHY"""
+    engine = ReActEngine()
+    res = engine.run(
+        user_prompt="查询 DEV-SRV-205 的监控指标",
+        session_id="sess-offline-diag-001",
+        db=engine_test_db,
+    )
+    assert any(tc["name"] == "get_server_metrics" for tc in res.tool_calls)
+    assert "DEV-SRV-205" in res.content
+    assert "OFFLINE" in res.content
+    assert "离线" in res.content
+    assert "HEALTHY" not in res.content
+    assert "运行良好" not in res.content
+
+
+def test_engine_warning_device_diagnosis_report(engine_test_db):
+    """验证 ReAct 调度引擎对 WARNING 预警设备进行指标排查时，客观汇报 WARNING 状态，杜绝误报为 HEALTHY"""
+    engine = ReActEngine()
+    res = engine.run(
+        user_prompt="查询 DEV-UPS-201 的监控指标",
+        session_id="sess-warning-diag-001",
+        db=engine_test_db,
+    )
+    assert any(tc["name"] == "get_server_metrics" for tc in res.tool_calls)
+    assert "DEV-UPS-201" in res.content
+    assert "WARNING" in res.content
+    assert "HEALTHY" not in res.content
+
+
+# ---------------------------------------------------------
+# RBAC 角色权限硬防御与防越权测试套件
+# ---------------------------------------------------------
+def test_engine_student_borrow_asset_intercepted(engine_test_db):
+    """验证学生角色 (STUDENT) 发起借用指令时被坚决拦截，不调用 borrow_asset 工具"""
+    engine = ReActEngine()
+    res = engine.run(
+        user_prompt="借用 DEV-SRV-202 服务器开展课程实验",
+        session_id="sess-student-borrow-001",
+        db=engine_test_db,
+        user_role="STUDENT",
+        user_name="张同学",
+        user_department="计算机科学与技术2201班",
+    )
+    # 坚决不调用 borrow_asset 工具
+    assert not any(tc["name"] == "borrow_asset" for tc in res.tool_calls)
+    assert len(res.tool_calls) == 0
+    assert "权限拦截警报" in res.content
+    assert "张同学" in res.content
+    assert "学生" in res.content
+    assert "在读学生无权直接办理" in res.content or "需指导教师办理" in res.content
+
+    # 验证数据库中设备仍为 AVAILABLE，未被篡改
+    asset = engine_test_db.query(Asset).filter(Asset.asset_no == "DEV-SRV-202").first()
+    assert asset.borrow_status == "AVAILABLE"
+
+
+def test_engine_student_update_ticket_intercepted(engine_test_db):
+    """验证学生角色更新或办结工单时被直接拦截并提示只读"""
+    engine = ReActEngine()
+    res = engine.run(
+        user_prompt="更新工单 TK-20260901-001 为已解决",
+        session_id="sess-student-tk-001",
+        db=engine_test_db,
+        user_role="STUDENT",
+        user_name="李同学",
+    )
+    assert not any(tc["name"] == "update_ticket_status" for tc in res.tool_calls)
+    assert len(res.tool_calls) == 0
+    assert "权限拦截警报" in res.content
+    assert "只读" in res.content
+
+
+def test_engine_student_update_health_intercepted(engine_test_db):
+    """验证学生角色修改硬件健康度时被直接拦截"""
+    engine = ReActEngine()
+    res = engine.run(
+        user_prompt="将 DEV-SRV-201 的健康状态更新为 HEALTHY",
+        session_id="sess-student-health-001",
+        db=engine_test_db,
+        user_role="STUDENT",
+        user_name="李同学",
+    )
+    assert not any(tc["name"] == "update_asset_health" for tc in res.tool_calls)
+    assert len(res.tool_calls) == 0
+    assert "权限拦截警报" in res.content
+
+
+def test_engine_teacher_borrow_asset_locked_borrower(engine_test_db):
+    """验证教师角色借调设备时，借用人强制锁定为当前教师本人，杜绝冒名代借"""
+    engine = ReActEngine()
+    res = engine.run(
+        user_prompt="帮王同学办理 DEV-SRV-202 借用登记",
+        session_id="sess-teacher-borrow-001",
+        db=engine_test_db,
+        user_role="TEACHER",
+        user_name="李老师",
+        user_department="计算机科学与技术学院",
+    )
+    # 调用了 borrow_asset 工具
+    assert any(tc["name"] == "borrow_asset" for tc in res.tool_calls)
+    borrow_call = next(tc for tc in res.tool_calls if tc["name"] == "borrow_asset")
+    # 强制锁定为李老师本人，而非输入的王同学
+    assert borrow_call["args"]["borrower"] == "李老师"
+
+    # 验证数据库中设备真实记录借用人为李老师
+    asset = engine_test_db.query(Asset).filter(Asset.asset_no == "DEV-SRV-202").first()
+    assert asset.borrow_status == "IN_USE"
+    assert asset.borrower == "李老师"
+
+
+def test_engine_teacher_close_ticket_intercepted(engine_test_db):
+    """验证教师角色请求办结/关闭工单时被拦截，提示需主管核验闭环"""
+    engine = ReActEngine()
+    res = engine.run(
+        user_prompt="办结工单 TK-20260901-001",
+        session_id="sess-teacher-close-001",
+        db=engine_test_db,
+        user_role="TEACHER",
+        user_name="李老师",
+    )
+    assert not any(tc["name"] == "update_ticket_status" for tc in res.tool_calls)
+    assert len(res.tool_calls) == 0
+    assert "权限拦截警报" in res.content
+    assert "需机房专职主管验收核验闭环" in res.content or "主管" in res.content
+
+
+def test_engine_teacher_update_health_intercepted(engine_test_db):
+    """验证教师角色修改硬件健康度时被直接拦截"""
+    engine = ReActEngine()
+    res = engine.run(
+        user_prompt="将 DEV-SRV-201 的健康状态更新为 HEALTHY",
+        session_id="sess-teacher-health-001",
+        db=engine_test_db,
+        user_role="TEACHER",
+        user_name="李老师",
+    )
+    assert not any(tc["name"] == "update_asset_health" for tc in res.tool_calls)
+    assert len(res.tool_calls) == 0
+    assert "权限拦截警报" in res.content
+
+
+def test_engine_rule_inquiry_does_not_falsely_intercept_or_borrow(engine_test_db):
+    """验证用户咨询借用规则时准确检索规约，学生不被误报越权，管理员不被误触发设备借出"""
+    engine = ReActEngine()
+
+    # 1. 学生咨询借用规则：调用 query_regulations，不得返回权限拦截警报
+    res_student = engine.run(
+        user_prompt="请问机房设备的借用规则是什么？",
+        session_id="sess-rule-inquiry-student",
+        db=engine_test_db,
+        user_role="STUDENT",
+        user_name="陈同学",
+    )
+    assert any(tc["name"] == "query_regulations" for tc in res_student.tool_calls)
+    assert "权限拦截警报" not in res_student.content
+
+    # 2. 管理员咨询借用规则：调用 query_regulations，坚决不触发 borrow_asset 工具
+    res_admin = engine.run(
+        user_prompt="请问机房设备的借用规则是什么？",
+        session_id="sess-rule-inquiry-admin",
+        db=engine_test_db,
+        user_role="ADMIN",
+        user_name="王主管",
+    )
+    assert any(tc["name"] == "query_regulations" for tc in res_admin.tool_calls)
+    assert not any(tc["name"] == "borrow_asset" for tc in res_admin.tool_calls)
+
+
+def test_engine_ticket_workflow_inquiry_does_not_mutate_ticket(engine_test_db):
+    """验证咨询工单办结流程时准确查询规约，管理员不误操作办结工单，学生不被误报拦截"""
+    engine = ReActEngine()
+    t = engine_test_db.query(Ticket).first()
+    init_status = t.status
+
+    res = engine.run(
+        user_prompt="请问工单办结流程是什么？",
+        session_id="sess-ticket-workflow-inquiry",
+        db=engine_test_db,
+        user_role="ADMIN",
+        user_name="王主管",
+    )
+    assert any(tc["name"] == "query_regulations" for tc in res.tool_calls)
+    assert not any(tc["name"] == "update_ticket_status" for tc in res.tool_calls)
+
+    # 确保数据库中的工单未被擅自流转
+    engine_test_db.refresh(t)
+    assert t.status == init_status
+
+
+def test_engine_student_can_query_ticket_status_read_only(engine_test_db):
+    """验证学生角色查询具体工单当前状态时属于只读权限，不被越权拦截，准确调用 query_tickets"""
+    engine = ReActEngine()
+    t = engine_test_db.query(Ticket).first()
+    t_no = t.ticket_no
+
+    res = engine.run(
+        user_prompt=f"查询工单 {t_no} 的当前状态",
+        session_id="sess-student-query-tk-status",
+        db=engine_test_db,
+        user_role="STUDENT",
+        user_name="陈同学",
+    )
+    assert any(tc["name"] == "query_tickets" for tc in res.tool_calls)
+    assert not any(tc["name"] == "update_ticket_status" for tc in res.tool_calls)
+    assert "权限拦截警报" not in res.content
+    assert t_no in res.content or "工单列表" in res.content
+
+
+def test_engine_admin_ui_borrow_with_department(engine_test_db):
+    """验证管理员从看板发起借用登记并附带教研室时，准确将借调人提取为王主管而非科研教师兜底"""
+    engine = ReActEngine()
+    res = engine.run(
+        user_prompt="帮 王主管 (网络中心运维部) 办理设备 DEV-SRV-201 的借用登记",
+        session_id="sess-admin-ui-borrow",
+        db=engine_test_db,
+        user_role="ADMIN",
+        user_name="王主管",
+        user_department="网络中心运维部",
+    )
+    assert any(tc["name"] == "borrow_asset" for tc in res.tool_calls)
+    borrow_call = next(tc for tc in res.tool_calls if tc["name"] == "borrow_asset")
+    assert borrow_call["args"]["borrower"] == "王主管"
+
+
+def test_engine_student_natural_phrasing_borrow_intercepted(engine_test_db):
+    """验证学生角色采用自然口语表达借调指令时（如我要借/申请借调）仍被严正硬拦截"""
+    engine = ReActEngine()
+    res = engine.run(
+        user_prompt="我要借 DEV-SRV-202",
+        session_id="sess-student-natural-borrow",
+        db=engine_test_db,
+        user_role="STUDENT",
+        user_name="陈同学",
+    )
+    assert not any(tc["name"] == "borrow_asset" for tc in res.tool_calls)
+    assert "权限拦截警报" in res.content
+
+
+def test_engine_natural_health_update_rbac(engine_test_db):
+    """验证自然口语修改设备健康状态（如改为良好）时的精确分权：学生拦截，管理员成功执行"""
+    engine = ReActEngine()
+
+    # 1. 学生修改健康度：拦截
+    res_student = engine.run(
+        user_prompt="把 DEV-SRV-201 改为良好",
+        session_id="sess-student-health-natural",
+        db=engine_test_db,
+        user_role="STUDENT",
+        user_name="陈同学",
+    )
+    assert not any(tc["name"] == "update_asset_health" for tc in res_student.tool_calls)
+    assert "权限拦截警报" in res_student.content
+
+    # 2. 管理员修改健康度：成功执行 update_asset_health
+    res_admin = engine.run(
+        user_prompt="把 DEV-SRV-201 改为良好",
+        session_id="sess-admin-health-natural",
+        db=engine_test_db,
+        user_role="ADMIN",
+        user_name="王主管",
+    )
+    assert any(tc["name"] == "update_asset_health" for tc in res_admin.tool_calls)
+    health_call = next(tc for tc in res_admin.tool_calls if tc["name"] == "update_asset_health")
+    assert health_call["args"]["health_status"] == "HEALTHY"
+
+
+

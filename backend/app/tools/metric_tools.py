@@ -38,18 +38,26 @@ def get_server_metrics(
         health_status = asset.health_status
     else:
         # 无 DB 注入时的纯净模拟探针兜底 (单测与纯离线传感器模拟)
-        if clean_device_id == "DEV-SRV-201" or "overheat" in clean_device_id.lower():
+        from app.db.init_db import SEED_ASSETS
+
+        seed_map = {item["asset_no"]: item for item in SEED_ASSETS}
+        if clean_device_id in seed_map:
+            seed_asset = seed_map[clean_device_id]
+            health_status = seed_asset["health_status"]
+            device_name = seed_asset["name"]
+            location = seed_asset["location"]
+        elif "overheat" in clean_device_id.lower():
             health_status = "OVERHEAT"
             device_name = "2号机房-GPU计算节点01"
             location = "实训楼201-机柜A01"
-        elif clean_device_id == "DEV-UPS-201":
+        elif "warning" in clean_device_id.lower():
             health_status = "WARNING"
-            device_name = "机房201大功率在线式UPS"
-            location = "实训楼201-配电角"
-        elif clean_device_id in ("DEV-SRV-202", "DEV-NET-301", "DEV-LAB-105"):
-            health_status = "HEALTHY"
-            device_name = "2号机房-CPU计算节点02" if clean_device_id == "DEV-SRV-202" else "机房运算节点"
-            location = "实训楼201机房"
+            device_name = "机房预警设备"
+            location = "实训楼201"
+        elif "offline" in clean_device_id.lower():
+            health_status = "OFFLINE"
+            device_name = "离线设备"
+            location = "实训楼备用区"
         else:
             return {
                 "status": "error",
@@ -77,6 +85,16 @@ def get_server_metrics(
         alert = True
         alert_level = "WARNING"
         alert_message = f"【注意】设备 {clean_device_id} 核心温度达到 {temperature}℃，接近安全阈值，请关注通风情况。"
+    elif health_status == "OFFLINE":
+        temperature = 22.0
+        cpu_usage = 0.0
+        memory_usage = 0.0
+        fan_speed_rpm = 0
+        power_watts = 0
+        status_code = "OFFLINE"
+        alert = True
+        alert_level = "WARNING"
+        alert_message = f"【离线脱网预警】设备 {clean_device_id} 处于离线失联状态，探针传感器无遥测响应，功耗与负载为0（当前环境室温 {temperature}℃）。"
     else:
         temperature = 31.5
         cpu_usage = 32.0

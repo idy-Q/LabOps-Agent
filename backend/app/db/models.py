@@ -1,18 +1,33 @@
 """SQLAlchemy 2.0 数据底座模型定义
 
-包含四张核心业务表：
+包含五张核心业务表：
 1. Ticket: 运维工单表
 2. Asset: 机房资产设备表
 3. AuditLog: Agent 行为与工具调用审计日志表
 4. ChatHistory: 对话与推理链条持久化表
+5. User: 系统用户与角色权限表
 """
 
+import hashlib
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import String, Text, Integer, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
+
+PASSWORD_SALT = "labops_secure_salt_2026"
+
+
+def hash_password(password: str, salt: str = PASSWORD_SALT) -> str:
+    """使用 SHA-256 加盐生成 64 位十六进制密码哈希"""
+    return hashlib.sha256(f"{salt}:{password}".encode("utf-8")).hexdigest()
+
+
+def verify_password(password: str, hashed: str, salt: str = PASSWORD_SALT) -> bool:
+    """验证明文密码与加盐哈希是否匹配"""
+    return hash_password(password, salt) == hashed
+
 
 
 class Ticket(Base):
@@ -141,3 +156,36 @@ class ChatHistory(Base):
 
     def __repr__(self) -> str:
         return f"<ChatHistory {self.session_id} - {self.role}>"
+
+
+class User(Base):
+    """系统用户与角色权限表"""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(
+        String(64), unique=True, index=True, nullable=False, comment="登录工号/学号"
+    )
+    password_hash: Mapped[str] = mapped_column(
+        String(128), nullable=False, comment="加盐密码哈希 (SHA-256)"
+    )
+    real_name: Mapped[str] = mapped_column(
+        String(64), nullable=False, comment="真实姓名，如 王主管/李老师"
+    )
+    role: Mapped[str] = mapped_column(
+        String(32), default="TEACHER", nullable=False, comment="角色枚举: ADMIN, TEACHER, STUDENT"
+    )
+    department: Mapped[str] = mapped_column(
+        String(128), nullable=False, comment="教研室/班级/部门"
+    )
+    phone: Mapped[Optional[str]] = mapped_column(
+        String(32), nullable=True, comment="联系电话"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False, comment="注册创建时间"
+    )
+
+    def __repr__(self) -> str:
+        return f"<User {self.username} - {self.real_name} [{self.role}]>"
+

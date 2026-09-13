@@ -60,3 +60,30 @@ CREATE TABLE IF NOT EXISTS chat_history (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP -- 发送时间
 );
 CREATE INDEX IF NOT EXISTS ix_chat_history_session_id ON chat_history (session_id);
+
+-- 5. 系统用户与角色权限表 (Users) - 毕业设计角色权限与防冒名借调支撑
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(64) NOT NULL UNIQUE,        -- 登录工号/学号 (如: admin, teacher_li)
+    password_hash VARCHAR(128) NOT NULL,        -- SHA-256 加盐安全密码哈希
+    real_name VARCHAR(64) NOT NULL,             -- 真实姓名 (如: 王主管, 李老师)
+    role VARCHAR(32) NOT NULL DEFAULT 'TEACHER', -- 角色类型: ADMIN(系统管理员), TEACHER(高校教师), STUDENT(在读学生)
+    department VARCHAR(128) NOT NULL,           -- 所属教研室/班级/部门
+    phone VARCHAR(32),                          -- 联系电话
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP -- 注册创建时间戳
+);
+CREATE INDEX IF NOT EXISTS ix_users_username ON users (username);
+
+-- ==============================================================================
+-- 种子数据初始化 (Seed Inserts)
+-- ==============================================================================
+
+-- 预置 4 位典型用户凭证 (SHA-256 加盐哈希，盐值: labops_secure_salt_2026)
+-- admin: admin666 (初始安全口令)
+-- teacher_li / teacher_zhang / student_chen: 123456
+INSERT OR IGNORE INTO users (username, password_hash, real_name, role, department, phone) VALUES
+('admin', '3958af882e1ec80a236c5c3f1e5c7b9320c325f983b1f98fe1db57e3b16ec6bb', '王主管', 'ADMIN', '网络中心运维部', '13800000001'),
+('teacher_li', 'cbb1d41910d2c5cd9bf5fc6e79fd250aa19ae4b212be347aa7e3be3a44b5b921', '李老师', 'TEACHER', '物联网工程教研室', '13900000002'),
+('teacher_zhang', 'cbb1d41910d2c5cd9bf5fc6e79fd250aa19ae4b212be347aa7e3be3a44b5b921', '张老师', 'TEACHER', '网络安全教研室', '13900000003'),
+('student_chen', 'cbb1d41910d2c5cd9bf5fc6e79fd250aa19ae4b212be347aa7e3be3a44b5b921', '陈同学', 'STUDENT', '计科2201班', '13700000004');
+

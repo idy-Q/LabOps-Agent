@@ -17,7 +17,7 @@
 1. **业务状态闭环（双向联动）**：Agent 执行结果不只是文字气泡，而是真实写入关系型数据库（SQLite）。前端采用**左右分栏联动设计**，左侧发起“排查 2 号机房 GPU 服务器”，右侧“实时工单看板”立刻同步新增一条带有工单号、预警等级与排查建议的工单。
 2. **白盒化推理与状态机**：不采用任何庞大封装框架（如 LangChain），由开发者手写约 150 行标准的 ReAct（Reasoning + Acting）状态机循环。答辩论文与 PPT 可直接展示状态转移图与算法流转，完全体现第一性原理。
 3. **细粒度 SSE 流式渲染**：前端将大模型的单向文本流解构为结构化事件流（`think` 思考过程、`tool_call` 工具调用卡片、`citation` 规章溯源徽章、`ticket_mutation` 业务变更事件），推理链条全透明展现。
-4. **可落地工程交付**：包含 RBAC 基础权限、工具调用日志审计表、标准 `docker-compose.yml` 容器化部署、Nginx 反向代理，体现正规软件工程全生命周期。
+4. **可落地工程交付**：包含基于 RBAC 规范的用户鉴权与资产防冒名借调闭环（SHA-256 加盐哈希防脱库、admin666 专属激活码提权防御、只读凭据锁定、学生借调权限拦截）、工具调用日志审计表、标准 `docker-compose.yml` 容器化部署、Nginx 反向代理，体现正规软件工程全生命周期。
 
 ---
 
@@ -59,7 +59,7 @@ graph TD
     ToolsRegistry --> T4
 
     subgraph Storage ["数据持久层"]
-        SQLite[("SQLite 关系型数据库: 会话/工单/资产/审计日志")]
+        SQLite[("SQLite 关系型数据库: 会话/工单/资产/审计日志/用户权限")]
         ChromaDB[("ChromaDB 本地向量库: 机房规范/应急规程文档")]
     end
     T1 -.->|读取监控指标| HostOS["宿主机监控"]
@@ -137,10 +137,15 @@ LabOps-Agent/
 │   │   │   └── loader.py            # 规章制度 Markdown/Text 快速分块向量化入库脚本
 │   │   ├── db/
 │   │   │   ├── __init__.py
-│   │   │   ├── models.py            # SQLAlchemy 模型 (Ticket, Asset, AuditLog, ChatHistory)
+│   │   │   ├── models.py            # SQLAlchemy 模型 (Ticket, Asset, AuditLog, ChatHistory, User)
 │   │   │   └── session.py           # SQLite 数据库会话引擎
+│   │   ├── schemas/
+│   │   │   ├── user.py              # 用户注册、登录与演示卡片 Pydantic 模式
+│   │   │   ├── ticket.py
+│   │   │   └── asset.py
 │   │   ├── api/
 │   │   │   ├── __init__.py
+│   │   │   ├── auth.py              # 用户注册登录与典型演示账号 REST API (admin666 提权防护)
 │   │   │   ├── chat.py              # SSE 对话交互接口
 │   │   │   ├── tickets.py           # 右侧看板工单 REST API
 │   │   │   └── assets.py            # 右侧看板资产台账 REST API

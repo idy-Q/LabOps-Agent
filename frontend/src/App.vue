@@ -53,6 +53,29 @@
 
       <!-- 右侧全局控制与状态 -->
       <div class="flex items-center space-x-2 text-xs">
+        <!-- 当前登录用户身份状态胶囊 (点击弹出切换/登录弹窗) -->
+        <button
+          @click="showAuthModal = true"
+          class="px-2.5 py-1.5 rounded-lg border text-xs flex items-center space-x-1.5 transition-all shadow-sm active:scale-95 select-none"
+          :class="[
+            currentTheme === 'light'
+              ? 'bg-white/90 hover:bg-indigo-50/80 text-slate-800 border-slate-200 hover:border-indigo-400/60'
+              : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-200 border-white/[0.08] hover:border-indigo-500/30'
+          ]"
+          :title="`当前登录: ${currentUser.real_name} [${currentUser.role}] (${currentUser.department})，点击切换身份`"
+        >
+          <span
+            class="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border"
+            :class="userRoleClass(currentUser.role)"
+          >
+            {{ currentUser.role }}
+          </span>
+          <span class="font-medium max-w-[70px] sm:max-w-[100px] truncate">{{ currentUser.real_name }}</span>
+          <svg class="w-3 h-3 text-zinc-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
         <!-- 风格切换按钮：清晰指示“明亮”或“暗黑”，每点击一下切换一次风格 -->
         <button
           @click="toggleTheme"
@@ -146,17 +169,51 @@
         class="w-full h-[50vh] lg:h-full flex flex-col border-b lg:border-b-0 lg:border-r glass-panel overflow-hidden shrink-0"
         :style="isLargeScreen ? { width: `${leftWidthPercent}%` } : {}"
       >
-        <!-- 左侧面板顶栏 -->
+        <!-- 左侧面板顶栏 (优雅现代化包装与动态感知) -->
         <div class="px-4 py-2 bg-white/[0.02] border-b border-white/[0.06] flex items-center justify-between text-xs text-zinc-400">
           <div class="flex items-center space-x-2">
             <span class="font-medium text-zinc-200 flex items-center gap-1.5 glass-text">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              ReAct 推理流
+              <span class="relative flex h-2 w-2">
+                <span
+                  v-if="isStreaming"
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"
+                ></span>
+                <span
+                  class="relative inline-flex rounded-full h-2 w-2 transition-colors duration-300"
+                  :class="isStreaming ? 'bg-indigo-400' : 'bg-emerald-400'"
+                ></span>
+              </span>
+              AI 运维管家
             </span>
-            <span class="px-2 py-0.5 rounded-md bg-zinc-900/80 border border-white/[0.06] font-mono text-[10px] text-zinc-400">
-              {{ currentSessionId || '未初始化' }}
+
+            <!-- 动态状态呼吸药丸 (空闲就绪 vs 深度思考/运维工具执行动态切换) -->
+            <span
+              class="px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1 border transition-all duration-300 shadow-sm"
+              :class="[
+                isStreaming
+                  ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300 animate-pulse'
+                  : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+              ]"
+            >
+              {{ agentStatusText }}
             </span>
+
+            <!-- 精致轻量的会话微标 (悬停展示完整 ID，点击一键复制) -->
+            <button
+              @click="copySessionId"
+              class="px-2 py-0.5 rounded-full text-[10px] font-mono text-zinc-400 hover:text-zinc-200 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.14] transition-all flex items-center gap-1 active:scale-95 shadow-sm"
+              :title="`当前会话: ${currentSessionId || '未初始化'} (点击复制)`"
+            >
+              <span class="text-zinc-500">#</span><span>{{ shortSessionId }}</span>
+              <svg v-if="justCopied" class="w-2.5 h-2.5 text-emerald-400 animate-fade-in" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+              <svg v-else class="w-2.5 h-2.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
           </div>
+
           <div v-if="currentTraceId" class="text-[10px] font-mono text-zinc-500">
             Trace: {{ currentTraceId }}
           </div>
@@ -319,6 +376,7 @@
           <div v-show="currentTab === 'tickets'" class="animate-fade-in">
             <TicketTable
               :tickets="tickets"
+              :currentUser="currentUser"
               :highlightedTicketNo="highlightedTicketNo"
               @refresh="loadTickets"
               @updateStatus="handleUpdateTicketStatus"
@@ -330,6 +388,7 @@
           <div v-show="currentTab === 'assets'" class="animate-fade-in">
             <AssetTable
               :assets="assets"
+              :currentUser="currentUser"
               :highlightedAssetNo="highlightedAssetNo"
               @refresh="loadAssets"
               @borrowAsset="handleBorrowAsset"
@@ -396,6 +455,13 @@
         </div>
       </div>
     </div>
+
+    <!-- 用户身份鉴权与角色切换弹窗 -->
+    <AuthModal
+      v-model="showAuthModal"
+      :currentUser="currentUser"
+      @loginSuccess="handleLoginSuccess"
+    />
   </div>
 </template>
 
@@ -408,8 +474,39 @@ import ChatInput from './components/Chat/ChatInput.vue'
 import OverviewBento from './components/Dashboard/OverviewBento.vue'
 import TicketTable from './components/Dashboard/TicketTable.vue'
 import AssetTable from './components/Dashboard/AssetTable.vue'
+import AuthModal from './components/Auth/AuthModal.vue'
 import { api } from './api/client'
 import { fetchSSE } from './api/sse'
+
+// 用户认证与权限模态框状态
+const showAuthModal = ref(false)
+
+// 当前登录用户 (会话期内存状态，F5 刷新页面即安全重置为默认管理员)
+const currentUser = ref({
+  username: 'admin',
+  real_name: '王主管',
+  role: 'ADMIN',
+  department: '网络中心运维部',
+  phone: '13800000001',
+})
+
+function handleLoginSuccess(user) {
+  currentUser.value = user
+}
+
+function userRoleClass(role) {
+  switch (role) {
+    case 'ADMIN':
+      return 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+    case 'TEACHER':
+      return 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300'
+    case 'STUDENT':
+      return 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+    default:
+      return 'bg-zinc-800 border-white/[0.08] text-zinc-400'
+  }
+}
+
 
 // 全站深色 / 明亮双模态主题系统 (持久化同步 localStorage)
 const THEME_STORAGE_KEY = 'labops_theme_mode'
@@ -464,12 +561,32 @@ const currentSessionId = ref('')
 const currentTraceId = ref('')
 const messages = ref([])
 const isStreaming = ref(false)
+const agentStatusText = ref('就绪')
+const justCopied = ref(false)
+
+const shortSessionId = computed(() => {
+  if (!currentSessionId.value) return '新会话'
+  return currentSessionId.value.replace(/^sess-/, '').slice(0, 7)
+})
+
+function copySessionId() {
+  if (!currentSessionId.value) return
+  if (navigator?.clipboard?.writeText) {
+    navigator.clipboard.writeText(currentSessionId.value).then(() => {
+      justCopied.value = true
+      setTimeout(() => {
+        justCopied.value = false
+      }, 1500)
+    }).catch(() => {})
+  }
+}
+
 const chatStreamRef = ref(null)
 const chatInputRef = ref(null)
 let abortController = null
 
-// 分栏宽度与拖拽状态 (30% ~ 70%，默认 46%)
-const leftWidthPercent = ref(46)
+// 分栏宽度与拖拽状态 (30% ~ 70%，默认 43%)
+const leftWidthPercent = ref(43)
 const isDragging = ref(false)
 const isLargeScreen = ref(true)
 
@@ -516,7 +633,7 @@ function stopDragging() {
 }
 
 function resetSplit() {
-  leftWidthPercent.value = 46
+  leftWidthPercent.value = 43
 }
 
 // 右侧分段 Tab 控制
@@ -579,6 +696,7 @@ function startNewSession() {
   currentSessionId.value = `sess-${Date.now().toString(36)}`
   currentTraceId.value = ''
   messages.value = []
+  agentStatusText.value = '就绪'
   chatInputRef.value?.clear()
 }
 
@@ -600,6 +718,7 @@ async function switchToSession(sessionId) {
   }
   currentSessionId.value = sessionId
   currentTraceId.value = ''
+  agentStatusText.value = '就绪'
   showSessionDrawer.value = false
   chatInputRef.value?.clear()
   try {
@@ -687,12 +806,14 @@ async function handleSendMessage(promptText) {
   }
   messages.value.push(assistantMsg)
   isStreaming.value = true
+  agentStatusText.value = '思考分析中...'
 
   abortController = new AbortController()
 
   await fetchSSE({
     prompt: promptText,
     sessionId: currentSessionId.value,
+    user: currentUser.value,
     signal: abortController.signal,
     onEvent: (event) => {
       handleIncomingSSEEvent(event, assistantMsg)
@@ -701,11 +822,13 @@ async function handleSendMessage(promptText) {
       assistantMsg.content += `\n【网络异常或服务错误】: ${err.message}`
       assistantMsg.isThinking = false
       assistantMsg.isStreaming = false
+      agentStatusText.value = '就绪'
     },
     onFinish: () => {
       assistantMsg.isThinking = false
       assistantMsg.isStreaming = false
       isStreaming.value = false
+      agentStatusText.value = '就绪'
     },
   })
 }
@@ -717,8 +840,10 @@ function handleIncomingSSEEvent(event, assistantMsg) {
     assistantMsg.thought = (assistantMsg.thought ? assistantMsg.thought + '\n' : '') + (event.thought || '')
     assistantMsg.step = event.step || assistantMsg.step
     assistantMsg.isThinking = true
+    agentStatusText.value = '深度思考研判中...'
   } else if (type === 'tool_start') {
     assistantMsg.isThinking = false
+    agentStatusText.value = '调用运维工具中...'
     assistantMsg.toolCalls.push({
       tool_call_id: event.tool_call_id,
       name: event.name,
@@ -727,6 +852,7 @@ function handleIncomingSSEEvent(event, assistantMsg) {
       result: null,
     })
   } else if (type === 'tool_end') {
+    agentStatusText.value = '分析处置结果中...'
     const targetCall = assistantMsg.toolCalls.find(
       (tc) => (event.tool_call_id && tc.tool_call_id === event.tool_call_id) ||
               (tc.name === event.name && tc.step === event.step && !tc.result)
@@ -755,16 +881,19 @@ function handleIncomingSSEEvent(event, assistantMsg) {
     loadMetrics()
   } else if (type === 'content') {
     assistantMsg.isThinking = false
+    agentStatusText.value = '生成答复中...'
     assistantMsg.content = event.text || assistantMsg.content
   } else if (type === 'error') {
     assistantMsg.isThinking = false
     assistantMsg.isStreaming = false
+    agentStatusText.value = '就绪'
     assistantMsg.content += (assistantMsg.content ? '\n\n' : '') + `【系统错误】: ${event.message || '内部处理发生异常'}`
   } else if (type === 'done') {
     currentSessionId.value = event.session_id || currentSessionId.value
     currentTraceId.value = event.trace_id || ''
     assistantMsg.isThinking = false
     assistantMsg.isStreaming = false
+    agentStatusText.value = '就绪'
   }
 }
 
@@ -800,6 +929,7 @@ function handleAbortStream() {
       }
     }
     isStreaming.value = false
+    agentStatusText.value = '就绪'
   }
 }
 

@@ -23,6 +23,9 @@ class ChatStreamRequest(BaseModel):
 
     prompt: str = Field(..., description="用户提问或指令内容", min_length=1)
     session_id: Optional[str] = Field(default=None, description="可选会话ID，若不传则系统自动生成")
+    user_role: Optional[str] = Field(default="ADMIN", description="交互用户角色 (STUDENT, TEACHER, ADMIN)")
+    user_name: Optional[str] = Field(default="管理员", description="交互用户姓名")
+    user_department: Optional[str] = Field(default=None, description="交互用户所属院系/部门")
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 

@@ -22,6 +22,9 @@ def _sse_event_stream(
     prompt: str,
     session_id: Optional[str] = None,
     db: Optional[Session] = None,
+    user_role: str = "ADMIN",
+    user_name: str = "管理员",
+    user_department: Optional[str] = None,
 ) -> Generator[str, None, None]:
     """生成标准 Server-Sent Events (SSE) 数据流
 
@@ -48,6 +51,9 @@ def _sse_event_stream(
             user_prompt=prompt,
             session_id=session_id,
             db=active_db,
+            user_role=user_role,
+            user_name=user_name,
+            user_department=user_department,
         ):
             payload = json.dumps(event, ensure_ascii=False, default=str)
             yield f"data: {payload}\n\n"
@@ -91,6 +97,9 @@ def chat_stream(
             prompt=request.prompt,
             session_id=request.session_id,
             db=db,
+            user_role=request.user_role or "ADMIN",
+            user_name=request.user_name or "管理员",
+            user_department=request.user_department,
         ),
         media_type="text/event-stream",
         headers=headers,

@@ -445,8 +445,9 @@ def test_init_db_idempotency(test_db_env):
 
     session = session_factory()
     try:
-        assert session.query(Asset).count() >= 5
-        assert session.query(Ticket).count() >= 2
+        assert session.query(Asset).count() == 15
+        assert session.query(Ticket).count() == 9
+        assert session.query(ChatHistory).count() == 4
     finally:
         session.close()
 
@@ -464,3 +465,59 @@ def test_cors_config_parsing():
     # 3. JSON 格式字符串解析
     s3 = Settings(CORS_ORIGINS='["http://localhost:3000"]')
     assert s3.CORS_ORIGINS == ["http://localhost:3000"]
+
+
+def test_preseeded_chat_sessions_and_drawer_api(client):
+    """验证预置的 2 组历史会话可通过 /api/chat/sessions 和 /api/chat/history 完整回放"""
+    # 1. 查询会话摘要列表
+    res_sess = client.get("/api/chat/sessions")
+    assert res_sess.status_code == 200
+    sess_body = res_sess.json()
+    assert sess_body["status"] == "success"
+    session_ids = [s["session_id"] for s in sess_body["data"]]
+    assert "sess_temp_emergency_01" in session_ids
+    assert "sess_auto_inspection_02" in session_ids
+
+    # 2. 调取超温应急会话详情
+    res_hist = client.get("/api/chat/history?session_id=sess_temp_emergency_01")
+    assert res_hist.status_code == 200
+    msgs = res_hist.json()
+    assert len(msgs) == 2
+    assert msgs[0]["role"] == "user"
+    assert "2号机房GPU计算节点01温度过高" in msgs[0]["content"]
+    assert msgs[1]["role"] == "assistant"
+    assert "TK-20260901-001" in msgs[1]["content"]
+    assert msgs[1]["thought"] is not None
+    assert "get_server_metrics" in msgs[1]["thought"]
+
+
+def test_offline_assets_and_metrics_summary_api(client):
+    """验证综合指标大盘及资产工单分类接口对扩充数据的聚合计算"""
+    # 1. 查询离线状态资产
+    res_offline = client.get("/api/assets/?health_status=OFFLINE")
+    assert res_offline.status_code == 200
+    data_off = res_offline.json()
+    assert len(data_off) >= 2
+    assert any(a["asset_no"] == "DEV-SRV-205" for a in data_off)
+    assert any(a["asset_no"] == "DEV-NET-304" for a in data_off)
+
+    # 2. 查询已解决与已关闭工单
+    res_res = client.get("/api/tickets/?status=RESOLVED")
+    assert res_res.status_code == 200
+    assert len(res_res.json()) >= 2
+
+    res_clo = client.get("/api/tickets/?status=CLOSED")
+    assert res_clo.status_code == 200
+    assert len(res_clo.json()) >= 2
+
+    # 3. 验证综合监控大盘聚合度
+    res_sum = client.get("/api/metrics/summary")
+    assert res_sum.status_code == 200
+    sum_data = res_sum.json()["data"]
+    assert sum_data["assets"]["total"] == 15
+    assert sum_data["assets"]["offline"] >= 2
+    assert sum_data["tickets"]["total"] == 9
+    assert sum_data["tickets"]["resolved"] >= 2
+    assert sum_data["tickets"]["closed"] >= 2
+    assert sum_data["overview"]["active_alerts_count"] >= 3
+

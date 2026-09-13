@@ -88,16 +88,16 @@
     </div>
 
     <!-- 资产表格区域 (Linear Dark Table) -->
-    <div ref="tableContainerRef" class="overflow-x-auto rounded-xl border border-white/[0.08] min-h-[300px] max-h-[580px] overflow-y-auto bg-black/25 backdrop-blur-sm shadow-sm">
-      <table class="w-full text-left text-xs text-zinc-300 border-separate border-spacing-0">
+    <div ref="tableContainerRef" class="overflow-x-hidden rounded-xl border border-white/[0.08] min-h-[300px] max-h-[580px] overflow-y-auto bg-black/25 backdrop-blur-sm shadow-sm">
+      <table class="w-full table-fixed text-left text-xs text-zinc-300 border-separate border-spacing-0">
         <thead class="bg-black/50 text-[11px] text-zinc-300 sticky top-0 uppercase tracking-wider border-b border-white/[0.06] backdrop-blur-md z-10">
           <tr>
-            <th class="py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">资产编号</th>
-            <th class="py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">设备名称 / 分类</th>
-            <th class="py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">机柜/物理位置</th>
-            <th class="py-2.5 px-2 text-center border-b border-white/[0.06] font-medium glass-text">健康度调节</th>
-            <th class="py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">借用状态 / 借调人</th>
-            <th class="py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text">资产操作</th>
+            <th class="w-[116px] py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产编号</th>
+            <th class="w-auto py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">设备名称 / 分类</th>
+            <th class="w-[96px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">机柜/位置</th>
+            <th class="w-[86px] py-2.5 px-1 text-center border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">健康度调节</th>
+            <th class="w-[110px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">借用状态</th>
+            <th class="w-[85px] py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产操作</th>
           </tr>
         </thead>
         <tbody class="font-sans">
@@ -117,72 +117,97 @@
             ]"
           >
             <!-- 编号 -->
-            <td class="py-2.5 px-3 font-mono text-[11px] text-zinc-300 whitespace-nowrap">
+            <td class="py-2.5 px-3 font-mono text-[11px] text-zinc-300 whitespace-nowrap truncate">
               <span
                 @click="$emit('inspectAsset', a.asset_no)"
-                class="hover:underline hover:text-cyan-400 cursor-pointer flex items-center gap-1.5 transition-colors"
+                class="hover:underline hover:text-cyan-400 cursor-pointer inline-flex items-center gap-1.5 transition-colors"
                 title="点击在左侧对话中发起设备巡检"
               >
-                <span class="w-1.5 h-1.5 rounded-full" :class="a.health_status === 'HEALTHY' ? 'bg-emerald-400' : a.health_status === 'OVERHEAT' ? 'bg-rose-400 animate-ping' : 'bg-amber-400'"></span>
-                {{ a.asset_no }}
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="a.health_status === 'HEALTHY' ? 'bg-emerald-400' : a.health_status === 'OVERHEAT' ? 'bg-rose-400 animate-ping' : a.health_status === 'WARNING' ? 'bg-amber-400' : 'bg-zinc-500'"></span>
+                <span class="truncate">{{ a.asset_no }}</span>
               </span>
             </td>
 
             <!-- 名称分类 -->
-            <td class="py-2.5 px-3">
-              <div class="font-medium text-zinc-200 truncate">{{ a.name }}</div>
-              <div class="text-[10px] text-zinc-500 font-mono truncate">{{ a.category }}</div>
+            <td class="py-2.5 px-3 overflow-hidden">
+              <div class="font-medium text-zinc-200 truncate" :title="a.name">{{ a.name }}</div>
+              <div class="text-[10px] text-zinc-500 font-mono truncate" :title="a.category">{{ a.category }}</div>
             </td>
 
             <!-- 位置 -->
-            <td class="py-2.5 px-3 text-zinc-400 text-[11px] font-mono whitespace-nowrap">
+            <td class="py-2.5 px-2 text-zinc-400 text-[11px] font-mono whitespace-nowrap truncate" :title="a.location">
               {{ a.location }}
             </td>
 
-            <!-- 健康状态快速模拟调节 -->
-            <td class="py-2.5 px-2 text-center whitespace-nowrap">
+            <!-- 健康状态快速模拟调节 (管理员可修改，非管理员只读彩色状态微标) -->
+            <td class="py-2.5 px-1 text-center whitespace-nowrap">
               <select
+                v-if="isAdmin"
                 :value="a.health_status"
                 @change="$emit('updateHealth', a.id, $event.target.value)"
                 :class="[
                   'px-2 py-0.5 rounded text-[10px] font-medium font-mono border cursor-pointer focus:outline-none transition-colors shadow-sm',
                   healthClass(a.health_status)
                 ]"
-                title="可切换状态联动触发大盘突变与推理"
+                title="管理员可切换健康状态"
               >
                 <option class="bg-zinc-900 text-zinc-300" value="HEALTHY">HEALTHY (良好)</option>
                 <option class="bg-zinc-900 text-zinc-300" value="WARNING">WARNING (预警)</option>
                 <option class="bg-zinc-900 text-zinc-300" value="OVERHEAT">OVERHEAT (超温)</option>
                 <option class="bg-zinc-900 text-zinc-300" value="OFFLINE">OFFLINE (离线)</option>
               </select>
+              <span
+                v-else
+                :class="[
+                  'px-2 py-0.5 rounded text-[10px] font-medium font-mono border inline-block shadow-sm select-none',
+                  healthClass(a.health_status)
+                ]"
+                :title="`设备健康状态: ${a.health_status} (仅管理员可调整)`"
+              >
+                {{ a.health_status }}
+              </span>
             </td>
 
             <!-- 借用状态与借用人 -->
-            <td class="py-2.5 px-3 whitespace-nowrap">
-              <div class="flex items-center space-x-1.5">
-                <span :class="['px-2 py-0.5 rounded text-[10px] font-mono', borrowClass(a.borrow_status)]">
+            <td class="py-2.5 px-2 whitespace-nowrap truncate">
+              <div class="flex items-center space-x-1.5 truncate">
+                <span :class="['px-2 py-0.5 rounded text-[10px] font-mono shrink-0', borrowClass(a.borrow_status)]">
                   {{ a.borrow_status }}
                 </span>
-                <span v-if="a.borrower" class="text-[11px] text-amber-300 font-medium font-mono">
+                <span v-if="a.borrower" class="text-[11px] text-amber-300 font-medium font-mono truncate" :title="`借调人: ${a.borrower}`">
                   ({{ a.borrower }})
                 </span>
               </div>
             </td>
 
-            <!-- 借还操作 (Linear Buttons) -->
+            <!-- 借还操作 (Linear Buttons: 落实权限边界) -->
             <td class="py-2.5 px-3 text-right whitespace-nowrap">
               <div class="flex items-center justify-end space-x-1.5">
                 <button
                   v-if="a.borrow_status === 'AVAILABLE'"
-                  @click="openBorrowModal(a)"
-                  class="px-2.5 py-0.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-white/[0.08] text-[10px] transition-all active:scale-95 shadow-sm font-mono"
+                  :disabled="isStudent"
+                  @click="!isStudent && openBorrowModal(a)"
+                  :class="[
+                    'px-2.5 py-0.5 rounded-md text-[10px] transition-all font-mono border',
+                    isStudent
+                      ? 'bg-zinc-800/40 text-zinc-500 border-white/[0.04] cursor-not-allowed opacity-50'
+                      : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-white/[0.08] active:scale-95 shadow-sm'
+                  ]"
+                  :title="isStudent ? '学生无权借调机房资产，请联系实验教师' : '办理设备借调'"
                 >
                   借用
                 </button>
                 <button
                   v-if="a.borrow_status === 'IN_USE'"
-                  @click="$emit('returnAsset', a.asset_no)"
-                  class="px-2.5 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[10px] transition-all active:scale-95 shadow-sm font-mono"
+                  :disabled="!canReturn(a)"
+                  @click="canReturn(a) && $emit('returnAsset', a.asset_no)"
+                  :class="[
+                    'px-2.5 py-0.5 rounded-md text-[10px] transition-all font-mono border',
+                    canReturn(a)
+                      ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 active:scale-95 shadow-sm'
+                      : 'bg-zinc-800/40 text-zinc-500 border-white/[0.04] cursor-not-allowed opacity-50'
+                  ]"
+                  :title="returnButtonTitle(a)"
                 >
                   归还
                 </button>
@@ -226,13 +251,25 @@
         </div>
 
         <div>
-          <label class="block text-[11px] text-zinc-400 mb-1">借用人姓名 / 课题组</label>
+          <label class="block text-[11px] text-zinc-400 mb-1 flex items-center justify-between">
+            <span>借用人实名 / 归属单位</span>
+            <span class="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              已锁定当前用户凭据 (只读防冒名)
+            </span>
+          </label>
           <input
-            v-model="borrowerInput"
+            :value="borrowerInput"
             type="text"
-            placeholder="例如：李老师 / 人工智能实验室"
-            class="w-full bg-black/30 backdrop-blur-sm border border-white/[0.08] rounded-lg px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-colors"
+            readonly
+            class="w-full bg-black/40 backdrop-blur-sm border border-white/[0.12] rounded-lg px-3 py-1.5 text-xs text-zinc-300 font-mono focus:outline-none cursor-not-allowed select-all"
+            title="借用人身份自动绑定当前登录账号，设为只读以彻底杜绝冒名借用"
           />
+          <p class="text-[10px] text-zinc-500 mt-1">
+            当前绑定认证身份：<span class="text-zinc-300 font-medium">{{ currentUser?.real_name }}</span> [{{ currentUser?.role }}] · {{ currentUser?.department }}
+          </p>
         </div>
 
         <div class="flex justify-end space-x-2 pt-2">
@@ -244,7 +281,7 @@
           </button>
           <button
             @click="confirmBorrow"
-            :disabled="!borrowerInput.trim()"
+            :disabled="!borrowerInput.trim() || isStudent"
             class="px-3.5 py-1.5 rounded-md bg-zinc-100 hover:bg-white text-zinc-950 font-medium text-xs disabled:opacity-40 transition-all shadow-sm active:scale-95"
           >
             确认登记借出
@@ -263,6 +300,15 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  currentUser: {
+    type: Object,
+    default: () => ({
+      username: 'admin',
+      real_name: '王主管',
+      role: 'ADMIN',
+      department: '网络中心运维部',
+    }),
+  },
   highlightedAssetNo: {
     type: String,
     default: '',
@@ -270,6 +316,35 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['refresh', 'borrowAsset', 'returnAsset', 'updateHealth', 'inspectAsset'])
+
+const userRole = computed(() => (props.currentUser?.role || 'STUDENT').toUpperCase())
+const isStudent = computed(() => userRole.value === 'STUDENT')
+const isTeacher = computed(() => userRole.value === 'TEACHER')
+const isAdmin = computed(() => userRole.value === 'ADMIN')
+
+function canReturn(asset) {
+  if (isStudent.value) return false
+  if (isAdmin.value) return true
+  if (isTeacher.value) {
+    if (!asset.borrower) return false
+    const teacherName = props.currentUser?.real_name || ''
+    const teacherUser = props.currentUser?.username || ''
+    return (
+      (teacherName && asset.borrower.includes(teacherName)) ||
+      (teacherUser && asset.borrower.includes(teacherUser))
+    )
+  }
+  return false
+}
+
+function returnButtonTitle(asset) {
+  if (isStudent.value) return '学生无权办理设备归还，请联系教师或管理员'
+  if (isAdmin.value) return '管理员办理设备归还入库'
+  if (isTeacher.value) {
+    return canReturn(asset) ? '归还本人借调设备' : '仅借调教师本人或管理员可办理归还'
+  }
+  return '办理归还'
+}
 
 const tableContainerRef = ref(null)
 const selectedCategory = ref('ALL')
@@ -291,6 +366,19 @@ watch(
           tableContainerRef.value.scrollTop = 0
         }
       })
+    }
+  }
+)
+
+watch(
+  () => props.currentUser,
+  (newUser) => {
+    if (newUser?.role === 'STUDENT') {
+      showBorrowModal.value = false
+    } else if (showBorrowModal.value) {
+      const name = newUser?.real_name || '机房教师'
+      const dept = newUser?.department ? ` (${newUser.department})` : ''
+      borrowerInput.value = `${name}${dept}`
     }
   }
 )
@@ -332,11 +420,14 @@ const filteredAssets = computed(() => {
 
 function openBorrowModal(asset) {
   targetAsset.value = asset
-  borrowerInput.value = '李老师'
+  const name = props.currentUser?.real_name || '机房教师'
+  const dept = props.currentUser?.department ? ` (${props.currentUser.department})` : ''
+  borrowerInput.value = `${name}${dept}`
   showBorrowModal.value = true
 }
 
 function confirmBorrow() {
+  if (isStudent.value) return
   if (!targetAsset.value || !borrowerInput.value.trim()) return
   emit('borrowAsset', targetAsset.value.asset_no, borrowerInput.value.trim())
   showBorrowModal.value = false

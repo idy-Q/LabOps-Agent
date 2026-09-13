@@ -71,16 +71,16 @@
     </div>
 
     <!-- 表格区域 (Linear Dark Table) -->
-    <div ref="tableContainerRef" class="overflow-x-auto rounded-xl border border-white/[0.08] min-h-[300px] max-h-[580px] overflow-y-auto bg-black/25 backdrop-blur-sm shadow-sm">
-      <table class="w-full text-left text-xs text-zinc-300 border-separate border-spacing-0">
+    <div ref="tableContainerRef" class="overflow-x-hidden rounded-xl border border-white/[0.08] min-h-[300px] max-h-[580px] overflow-y-auto bg-black/25 backdrop-blur-sm shadow-sm">
+      <table class="w-full table-fixed text-left text-xs text-zinc-300 border-separate border-spacing-0">
         <thead class="bg-black/50 text-[11px] text-zinc-300 sticky top-0 uppercase tracking-wider border-b border-white/[0.06] backdrop-blur-md z-10">
           <tr>
-            <th class="py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">工单编号</th>
-            <th class="py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">工单标题与处置内容</th>
-            <th class="py-2.5 px-2 text-center border-b border-white/[0.06] font-medium glass-text">等级</th>
-            <th class="py-2.5 px-2 text-center border-b border-white/[0.06] font-medium glass-text">流转状态</th>
-            <th class="py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">关联设备</th>
-            <th class="py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text">处置操作</th>
+            <th class="w-[124px] py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">工单编号</th>
+            <th class="w-auto py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">工单标题与处置内容</th>
+            <th class="w-[70px] py-2.5 px-1 text-center border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">等级</th>
+            <th class="w-[76px] py-2.5 px-1 text-center border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">流转状态</th>
+            <th class="w-[102px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">关联设备</th>
+            <th class="w-[84px] py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">处置操作</th>
           </tr>
         </thead>
         <tbody class="font-sans">
@@ -100,66 +100,97 @@
             ]"
           >
             <!-- 工单编号 -->
-            <td class="py-2.5 px-3 font-mono text-[11px] text-zinc-300 whitespace-nowrap">
+            <td class="py-2.5 px-3 font-mono text-[11px] text-zinc-300 whitespace-nowrap truncate">
               <span
                 @click="$emit('inspectTicket', t.ticket_no)"
-                class="hover:underline hover:text-amber-400 cursor-pointer flex items-center gap-1.5 transition-colors"
+                class="hover:underline hover:text-amber-400 cursor-pointer inline-flex items-center gap-1.5 transition-colors"
                 title="点击在左侧对话中查询此工单进展"
               >
-                <span class="w-1.5 h-1.5 rounded-full" :class="t.status === 'RESOLVED' || t.status === 'CLOSED' ? 'bg-zinc-600' : 'bg-amber-400'"></span>
-                {{ t.ticket_no }}
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="t.status === 'RESOLVED' || t.status === 'CLOSED' ? 'bg-zinc-600' : 'bg-amber-400'"></span>
+                <span class="truncate">{{ t.ticket_no }}</span>
               </span>
             </td>
 
             <!-- 标题与排查要求 -->
-            <td class="py-2.5 px-3 max-w-sm">
-              <div class="font-medium text-zinc-200 truncate">{{ t.title }}</div>
-              <div class="text-[11px] text-zinc-500 truncate">{{ t.description }}</div>
+            <td class="py-2.5 px-3 overflow-hidden">
+              <div class="font-medium text-zinc-200 truncate" :title="t.title">{{ t.title }}</div>
+              <div class="text-[11px] text-zinc-500 truncate" :title="t.description">{{ t.description }}</div>
             </td>
 
             <!-- 优先级 (Linear Badge) -->
-            <td class="py-2.5 px-2 text-center whitespace-nowrap">
-              <span :class="['px-2 py-0.5 rounded text-[10px] font-mono', priorityClass(t.priority)]">
+            <td class="py-2.5 px-1 text-center whitespace-nowrap">
+              <span :class="['px-1.5 py-0.5 rounded text-[10px] font-mono inline-block', priorityClass(t.priority)]">
                 {{ t.priority }}
               </span>
             </td>
 
             <!-- 状态 (Linear Badge) -->
-            <td class="py-2.5 px-2 text-center whitespace-nowrap">
-              <span :class="['px-2 py-0.5 rounded text-[10px] font-mono', statusClass(t.status)]">
+            <td class="py-2.5 px-1 text-center whitespace-nowrap">
+              <span :class="['px-1.5 py-0.5 rounded text-[10px] font-mono inline-block', statusClass(t.status)]">
                 {{ statusLabel(t.status) }}
               </span>
             </td>
 
             <!-- 关联设备 -->
-            <td class="py-2.5 px-3 font-mono text-[11px] text-zinc-400 whitespace-nowrap">
+            <td class="py-2.5 px-2 font-mono text-[11px] text-zinc-400 whitespace-nowrap truncate" :title="t.device_id || '-'">
               {{ t.device_id || '-' }}
             </td>
 
             <!-- 快速流转推进 (Linear Buttons) -->
             <td class="py-2.5 px-3 text-right whitespace-nowrap">
-              <div class="flex items-center justify-end space-x-1.5">
+              <!-- 学生角色：隐藏操作列流转按钮，显示中性灰微标「学生只读」 -->
+              <span
+                v-if="isStudent"
+                class="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800/80 text-zinc-400 border border-white/[0.08] inline-block shadow-sm"
+                title="学生角色对机房运维工单仅有只读权限"
+              >
+                学生只读
+              </span>
+
+              <!-- 教师与管理员角色操作列 -->
+              <div v-else class="flex items-center justify-end space-x-1.5">
+                <!-- 待处理工单：教师与管理员均可点击【受理】 -->
                 <button
                   v-if="t.status === 'PENDING'"
                   @click="$emit('updateStatus', t.id, 'PROCESSING')"
                   class="px-2.5 py-0.5 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 text-[11px] transition-all active:scale-95 shadow-sm font-mono"
+                  title="认领并开始处理工单"
                 >
                   受理
                 </button>
+
+                <!-- 处理中工单：管理员可办结，教师置灰禁用并提示“需主管核验闭环” -->
                 <button
                   v-if="t.status === 'PROCESSING'"
-                  @click="$emit('updateStatus', t.id, 'RESOLVED')"
-                  class="px-2.5 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[11px] transition-all active:scale-95 shadow-sm font-mono"
+                  :disabled="isTeacher"
+                  @click="!isTeacher && $emit('updateStatus', t.id, 'RESOLVED')"
+                  :class="[
+                    'px-2.5 py-0.5 rounded-md text-[11px] transition-all font-mono border',
+                    isTeacher
+                      ? 'bg-zinc-800/50 text-zinc-500 border-white/[0.04] cursor-not-allowed opacity-60'
+                      : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 active:scale-95 shadow-sm'
+                  ]"
+                  :title="isTeacher ? '需主管核验闭环' : '办结此工单'"
                 >
                   办结
                 </button>
+
+                <!-- 已解决工单：管理员可归档，教师置灰禁用并提示“需主管核验闭环” -->
                 <button
                   v-if="t.status === 'RESOLVED'"
-                  @click="$emit('updateStatus', t.id, 'CLOSED')"
-                  class="px-2.5 py-0.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-white/[0.08] text-[11px] transition-all active:scale-95 shadow-sm font-mono"
+                  :disabled="isTeacher"
+                  @click="!isTeacher && $emit('updateStatus', t.id, 'CLOSED')"
+                  :class="[
+                    'px-2.5 py-0.5 rounded-md text-[11px] transition-all font-mono border',
+                    isTeacher
+                      ? 'bg-zinc-800/50 text-zinc-500 border-white/[0.04] cursor-not-allowed opacity-60'
+                      : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-white/[0.08] active:scale-95 shadow-sm'
+                  ]"
+                  :title="isTeacher ? '需主管核验闭环' : '归档此工单'"
                 >
                   归档
                 </button>
+
                 <span v-if="t.status === 'CLOSED'" class="text-[11px] text-zinc-500 font-mono">已闭环</span>
               </div>
             </td>
@@ -178,11 +209,20 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  currentUser: {
+    type: Object,
+    default: null,
+  },
   highlightedTicketNo: {
     type: String,
     default: '',
   },
 })
+
+const userRole = computed(() => (props.currentUser?.role || 'STUDENT').toUpperCase())
+const isStudent = computed(() => userRole.value === 'STUDENT')
+const isTeacher = computed(() => userRole.value === 'TEACHER')
+const isAdmin = computed(() => userRole.value === 'ADMIN')
 
 defineEmits(['refresh', 'updateStatus', 'inspectTicket'])
 

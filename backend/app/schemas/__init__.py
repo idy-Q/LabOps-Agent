@@ -4,6 +4,7 @@ from app.schemas.ticket import TicketBase, TicketCreate, TicketUpdate, TicketRes
 from app.schemas.asset import AssetBase, AssetCreate, AssetUpdate, AssetResponse
 from app.schemas.audit import AuditLogBase, AuditLogCreate, AuditLogResponse
 from app.schemas.chat import ChatHistoryBase, ChatHistoryCreate, ChatHistoryResponse, ChatStreamRequest
+from app.schemas.user import UserRegisterRequest, UserLoginRequest, UserResponse, DemoUserResponse
 
 __all__ = [
     "TicketBase",
@@ -21,4 +22,9 @@ __all__ = [
     "ChatHistoryCreate",
     "ChatHistoryResponse",
     "ChatStreamRequest",
+    "UserRegisterRequest",
+    "UserLoginRequest",
+    "UserResponse",
+    "DemoUserResponse",
 ]
+

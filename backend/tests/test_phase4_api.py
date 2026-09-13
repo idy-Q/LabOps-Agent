@@ -295,3 +295,57 @@ def test_tool_start_end_pairing(client):
         assert matching_end is not None
         assert matching_end["name"] == s["name"]
 
+
+def test_chat_stream_student_rbac_interception(client):
+    """测试通过 SSE API 发送学生身份的越权借调指令时被直接拦截"""
+    resp = client.post(
+        "/api/chat/stream",
+        json={
+            "prompt": "借用 DEV-SRV-201",
+            "session_id": "sess-sse-student-rbac",
+            "user_role": "STUDENT",
+            "user_name": "张同学",
+            "user_department": "计算机科学与技术2201班",
+        },
+    )
+    assert resp.status_code == 200
+    events = [
+        json.loads(line[6:])
+        for line in resp.text.strip().split("\n\n")
+        if line.startswith("data: ")
+    ]
+    # 不应触发任何工具调用或资产突变
+    assert not any(e["type"] == "tool_start" and e.get("name") == "borrow_asset" for e in events)
+    assert not any(e["type"] == "asset_mutation" for e in events)
+
+    # 应返回权限拦截说明
+    content_event = next((e for e in events if e["type"] == "content"), None)
+    assert content_event is not None
+    assert "权限拦截警报" in content_event["text"]
+    assert "张同学" in content_event["text"]
+
+
+def test_chat_stream_teacher_borrow_locked(client):
+    """测试通过 SSE API 发送教师身份的借用指令时，借调人自动锁定为教师姓名"""
+    resp = client.post(
+        "/api/chat/stream",
+        json={
+            "prompt": "帮李明同学借用 DEV-SRV-201",
+            "session_id": "sess-sse-teacher-rbac",
+            "user_role": "TEACHER",
+            "user_name": "李老师",
+            "user_department": "计算机学院",
+        },
+    )
+    assert resp.status_code == 200
+    events = [
+        json.loads(line[6:])
+        for line in resp.text.strip().split("\n\n")
+        if line.startswith("data: ")
+    ]
+    # 工具调用 borrow_asset 的 borrower 参数必须是李老师
+    tool_start = next((e for e in events if e["type"] == "tool_start" and e.get("name") == "borrow_asset"), None)
+    assert tool_start is not None
+    assert tool_start["args"]["borrower"] == "李老师"
+
+
