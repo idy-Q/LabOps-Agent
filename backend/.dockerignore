@@ -1,0 +1,39 @@
+# ==============================================================================
+# Docker 构建上下文忽略文件 - Backend
+# 排除本地虚拟环境、编译缓存与临时数据，保持构建上下文最小化
+# ==============================================================================
+
+# Python 运行时与编译缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+env/
+
+# 测试与代码质量工具缓存及单测源码
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+
+# Git 仓库管理元数据
+.git/
+.gitignore
+
+# 环境变量敏感文件 (运行时通过 docker-compose 或 -e 动态注入)
+.env
+
+# 忽略本地临时生成的数据库文件与测试 ChromaDB，保障从种子数据与规章纯净初始化
+app/data/*.db
+app/data/*.db-journal
+app/data/*.db-wal
+app/data/*.db-shm
+app/data/*.sqlite3
+app/data/chroma_db/
+

@@ -14,6 +14,12 @@ from pathlib import Path
 # 将 backend 根目录加入路径
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+# 适配 Windows 控制台与管道输出编码，防止 Emoji 触发 GBK 编码异常
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from app.agent.react_engine import ReActEngine
 from app.db.session import SessionLocal
 

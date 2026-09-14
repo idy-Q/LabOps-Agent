@@ -12,11 +12,11 @@ docs/
 ├── architecture_and_development_plan.md      # 系统顶层设计、防“套壳”策略与快速落地规划方案
 ├── task_checklist.md                         # 跨会话续接唯一事实来源（Single Source of Truth）、全周期任务清单与看板
 └── thesis_materials/                         # 毕业论文与答辩专用素材沉淀归档
-    ├── 01_database_design/                   # 数据库物理设计脚本 (schema.sql) 与逻辑数据字典
+    ├── 01_database_design/                   # 数据库设计脚本 (schema.sql)、数据字典与论文第4章导航 (含 README)
     ├── 02_screenshots/                       # 核心界面与交互时序截图规范指引
-    ├── 03_test_cases/                        # 阶段自动化回归测试用例报告（API、Agent、RAG、SSE联动）
+    ├── 03_test_cases/                        # 全周期 6 份阶段测试报告、115 项用例矩阵与论文第6章导航 (含 README)
     ├── 04_core_algorithms/                   # 核心算法形式化定义、伪代码与时序流程图（ReAct引擎、RAG检索）
-    └── 05_demo_video/                        # 3分钟中期检查/毕业答辩演示视频录制指引
+    └── 05_demo_video/                        # 3~5分钟答辩演示操作台本、口述词与 6 大考点防拷问锦囊
 ```
 
 ---
@@ -28,15 +28,15 @@ docs/
 * **主要用途**：用于毕业论文第 1、2、3 章（绪论、关键技术、需求分析与总体设计）的直接参考。
 
 ### 2. 开发看板与跨会话记忆 ([task_checklist.md](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/task_checklist.md))
-* **定位**：全周期 5 个开发阶段的原子任务推进表与详细变更日志（Changelog）。
+* **定位**：全周期 5 个开发阶段的原子任务推进表与详细变更日志（Changelog），全阶段已 100% 达成并顺利封板。
 * **主要用途**：任何新对话只需输入 `“请阅读 docs/task_checklist.md 并继续下一步”`，AI 即可零偏差恢复上下文。
 
 ### 3. 毕设论文与答辩材料库 (`thesis_materials/`)
-* **01 数据库设计**：含建表 DDL 与包含 5 张核心表（系统用户与权限 users、工单 tickets、设备资产 assets、审计日志 audit_logs、会话历史 chat_history）字段、主外键约束与索引规划的数据字典，可直接贴入论文第 4 章“数据库设计”小节。
+* **01 数据库设计**：含建表 DDL ([schema.sql](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/thesis_materials/01_database_design/schema.sql))、5 张核心表逻辑数据字典 ([database_data_dictionary.md](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/thesis_materials/01_database_design/database_data_dictionary.md)) 与论文章节对应指南 ([README.md](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/thesis_materials/01_database_design/README.md))，可直接贴入论文第 4 章“数据库设计”小节。
 * **02 界面与交互截图**：提供左右分栏、SSE 流式思考折叠框、工具调用卡片与数据看板联动的规范截图说明。
-* **03 测试报告集**：包含阶段 1~4 及系统认证与 RBAC 防冒名测试用例报告（TC-P1、TC-P2、TC-P3、TC-P4、TC-AUTH），全仓覆盖 101 项自动化回归测试与性能数据，直接作为论文第 6 章“系统测试”实测数据。
+* **03 测试报告集**：包含阶段 1~5 及系统认证与 RBAC 防冒名测试用例报告（TC-P1 至 TC-P5 及 TC-AUTH），涵盖 6 份专业报告与全系统 [115 项自动化单测用例矩阵与导航](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/thesis_materials/03_test_cases/README.md)，直接作为论文第 6 章“系统测试”实测数据。
 * **04 核心算法模型**：提供 ReAct 原生状态机循环、Algorithm 1 形式化伪代码与 RAG 余弦相似度召回逻辑，筑牢学术创新点壁垒。
-* **05 演示视频指引**：用于答辩现场与中期检查视频准备。
+* **05 演示视频指引**：用于答辩现场与中期检查视频准备（含 3~5 分钟标准操作台本、逐秒口述词与 6 大考点防拷问锦囊）。
 
 ---
 
