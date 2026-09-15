@@ -36,3 +36,6 @@ dist-ssr/
 Thumbs.db
 .DS_Store
 
+# Personal Docs & Thesis Materials (Local Only)
+docs/thesis_materials/
+docs/task_checklist.md

@@ -1,48 +1,48 @@
 # 基于轻量级 ReAct 架构的智能自治运维系统（LabOps-Agent）
 
-> 🎓 **计算机科学与技术 / 软件工程 本科毕业设计工程全量套件**  
-> 本工作区严格遵循清晰的职责分离规范：**毕设工程代码**、**整理沉淀文档与答辩材料**、**AI Agent 扩展技能库** 互相独立、边界清晰，保障系统开箱即用与长期可维护性。
+> 🚀 **面向高校实验室与机房基础设施的垂直领域智能自治运维 Agent 系统**  
+> 本项目基于原生轻量级 **ReAct（Reasoning + Acting）白盒推理调度引擎** 与 **RAG 运维规程检索增强**，深度打通监控采集、规范研判、工单闭环与资产借调防冒名审计全流程。采用前后端分离但同仓协同的极简架构，支持生产级 Docker Compose 容器编排与宿主机本地双轨极速拉起，开箱即用。
 
 ---
 
-## 一、 工作区顶层目录职责划分
+## 一、 系统核心特性
 
-工作区各层级结构已完成妥善梳理与物理/逻辑分离：
+- 🧠 **白盒化原生 ReAct 调度引擎**：摒弃复杂的庞大封装框架（如 LangChain），由手写约 150 行标准 ReAct 状态机循环调度，透明执行 Thought -> Action -> Observation 闭环，链路清晰可控。
+- 🔄 **真实业务状态与双向联动**：拒绝“无状态对话套壳”，Agent 执行结果真实写入 SQLite 关系型数据库。前端采用**左右分栏联动大盘**，对话中提单或借调资产，右侧看板无感局部自动增补刷新。
+- ⚡ **细粒度 SSE 结构化流式交互**：解构大模型响应流，实时推送 `<think>` 思考折叠过程、Tool Call 工具调用卡片、规章制度 Citation 溯源徽章与业务变更 Mutation 事件。
+- 🛡️ **企业级 RBAC 权限与防冒名机制**：内置超级管理员、教师、学生多级权限；密码加盐哈希存储；`admin666` 安全提权口令防御；资产借调实名凭据只读绑定，彻底杜绝冒名登记与越权操作。
+- 🐳 **双轨极速部署与生产级容器化**：提供 Windows / Linux / macOS 双轨一键极速启动脚本（自动侦测并自适应 Docker 与本地轻量环境，桌面零遮挡），同时提供完整的 Multi-stage Docker Compose 编排体系与 Nginx 生产网关。
+- 🧩 **自包含 Agent 技能体系**：内置 Antigravity 标准 Agent 技能扩展库（含 `ui-ux-pro-max` 等），支持离线快速设计领域检索。
+
+---
+
+## 二、 工作区目录结构
 
 ```text
-毕设/
-├── backend/                       # 【毕设项目工程 - 后端服务】
-│   ├── app/                       # FastAPI 核心源码 (ReAct 调度引擎、Tools 注册中心、RAG 知识库、REST/SSE API、用户认证与鉴权)
-│   ├── tests/                     # 自动化回归测试套件 (覆盖工具集、调度引擎、RAG、用户鉴权、端到端接口，115 项全绿)
+LabOps-Agent/
+├── backend/                       # 【后端核心服务 - FastAPI】
+│   ├── app/                       # 核心业务源码 (ReAct 调度引擎、Tools 注册中心、RAG 知识库、REST/SSE API、用户鉴权)
+│   ├── tests/                     # 自动化测试套件 (覆盖工具集、调度引擎、RAG、鉴权及接口，115 项用例全绿)
 │   ├── demo_cli.py                # 终端极简演示 CLI 交互脚本
 │   ├── requirements.txt           # Python 依赖清单
 │   ├── Dockerfile                 # 后端生产级轻量镜像构建 (python:3.11-slim + urllib 健康探针)
-│   ├── .dockerignore              # 后端构建上下文隔离配置
 │   └── .venv/                     # Python 独立虚拟环境
 │
-├── frontend/                      # 【毕设项目工程 - 前端界面】
-│   ├── src/                       # Vue 3 + Tailwind CSS 响应式交互界面 (左右分栏联动大盘、全景毛玻璃认证弹窗、防冒名借调)
+├── frontend/                      # 【前端交互界面 - Vue 3 + Tailwind CSS】
+│   ├── src/                       # 响应式交互大盘 (左右分栏联动大盘、全景毛玻璃认证弹窗、防冒名借调)
 │   ├── package.json               # 前端工程与依赖配置
 │   ├── vite.config.js             # Vite 构建与开发服务器配置
-│   ├── Dockerfile                 # 前端 Multi-stage 多阶段构建 (Node 20 -> Nginx Alpine 极轻托管 < 30MB)
-│   ├── nginx.conf                 # 前端镜像内置 Nginx 规则 (与根目录权威配置保持同步)
-│   └── .dockerignore              # 前端构建上下文隔离配置
+│   ├── Dockerfile                 # 前端 Multi-stage 构建 (Node 20 -> Nginx Alpine 镜像 < 30MB)
+│   └── nginx.conf                 # 前端镜像内置 Nginx 规则
 │
 ├── nginx/                         # 【网关与反向代理层】
 │   └── default.conf               # 权威 Nginx 反代配置 (前端静态托管 + /api/ 反代 + SSE 流式防缓冲长超时穿透 + /docs 直达)
 │
-├── docs/                          # 【整理出的文档中心 - 架构规划与答辩归档】
-│   ├── README.md                  # 文档中心总览与索引指引
-│   ├── architecture_and_development_plan.md  # 顶层系统架构设计与落地规划方案
-│   ├── task_checklist.md          # 跨会话续接唯一事实来源（Single Source of Truth）、全周期任务清单与看板
-│   └── thesis_materials/          # 毕业论文写作与答辩专用素材沉淀
-│       ├── 01_database_design/    # 数据库建表 DDL (schema.sql)、5 张核心表逻辑设计数据字典与论文第4章导航 (含 README)
-│       ├── 02_screenshots/        # 系统核心功能界面规范截图说明
-│       ├── 03_test_cases/         # 全周期 6 份阶段测试报告、115 项用例矩阵与论文第6章导航 (含 README)
-│       ├── 04_core_algorithms/    # ReAct 引擎与 RAG 算法形式化推导及 Algorithm 1 伪代码
-│       └── 05_demo_video/         # 3~5 分钟标准答辩演示操作台本、口述词与 6 大考点防拷问锦囊
+├── docs/                          # 【系统架构与设计文档中心】
+│   ├── README.md                  # 文档中心总览与技术规范索引
+│   └── architecture_and_development_plan.md  # 顶层系统架构设计与落地规划方案
 │
-├── scripts/                       # 【辅助运维与快捷工具集】
+├── scripts/                       # 【快捷体验脚本】
 │   ├── run_cli.bat                # 终端极速体验手写 ReAct 调度脚本 (Windows 双击直达)
 │   └── run_cli.sh                 # 终端极速体验手写 ReAct 调度脚本 (Linux/macOS)
 │
@@ -54,17 +54,17 @@
 ├── start.sh                       # Linux/macOS 双轨一键极速启动器
 ├── stop.bat                       # Windows 一键服务停止器 (一键安全释放 8000/5173 端口与进程)
 ├── stop.sh                        # Linux/macOS 一键服务停止器
-├── .gitignore                     # Git 忽略规则（已隔离运行时 DB、ChromaDB、缓存与临时文件）
-└── README.md                      # 本说明文档
+├── .gitignore                     # Git 忽略规则（已隔离运行时 DB、向量库、缓存、临时文件与本地备用材料）
+└── README.md                      # 本项目说明文档
 ```
 
 ---
 
-## 二、 毕设项目工程启动与验收指南
+## 三、 快速上手与运行部署指南
 
 ### 1. 双轨一键极速启动与一键下线 (推荐: 双击即跑)
 
-系统提供双轨启动器，自动检测宿主机 Docker 环境：若检测到 Docker 则提供容器化拉起；若 Docker 未开启则自动平滑切入本地轻量化开发环境，确保“在答辩老师机器上 100% 跑起来”。采用**任务栏智能最小化**机制，桌面零弹窗遮挡，启动后 3 秒直接弹出默认浏览器进入系统大盘！
+系统提供双轨启动器，自动检测宿主机 Docker 环境：若检测到 Docker 则提供容器化拉起；若 Docker 未开启则自动平滑切入本地轻量化开发环境，确保在各类环境下 100% 开箱即用无缝启动。采用**任务栏智能最小化**机制，桌面零弹窗遮挡，启动后 3 秒直接弹出默认浏览器进入系统大盘！
 
 * **启动系统**：
   - **Windows 用户**：直接双击根目录下 `start.bat`（或在终端运行 `.\start.bat`）
@@ -135,7 +135,7 @@ npm run build
 
 ---
 
-## 三、 系统典型预置账号与权限控制说明
+## 四、 系统典型预置账号与权限控制说明
 
 系统内置基于角色的访问控制（RBAC）与资产借调防冒名闭环机制。数据库已预置 4 位典型角色用户（密码统一加盐不可逆存储）：
 
@@ -151,7 +151,7 @@ npm run build
 
 ---
 
-## 四、 Agent 技能体系规范 (`.agent/skills/`)
+## 五、 Agent 技能体系规范 (`.agent/skills/`)
 
 本工作区内置针对高校机房系统设计的专用 UI/UX 决策技能 `ui-ux-pro-max`。
 技能按照 Antigravity 官方规范（`skills/<name>/SKILL.md`）部署，开箱即用：
@@ -163,12 +163,8 @@ python .agent/skills/ui-ux-pro-max/scripts/search.py "dashboard" --domain style
 
 ---
 
-## 五、 毕业设计与论文撰写快速导航
+## 六、 更多架构与技术规范
 
-* **写论文第 1~3 章（需求与架构）**：参考 [docs/architecture_and_development_plan.md](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/architecture_and_development_plan.md)。
-* **写论文第 4 章（数据库设计）**：参考 [docs/thesis_materials/01_database_design/](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/thesis_materials/01_database_design/)。
-* **写论文第 5 章（核心算法与实现）**：参考 [docs/thesis_materials/04_core_algorithms/](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/thesis_materials/04_core_algorithms/)。
-* **写论文第 6 章（测试用例与分析）**：参考 [docs/thesis_materials/03_test_cases/](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/thesis_materials/03_test_cases/) 与 [phase5_deployment_and_acceptance_report.md](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/thesis_materials/03_test_cases/phase5_deployment_and_acceptance_report.md)。
-* **毕业答辩与中期检查演示演练**：参考 [presentation_script.md](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/thesis_materials/05_demo_video/presentation_script.md)（3~5 分钟标准操作台本、逐秒口述词与 6 大考点防拷问锦囊）。
-* **跨会话开发续接**：对 AI 说 `“请阅读 docs/task_checklist.md 并继续下一步”` 即可零偏差恢复上下文。
-
+更多关于系统架构推导、时序流转图、数据库表结构及接口契约的设计细节，欢迎查阅：
+- 📑 **系统文档中心**：[docs/README.md](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/README.md)
+- 📐 **系统架构设计方案**：[docs/architecture_and_development_plan.md](file:///d:/%E6%96%87%E6%A1%A3%E5%8D%B7/Program%20language/%E6%AF%95%E8%AE%BE/docs/architecture_and_development_plan.md)
