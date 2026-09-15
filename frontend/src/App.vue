@@ -45,8 +45,9 @@
           </svg>
         </div>
         <div>
-          <h1 class="text-sm font-semibold tracking-wide glass-text">
-            LabOps-Agent
+          <h1 class="text-sm font-semibold tracking-wide glass-text flex items-center gap-2" title="面向高校实验室的轻量化智能自治运维系统">
+            <span>LabOps-Agent</span>
+            <span class="text-xs text-zinc-400 font-normal hidden lg:inline border-l border-white/10 pl-2">面向高校实验室的轻量化智能自治运维系统</span>
           </h1>
         </div>
       </div>

@@ -1,4 +1,4 @@
-"""LabOps-Agent 后端服务主入口
+"""面向高校实验室的轻量化智能自治运维系统 (LabOps-Agent) 后端服务主入口
 
 包含：
 1. FastAPI 实例初始化与生命周期挂载
@@ -33,8 +33,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.APP_NAME,
-    description="高校机房智能运维与资产管理系统后端服务 API",
+    title=f"{settings.APP_TITLE} ({settings.APP_NAME})",
+    description="面向高校实验室的轻量化智能自治运维系统后端服务 API",
     version=settings.APP_VERSION,
     lifespan=lifespan,
     docs_url="/docs",

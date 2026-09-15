@@ -363,7 +363,7 @@
               required
             />
             <p class="text-[10px] text-rose-300/70">
-              机房智能自治系统超级管理员拥有工单办结、规约修改与资产调度最高权限，申请必须输入口令 <code class="px-1 py-0.5 rounded bg-black/50 text-rose-300 font-mono">admin666</code>。
+              面向高校实验室的轻量化智能自治运维系统超级管理员拥有工单办结、规约修改与资产调度最高权限，申请必须输入口令 <code class="px-1 py-0.5 rounded bg-black/50 text-rose-300 font-mono">admin666</code>。
             </p>
           </div>
 

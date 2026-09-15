@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# 面向高校实验室的轻量化智能自治运维系统 (LabOps-Agent) 终端演示启动脚本
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/backend"

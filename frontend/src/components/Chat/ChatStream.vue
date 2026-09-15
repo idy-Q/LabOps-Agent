@@ -31,7 +31,7 @@
       </div>
       <div class="space-y-1">
         <h2 class="text-base font-semibold text-zinc-100 tracking-wide glass-text">LabOps-Agent</h2>
-        <p class="text-xs text-zinc-400">数据中心智能自治运维系统 · 点击典型场景即刻体验</p>
+        <p class="text-xs text-zinc-400">面向高校实验室的轻量化智能自治运维系统 · 点击典型场景即刻体验</p>
       </div>
 
       <!-- 典型运维场景推荐卡片 (可点击/支持直接提问与填入编辑) -->

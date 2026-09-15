@@ -1,4 +1,4 @@
-"""LabOps-Agent 全局配置管理模块"""
+"""面向高校实验室的轻量化智能自治运维系统 (LabOps-Agent) 全局配置管理模块"""
 
 from pathlib import Path
 from typing import List, Any, Union
@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     # 基础服务信息
     APP_NAME: str = "LabOps-Agent"
+    APP_TITLE: str = "面向高校实验室的轻量化智能自治运维系统"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     HOST: str = "0.0.0.0"
