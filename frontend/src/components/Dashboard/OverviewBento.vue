@@ -384,7 +384,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </span>
-            <span class="text-xs font-medium text-zinc-200 glass-text">答辩高频运维入口</span>
+            <span class="text-xs font-medium text-zinc-200 glass-text">快捷运维入口</span>
           </div>
         </div>
 

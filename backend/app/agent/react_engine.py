@@ -50,7 +50,7 @@ class AgentResult:
 class MockDecisionBrain:
     """确定性本地规则推理大脑 (Mock Brain)
 
-    用于无 API Key、断网离线、自动化单测与答辩免死金牌演示。
+    用于无 API Key、断网离线与自动化单测兜底演示。
     具备对机房巡检、超温告警、工单创建与流转、资产台账检索与借还的确定性多步状态决策能力。
     """
 

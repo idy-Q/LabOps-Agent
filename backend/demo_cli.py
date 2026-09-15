@@ -1,4 +1,4 @@
-"""LabOps-Agent 阶段 2 命令行交互式玩赏体验脚本
+"""LabOps-Agent 终端极简演示 CLI 交互脚本
 
 运行方式：
     cd backend
@@ -26,7 +26,7 @@ from app.db.session import SessionLocal
 
 def main():
     print("=" * 65)
-    print(" 欢迎体验 LabOps-Agent 高校机房智能运维管家 (阶段 2 体验版)")
+    print(" 欢迎体验 LabOps-Agent 高校机房智能运维管家 (终端体验版)")
     print(" 调度核心：手写白盒 ReAct 状态机 (带本地确定性 Mock 容灾大脑)")
     print("=" * 65)
     print("推荐体验指令：")
