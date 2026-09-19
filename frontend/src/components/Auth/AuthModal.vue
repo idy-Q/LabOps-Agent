@@ -2,11 +2,11 @@
   <div
     v-if="modelValue"
     @keydown.esc.window="closeModal"
-    class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in"
+    class="auth-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in"
     @click.self="closeModal"
   >
     <div
-      class="w-full max-w-xl rounded-2xl glass-card border border-white/[0.14] p-5 sm:p-6 shadow-2xl flex flex-col max-h-[90vh] backdrop-blur-2xl overflow-y-auto text-zinc-100"
+      class="auth-modal-glass-card w-full max-w-xl rounded-2xl glass-card border border-white/[0.14] p-5 sm:p-6 shadow-2xl flex flex-col max-h-[90vh] backdrop-blur-2xl overflow-y-auto text-zinc-100"
     >
       <!-- 弹窗顶栏 -->
       <div class="flex items-center justify-between border-b border-white/[0.08] pb-3.5 mb-4 shrink-0">
@@ -579,3 +579,198 @@ async function handleRegister() {
   }
 }
 </script>
+
+<style>
+/* ==========================================================================
+   AuthModal 明亮模式 (Light Mode) 深度高质感冰晶白风格自适应
+   ========================================================================== */
+
+/* 1. 外部遮罩层：告别沉闷压抑的死黑，转为通透轻盈的环境磨砂 */
+html.light .auth-modal-backdrop {
+  background-color: rgba(15, 23, 42, 0.35) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* 2. 主模态框卡片：高透纯净白底，告别暗沉脏灰 */
+html.light .auth-modal-glass-card {
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(226, 232, 240, 0.95) !important;
+  color: #0f172a !important;
+  box-shadow: 0 24px 50px -12px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(226, 232, 240, 0.8) !important;
+}
+
+/* 3. 弹窗顶栏标题与关闭按钮 */
+html.light .auth-modal-glass-card h3 {
+  color: #0f172a !important;
+}
+html.light .auth-modal-glass-card .border-b {
+  border-color: rgba(226, 232, 240, 0.9) !important;
+}
+html.light .auth-modal-glass-card button.text-zinc-500:hover {
+  background-color: rgba(241, 245, 249, 0.9) !important;
+  color: #0f172a !important;
+}
+
+/* 4. Tab 切换按钮栏 (登录 / 新用户注册) */
+html.light .auth-modal-glass-card .bg-zinc-900\/80 {
+  background-color: rgba(241, 245, 249, 0.95) !important;
+  border-color: rgba(226, 232, 240, 0.9) !important;
+}
+html.light .auth-modal-glass-card .bg-zinc-900\/80 button.bg-zinc-800 {
+  background-color: #ffffff !important;
+  color: #4338ca !important;
+  border-color: rgba(226, 232, 240, 0.95) !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08) !important;
+  font-weight: 600 !important;
+}
+html.light .auth-modal-glass-card .bg-zinc-900\/80 button.text-zinc-400 {
+  color: #64748b !important;
+}
+html.light .auth-modal-glass-card .bg-zinc-900\/80 button.text-zinc-400:hover {
+  color: #0f172a !important;
+}
+
+/* 5. 表单字段标签与输入框 */
+html.light .auth-modal-glass-card label {
+  color: #334155 !important;
+}
+html.light .auth-modal-glass-card input[type="text"],
+html.light .auth-modal-glass-card input[type="password"],
+html.light .auth-modal-glass-card input[type="tel"] {
+  background-color: rgba(248, 250, 252, 0.95) !important;
+  border-color: rgba(203, 213, 225, 0.9) !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+}
+html.light .auth-modal-glass-card input::placeholder {
+  color: #94a3b8 !important;
+}
+html.light .auth-modal-glass-card input:focus {
+  background-color: #ffffff !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+/* 6. 登入系统 / 注册提交按钮：告别暗沉浅灰紫，呈现饱满对比度 */
+html.light .auth-modal-glass-card button[type="submit"]:not(:disabled) {
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.35) !important;
+}
+html.light .auth-modal-glass-card button[type="submit"]:not(:disabled):hover {
+  background-color: #4338ca !important;
+}
+html.light .auth-modal-glass-card button[type="submit"]:disabled {
+  background-color: rgba(238, 242, 255, 0.85) !important;
+  color: #818cf8 !important;
+  border: 1px solid rgba(199, 210, 254, 0.8) !important;
+  opacity: 1 !important;
+  cursor: not-allowed !important;
+}
+
+/* 7. 演示账号下拉展开栏手柄 */
+html.light .auth-modal-glass-card .border-t {
+  border-color: rgba(226, 232, 240, 0.9) !important;
+}
+html.light .auth-modal-glass-card .bg-zinc-900\/50 {
+  background-color: rgba(248, 250, 252, 0.95) !important;
+  border-color: rgba(226, 232, 240, 0.95) !important;
+}
+html.light .auth-modal-glass-card .bg-zinc-900\/50:hover {
+  background-color: rgba(241, 245, 249, 0.95) !important;
+}
+html.light .auth-modal-glass-card .bg-zinc-900\/50 span.text-zinc-300 {
+  color: #1e293b !important;
+}
+html.light .auth-modal-glass-card .bg-zinc-800\/90 {
+  background-color: #ffffff !important;
+  border-color: rgba(203, 213, 225, 0.9) !important;
+  color: #4338ca !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 8. 演示账号卡片列表 (4 张预置用户卡片) */
+html.light .auth-modal-glass-card [class*="bg-black/25"] {
+  background-color: #ffffff !important;
+  border-color: rgba(226, 232, 240, 0.95) !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
+}
+html.light .auth-modal-glass-card [class*="bg-black/25"]:hover {
+  background-color: rgba(248, 250, 252, 0.98) !important;
+  border-color: rgba(129, 140, 248, 0.5) !important;
+  box-shadow: 0 4px 12px -2px rgba(99, 102, 241, 0.1) !important;
+}
+html.light .auth-modal-glass-card .bg-indigo-950\/40 {
+  background-color: rgba(238, 242, 255, 0.95) !important;
+  border-color: rgba(99, 102, 241, 0.6) !important;
+  box-shadow: 0 2px 8px 0 rgba(99, 102, 241, 0.12) !important;
+}
+html.light .auth-modal-glass-card .text-zinc-200 {
+  color: #0f172a !important;
+}
+html.light .auth-modal-glass-card .text-zinc-400 {
+  color: #64748b !important;
+}
+html.light .auth-modal-glass-card .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+/* 9. 新用户注册角色切换按钮 */
+html.light .auth-modal-glass-card [class*="bg-black/20"] {
+  background-color: rgba(248, 250, 252, 0.95) !important;
+  border-color: rgba(226, 232, 240, 0.9) !important;
+  color: #475569 !important;
+}
+html.light .auth-modal-glass-card [class*="bg-black/20"]:hover {
+  background-color: #ffffff !important;
+  border-color: rgba(203, 213, 225, 0.9) !important;
+  color: #0f172a !important;
+}
+html.light .auth-modal-glass-card .bg-indigo-950\/60 {
+  background-color: rgba(238, 242, 255, 0.95) !important;
+  border-color: rgba(99, 102, 241, 0.6) !important;
+  color: #3730a3 !important;
+}
+html.light .auth-modal-glass-card .bg-emerald-950\/60 {
+  background-color: rgba(236, 253, 245, 0.95) !important;
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  color: #065f46 !important;
+}
+html.light .auth-modal-glass-card .bg-rose-950\/60 {
+  background-color: rgba(255, 241, 242, 0.95) !important;
+  border-color: rgba(244, 63, 94, 0.6) !important;
+  color: #9f1239 !important;
+}
+html.light .auth-modal-glass-card .bg-rose-950\/30 {
+  background-color: rgba(255, 241, 242, 0.95) !important;
+  border-color: rgba(244, 63, 94, 0.4) !important;
+}
+html.light .auth-modal-glass-card .text-rose-300 {
+  color: #be123c !important;
+}
+
+/* 10. 角色 Badge 标签加深明亮对比度 */
+html.light .auth-modal-glass-card .text-indigo-300 {
+  color: #4338ca !important;
+}
+html.light .auth-modal-glass-card .bg-indigo-500\/15 {
+  background-color: rgba(224, 231, 255, 0.9) !important;
+  border-color: rgba(165, 180, 252, 0.8) !important;
+}
+html.light .auth-modal-glass-card .text-rose-300 {
+  color: #b91c1c !important;
+}
+html.light .auth-modal-glass-card .bg-rose-500\/15 {
+  background-color: rgba(254, 226, 226, 0.9) !important;
+  border-color: rgba(252, 165, 165, 0.8) !important;
+}
+html.light .auth-modal-glass-card .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light .auth-modal-glass-card .bg-emerald-500\/15 {
+  background-color: rgba(209, 250, 229, 0.9) !important;
+  border-color: rgba(110, 231, 183, 0.8) !important;
+}
+</style>
+

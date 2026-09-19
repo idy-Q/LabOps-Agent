@@ -29,8 +29,7 @@ dist-ssr/
 .vscode/
 *.swp
 *.swo
-.agent/*
-!.agent/skills/
+.agent/
 
 # OS
 Thumbs.db
@@ -39,3 +38,4 @@ Thumbs.db
 # Personal Docs & Thesis Materials (Local Only)
 docs/thesis_materials/
 docs/task_checklist.md
+

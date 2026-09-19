@@ -232,6 +232,7 @@
         <!-- 输入框组件 -->
         <ChatInput
           ref="chatInputRef"
+          :currentUser="currentUser"
           :isLoading="isStreaming"
           @send="handleSendMessage"
           @abort="handleAbortStream"
@@ -391,7 +392,7 @@
               :assets="assets"
               :currentUser="currentUser"
               :highlightedAssetNo="highlightedAssetNo"
-              @refresh="loadAssets"
+              @refresh="handleRefreshAssets"
               @borrowAsset="handleBorrowAsset"
               @returnAsset="handleReturnAsset"
               @updateHealth="handleUpdateAssetHealth"
@@ -773,6 +774,10 @@ async function loadAssets() {
   } catch (err) {
     console.error('加载资产台账失败:', err)
   }
+}
+
+async function handleRefreshAssets() {
+  await Promise.allSettled([loadAssets(), loadMetrics()])
 }
 
 // -------------------------------------------------------------

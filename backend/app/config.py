@@ -13,6 +13,16 @@ BACKEND_DIR = APP_DIR.parent
 DEFAULT_DATA_DIR = APP_DIR / "data"
 DEFAULT_DB_FILE = DEFAULT_DATA_DIR / "labops.db"
 
+import os
+
+# 前端静态编译产物托管路径推导 (支持便携整合包模式与自定义指定)
+STATIC_WEB_ENV = os.getenv("STATIC_WEB_DIR")
+if STATIC_WEB_ENV:
+    DEFAULT_WEB_DIR = Path(STATIC_WEB_ENV)
+else:
+    DEFAULT_WEB_DIR = BACKEND_DIR / "web"
+
+
 
 class Settings(BaseSettings):
     """系统全局运行配置"""
@@ -51,11 +61,13 @@ class Settings(BaseSettings):
     REACT_MAX_STEPS: int = 6
     AGENT_MOCK_MODE: str = "auto"  # auto (无Key自动Mock), mock (强制Mock), real (强制真实LLM)
 
-    # 数据持久化目录
+    # 数据持久化目录与前端静态目录
     DATA_DIR: Path = DEFAULT_DATA_DIR
+    WEB_DIR: Path = DEFAULT_WEB_DIR
+
 
     model_config = SettingsConfigDict(
-        env_file=BACKEND_DIR / ".env",
+        env_file=(BACKEND_DIR / ".env", BACKEND_DIR.parent / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )

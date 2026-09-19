@@ -1,14 +1,29 @@
 <template>
   <div class="border-t glass-panel p-3">
+    <!-- 顶部辅助工具条：身份状态标签与权限指引入口 -->
+    <div class="flex items-center justify-between pb-2 px-0.5 text-xs">
+      <!-- 身份权限气泡组件 -->
+      <RolePermissionPopover
+        :currentUser="currentUser"
+        @fill-prompt="handleFillPrompt"
+      />
+
+      <div class="hidden sm:flex items-center space-x-2 text-[10.5px] text-zinc-400 font-mono select-none">
+        <span>Enter 发送</span>
+        <span class="text-zinc-600">·</span>
+        <span>Shift+Enter 换行</span>
+      </div>
+    </div>
+
     <!-- 输入主区域 (Linear Minimalist Input) -->
-    <div class="relative flex items-end space-x-2 bg-black/30 backdrop-blur-sm border border-white/[0.08] focus-within:border-indigo-500/60 rounded-xl p-1.5 transition-all shadow-sm">
+    <div class="relative flex items-end space-x-2 chat-textarea-wrapper bg-black/30 backdrop-blur-sm border border-white/[0.08] focus-within:border-indigo-500/60 rounded-xl p-1.5 transition-all shadow-sm">
       <textarea
         ref="inputRef"
         v-model="inputContent"
         @keydown="handleKeyDown"
         :disabled="isLoading"
         rows="2"
-        placeholder="输入运维指令或提问... (Enter 发送，Shift+Enter 换行)"
+        placeholder="输入运维指令或提问... (可点击上方身份标签查看权限与推荐提示词)"
         class="flex-1 bg-transparent text-zinc-100 placeholder-zinc-500 text-xs sm:text-sm px-3 py-1.5 focus:outline-none resize-none disabled:opacity-50"
       ></textarea>
 
@@ -46,11 +61,21 @@
 
 <script setup>
 import { ref, nextTick } from 'vue'
+import RolePermissionPopover from './RolePermissionPopover.vue'
 
 const props = defineProps({
   isLoading: {
     type: Boolean,
     default: false,
+  },
+  currentUser: {
+    type: Object,
+    default: () => ({
+      username: 'student',
+      real_name: '李同学',
+      role: 'STUDENT',
+      department: '计算机学院',
+    }),
   },
 })
 
@@ -97,6 +122,10 @@ function clear() {
   inputContent.value = ''
 }
 
+function handleFillPrompt(prompt) {
+  setInput(prompt)
+}
+
 defineExpose({
   setInput,
   sendInput,
@@ -105,3 +134,17 @@ defineExpose({
   inputContent,
 })
 </script>
+
+<style>
+/* 明亮模式适配 */
+html.light .chat-textarea-wrapper {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(226, 232, 240, 0.95) !important;
+}
+html.light .chat-textarea-wrapper textarea {
+  color: #0f172a !important;
+}
+html.light .chat-textarea-wrapper textarea::placeholder {
+  color: #94a3b8 !important;
+}
+</style>

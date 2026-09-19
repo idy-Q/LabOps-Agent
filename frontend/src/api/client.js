@@ -78,7 +78,7 @@ export const api = {
       method: 'DELETE',
     }),
 
-  // 3. 资产台账
+  // 3. 资产台账与设备硬件详细参数
   listAssets: (params = {}) => {
     const query = new URLSearchParams()
     Object.entries(params).forEach(([k, v]) => {
@@ -89,10 +89,20 @@ export const api = {
     const qs = query.toString()
     return request(`/assets/${qs ? `?${qs}` : ''}`)
   },
+  getAsset: (assetId) => request(`/assets/${assetId}`),
+  createAsset: (payload) =>
+    request('/assets/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   updateAsset: (assetId, payload) =>
     request(`/assets/${assetId}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
+    }),
+  deleteAsset: (assetId) =>
+    request(`/assets/${assetId}`, {
+      method: 'DELETE',
     }),
 
   // 4. 会话与历史

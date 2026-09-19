@@ -1,5 +1,5 @@
 <template>
-  <div class="rounded-xl glass-panel border p-4 space-y-3.5 shadow-sm transition-colors flex flex-col">
+  <div class="relative rounded-xl glass-panel border p-4 space-y-3.5 shadow-sm transition-colors flex flex-col min-h-[580px]">
     <!-- 头部与多维分类过滤 -->
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pb-2 border-b border-white/[0.06]">
       <div class="flex items-center space-x-2">
@@ -14,20 +14,40 @@
         </span>
       </div>
 
-      <!-- 分类胶囊 (Linear Segmented Pills) -->
-      <div class="flex items-center space-x-1 text-xs bg-zinc-900/60 p-0.5 rounded-lg border border-white/[0.06]">
+      <div class="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end">
+        <!-- 分类胶囊 (Linear Segmented Pills) -->
+        <div class="flex items-center space-x-1 text-xs bg-zinc-900/60 p-0.5 rounded-lg border border-white/[0.06]">
+          <button
+            v-for="c in categoryOptions"
+            :key="c.value"
+            @click="selectedCategory = c.value"
+            :class="[
+              'px-2.5 py-1 rounded-md text-[11px] transition-all',
+              selectedCategory === c.value
+                ? 'bg-zinc-800 text-zinc-100 font-medium shadow-sm border border-white/[0.08]'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50 border border-transparent'
+            ]"
+          >
+            {{ c.label }}
+          </button>
+        </div>
+
+        <!-- 录入新设备主按钮 (管理员与教师可用，学生禁用) -->
         <button
-          v-for="c in categoryOptions"
-          :key="c.value"
-          @click="selectedCategory = c.value"
+          :disabled="isStudent"
+          @click="!isStudent && openCreateModal()"
           :class="[
-            'px-2.5 py-1 rounded-md text-[11px] transition-all',
-            selectedCategory === c.value
-              ? 'bg-zinc-800 text-zinc-100 font-medium shadow-sm border border-white/[0.08]'
-              : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50 border border-transparent'
+            'px-2.5 py-1 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition-all shadow-sm active:scale-95 shrink-0 border',
+            isStudent
+              ? 'bg-zinc-800/40 text-zinc-500 border-white/[0.04] cursor-not-allowed opacity-50'
+              : 'bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 hover:from-cyan-500/30 hover:to-indigo-500/30 text-cyan-300 hover:text-cyan-200 border-cyan-500/30 hover:border-cyan-500/50'
           ]"
+          :title="isStudent ? '学生无权录入设备台账' : '录入新设备与硬件物理参数'"
         >
-          {{ c.label }}
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+          </svg>
+          <span class="font-sans">录入新设备</span>
         </button>
       </div>
     </div>
@@ -92,12 +112,12 @@
       <table class="w-full table-fixed text-left text-xs text-zinc-300 border-separate border-spacing-0">
         <thead class="bg-black/50 text-[11px] text-zinc-300 sticky top-0 uppercase tracking-wider border-b border-white/[0.06] backdrop-blur-md z-10">
           <tr>
-            <th class="w-[116px] py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产编号</th>
-            <th class="w-auto py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">设备名称 / 分类</th>
-            <th class="w-[96px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">机柜/位置</th>
+            <th class="w-[110px] py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产编号</th>
+            <th class="w-auto py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">设备名称 / 型号规格</th>
+            <th class="w-[115px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">机房机柜 / IP</th>
             <th class="w-[86px] py-2.5 px-1 text-center border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">健康度调节</th>
-            <th class="w-[110px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">借用状态</th>
-            <th class="w-[85px] py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产操作</th>
+            <th class="w-[95px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">借用状态</th>
+            <th class="w-[130px] py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产操作</th>
           </tr>
         </thead>
         <tbody class="font-sans">
@@ -110,36 +130,49 @@
             v-for="a in filteredAssets"
             :key="a.id"
             :class="[
-              'transition-all duration-300 hover:bg-white/[0.06] text-xs border-b border-white/[0.04]',
+              'transition-all duration-200 hover:bg-white/[0.06] text-xs border-b border-white/[0.04]',
               a.asset_no === highlightedAssetNo
-                ? 'animate-pulse-asset font-medium text-cyan-200'
+                ? 'animate-pulse-asset font-medium text-cyan-200 bg-cyan-950/20'
                 : ''
             ]"
           >
-            <!-- 编号 -->
+            <!-- 编号：点击打开设备详情面板 -->
             <td class="py-2.5 px-3 font-mono text-[11px] text-zinc-300 whitespace-nowrap truncate">
               <span
-                @click="$emit('inspectAsset', a.asset_no)"
+                @click="openDetailModal(a)"
                 class="hover:underline hover:text-cyan-400 cursor-pointer inline-flex items-center gap-1.5 transition-colors"
-                title="点击在左侧对话中发起设备巡检"
+                title="点开查看设备完整硬件参数与运行详情"
               >
                 <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="a.health_status === 'HEALTHY' ? 'bg-emerald-400' : a.health_status === 'OVERHEAT' ? 'bg-rose-400 animate-ping' : a.health_status === 'WARNING' ? 'bg-amber-400' : 'bg-zinc-500'"></span>
                 <span class="truncate">{{ a.asset_no }}</span>
               </span>
             </td>
 
-            <!-- 名称分类 -->
+            <!-- 名称分类与品牌型号：点击打开详情 -->
             <td class="py-2.5 px-3 overflow-hidden">
-              <div class="font-medium text-zinc-200 truncate" :title="a.name">{{ a.name }}</div>
-              <div class="text-[10px] text-zinc-500 font-mono truncate" :title="a.category">{{ a.category }}</div>
+              <div
+                @click="openDetailModal(a)"
+                class="font-medium text-zinc-200 truncate cursor-pointer hover:text-cyan-300 transition-colors"
+                :title="`${a.name} (点击查看详情)`"
+              >
+                {{ a.name }}
+              </div>
+              <div class="text-[10px] text-zinc-500 font-mono truncate flex items-center space-x-1.5">
+                <span class="text-zinc-400 font-sans">{{ a.category }}</span>
+                <span v-if="a.detail?.model_name" class="text-zinc-500">| {{ a.detail.model_name }}</span>
+                <span v-else-if="a.specs" class="text-zinc-500 truncate max-w-[140px]">| {{ a.specs }}</span>
+              </div>
             </td>
 
-            <!-- 位置 -->
-            <td class="py-2.5 px-2 text-zinc-400 text-[11px] font-mono whitespace-nowrap truncate" :title="a.location">
-              {{ a.location }}
+            <!-- 位置与IP -->
+            <td class="py-2.5 px-2 text-zinc-400 text-[11px] font-mono whitespace-nowrap truncate">
+              <div class="truncate" :title="a.location">{{ a.location }}</div>
+              <div v-if="a.detail?.management_ip" class="text-[10px] text-cyan-400/80 font-mono truncate select-all">
+                IP: {{ a.detail.management_ip }}
+              </div>
             </td>
 
-            <!-- 健康状态快速模拟调节 (管理员可修改，非管理员只读彩色状态微标) -->
+            <!-- 健康状态快速调节 -->
             <td class="py-2.5 px-1 text-center whitespace-nowrap">
               <select
                 v-if="isAdmin"
@@ -151,10 +184,10 @@
                 ]"
                 title="管理员可切换健康状态"
               >
-                <option class="bg-zinc-900 text-zinc-300" value="HEALTHY">HEALTHY (良好)</option>
-                <option class="bg-zinc-900 text-zinc-300" value="WARNING">WARNING (预警)</option>
-                <option class="bg-zinc-900 text-zinc-300" value="OVERHEAT">OVERHEAT (超温)</option>
-                <option class="bg-zinc-900 text-zinc-300" value="OFFLINE">OFFLINE (离线)</option>
+                <option class="bg-zinc-900 text-zinc-300" value="HEALTHY">HEALTHY</option>
+                <option class="bg-zinc-900 text-zinc-300" value="WARNING">WARNING</option>
+                <option class="bg-zinc-900 text-zinc-300" value="OVERHEAT">OVERHEAT</option>
+                <option class="bg-zinc-900 text-zinc-300" value="OFFLINE">OFFLINE</option>
               </select>
               <span
                 v-else
@@ -162,7 +195,7 @@
                   'px-2 py-0.5 rounded text-[10px] font-medium font-mono border inline-block shadow-sm select-none',
                   healthClass(a.health_status)
                 ]"
-                :title="`设备健康状态: ${a.health_status} (仅管理员可调整)`"
+                :title="`健康状态: ${a.health_status}`"
               >
                 {{ a.health_status }}
               </span>
@@ -174,26 +207,51 @@
                 <span :class="['px-2 py-0.5 rounded text-[10px] font-mono shrink-0', borrowClass(a.borrow_status)]">
                   {{ a.borrow_status }}
                 </span>
-                <span v-if="a.borrower" class="text-[11px] text-amber-300 font-medium font-mono truncate" :title="`借调人: ${a.borrower}`">
+                <span v-if="a.borrower" class="text-[10px] text-amber-300 font-medium font-mono truncate" :title="`借调人: ${a.borrower}`">
                   ({{ a.borrower }})
                 </span>
               </div>
             </td>
 
-            <!-- 借还操作 (Linear Buttons: 落实权限边界) -->
+            <!-- 资产多维操作列 (详情 / 编辑 / 借还 / 删除) -->
             <td class="py-2.5 px-3 text-right whitespace-nowrap">
-              <div class="flex items-center justify-end space-x-1.5">
+              <div class="flex items-center justify-end space-x-1">
+                <!-- 详情按钮 -->
+                <button
+                  @click="openDetailModal(a)"
+                  class="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-cyan-300 transition-colors"
+                  title="查看完整硬件参数与详情"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+
+                <!-- 编辑按钮 (非学生可用) -->
+                <button
+                  v-if="!isStudent"
+                  @click="openEditModal(a)"
+                  class="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-indigo-300 transition-colors"
+                  title="编辑此设备与硬件物理参数"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+
+                <!-- 借用 / 归还快捷动作 -->
                 <button
                   v-if="a.borrow_status === 'AVAILABLE'"
                   :disabled="isStudent"
                   @click="!isStudent && openBorrowModal(a)"
                   :class="[
-                    'px-2.5 py-0.5 rounded-md text-[10px] transition-all font-mono border',
+                    'px-2 py-0.5 rounded text-[10px] transition-all font-mono border',
                     isStudent
                       ? 'bg-zinc-800/40 text-zinc-500 border-white/[0.04] cursor-not-allowed opacity-50'
                       : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-white/[0.08] active:scale-95 shadow-sm'
                   ]"
-                  :title="isStudent ? '学生无权借调机房资产，请联系实验教师' : '办理设备借调'"
+                  :title="isStudent ? '学生无权借调机房资产' : '办理设备借调'"
                 >
                   借用
                 </button>
@@ -202,14 +260,26 @@
                   :disabled="!canReturn(a)"
                   @click="canReturn(a) && $emit('returnAsset', a.asset_no)"
                   :class="[
-                    'px-2.5 py-0.5 rounded-md text-[10px] transition-all font-mono border',
+                    'px-2 py-0.5 rounded text-[10px] transition-all font-mono border',
                     canReturn(a)
-                      ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 active:scale-95 shadow-sm'
+                      ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 active:scale-95 shadow-sm'
                       : 'bg-zinc-800/40 text-zinc-500 border-white/[0.04] cursor-not-allowed opacity-50'
                   ]"
                   :title="returnButtonTitle(a)"
                 >
                   归还
+                </button>
+
+                <!-- 删除按钮 (仅管理员可用) -->
+                <button
+                  v-if="isAdmin"
+                  @click="openDeleteConfirm(a)"
+                  class="p-1 rounded hover:bg-rose-500/20 text-zinc-500 hover:text-rose-400 transition-colors"
+                  title="删除设备资产记录"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
                 </button>
               </div>
             </td>
@@ -218,82 +288,167 @@
       </table>
     </div>
 
-    <!-- 借用登记快速弹窗 (Linear Modal) -->
-    <div
-      v-if="showBorrowModal"
-      @keydown.esc.window="showBorrowModal = false"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
-      @click.self="showBorrowModal = false"
-    >
-      <div class="w-full max-w-sm rounded-xl glass-card border border-white/[0.12] p-5 space-y-4 shadow-2xl backdrop-blur-xl">
-        <div class="flex items-center justify-between border-b border-white/[0.08] pb-2.5">
-          <div class="flex items-center space-x-2">
-            <span class="p-1.5 rounded-lg bg-zinc-900/90 border border-white/[0.08] text-cyan-400">
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </span>
-            <h4 class="text-sm font-medium text-zinc-100 glass-text">办理设备借出登记</h4>
+    <!-- 1. 设备全景详情面板 (DeviceDetailModal) -->
+    <DeviceDetailModal
+      v-model="showDetailModal"
+      :asset="selectedAssetForDetail"
+      :currentUser="currentUser"
+      @inspect="handleInspectFromModal"
+      @borrow="handleBorrowFromModal"
+      @return="handleReturnFromModal"
+      @edit="handleEditFromModal"
+      @delete="openDeleteConfirm"
+    />
+
+    <!-- 2. 设备录入/编辑模态表单 (DeviceFormModal) -->
+    <DeviceFormModal
+      v-model="showFormModal"
+      :mode="formMode"
+      :asset="selectedAssetForEdit"
+      @saved="handleAssetSaved"
+    />
+
+    <!-- 3. 删除二次确认模态框 -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div
+          v-if="showDeleteModal"
+          @keydown.esc.window="showDeleteModal = false"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-hidden"
+          @click.self="showDeleteModal = false"
+        >
+          <div class="w-full max-w-sm rounded-3xl bg-zinc-900/95 border border-rose-500/30 ring-1 ring-rose-500/10 p-5 space-y-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+            <div class="flex items-center space-x-3 text-rose-400">
+              <div class="p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-semibold text-zinc-100 tracking-tight">确认彻底删除该设备？</h4>
+                <p class="text-[11px] text-zinc-400">此操作不可撤销，硬件档案亦将清理</p>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-zinc-950/60 border border-white/[0.06] text-xs space-y-1">
+              <div>目标编号: <span class="font-mono text-cyan-400 font-semibold select-all">{{ targetAssetForDelete?.asset_no }}</span></div>
+              <div class="text-zinc-200 font-medium">{{ targetAssetForDelete?.name }}</div>
+              <div class="text-zinc-500 font-mono text-[11px]">{{ targetAssetForDelete?.location }}</div>
+              <div v-if="targetAssetForDelete?.borrow_status === 'IN_USE'" class="pt-1 text-rose-400 font-medium">
+                ⚠️ 该设备处于借用中 (借用人: {{ targetAssetForDelete?.borrower || '未填写' }})！
+              </div>
+            </div>
+
+            <div v-if="deleteError" class="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+              {{ deleteError }}
+            </div>
+
+            <div class="flex items-center justify-end space-x-2 pt-2 border-t border-white/[0.06]">
+              <button
+                @click="showDeleteModal = false"
+                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium transition-all"
+              >
+                取消
+              </button>
+              <button
+                @click="confirmDelete"
+                :disabled="isDeleting"
+                class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs shadow-md transition-all active:scale-95 disabled:opacity-50"
+              >
+                {{ isDeleting ? '正在删除...' : '确认移除设备' }}
+              </button>
+            </div>
           </div>
-          <button
-            @click="showBorrowModal = false"
-            class="text-zinc-500 hover:text-zinc-300 p-1 rounded transition-colors"
-          >
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
+      </Transition>
+    </Teleport>
 
-        <div class="text-xs text-zinc-400 bg-zinc-950/60 p-2.5 rounded-lg border border-white/[0.04] space-y-1">
-          <div>目标设备：<span class="font-mono text-cyan-400 font-medium">{{ targetAsset?.asset_no }}</span></div>
-          <div class="text-zinc-500">{{ targetAsset?.name }} ({{ targetAsset?.location }})</div>
-        </div>
+    <!-- 4. 借用登记快速弹窗 -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div
+          v-if="showBorrowModal"
+          @keydown.esc.window="showBorrowModal = false"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-hidden"
+          @click.self="showBorrowModal = false"
+        >
+          <div class="w-full max-w-sm rounded-3xl bg-zinc-900/95 border border-white/[0.12] ring-1 ring-white/[0.05] p-5 space-y-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+            <div class="flex items-center justify-between border-b border-white/[0.08] pb-2.5">
+              <div class="flex items-center space-x-2.5">
+                <span class="p-2 rounded-2xl bg-zinc-950/80 border border-white/[0.08] text-cyan-400">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </span>
+                <h4 class="text-sm font-semibold text-zinc-100 tracking-tight">办理设备借出登记</h4>
+              </div>
+              <button
+                @click="showBorrowModal = false"
+                class="text-zinc-400 hover:text-zinc-100 p-1.5 rounded-full hover:bg-white/[0.08] transition-colors"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
-        <div>
-          <label class="block text-[11px] text-zinc-400 mb-1 flex items-center justify-between">
-            <span>借用人实名 / 归属单位</span>
-            <span class="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              已锁定当前用户凭据 (只读防冒名)
-            </span>
-          </label>
-          <input
-            :value="borrowerInput"
-            type="text"
-            readonly
-            class="w-full bg-black/40 backdrop-blur-sm border border-white/[0.12] rounded-lg px-3 py-1.5 text-xs text-zinc-300 font-mono focus:outline-none cursor-not-allowed select-all"
-            title="借用人身份自动绑定当前登录账号，设为只读以彻底杜绝冒名借用"
-          />
-          <p class="text-[10px] text-zinc-500 mt-1">
-            当前绑定认证身份：<span class="text-zinc-300 font-medium">{{ currentUser?.real_name }}</span> [{{ currentUser?.role }}] · {{ currentUser?.department }}
-          </p>
-        </div>
+            <div class="text-xs text-zinc-400 bg-zinc-950/60 p-3 rounded-2xl border border-white/[0.04] space-y-1">
+              <div>目标设备：<span class="font-mono text-cyan-400 font-semibold select-all">{{ targetAsset?.asset_no }}</span></div>
+              <div class="text-zinc-200 font-medium">{{ targetAsset?.name }}</div>
+              <div class="text-zinc-500 font-mono text-[11px]">{{ targetAsset?.location }}</div>
+            </div>
 
-        <div class="flex justify-end space-x-2 pt-2">
-          <button
-            @click="showBorrowModal = false"
-            class="px-3 py-1.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition-colors border border-white/[0.08]"
-          >
-            取消
-          </button>
-          <button
-            @click="confirmBorrow"
-            :disabled="!borrowerInput.trim() || isStudent"
-            class="px-3.5 py-1.5 rounded-md bg-zinc-100 hover:bg-white text-zinc-950 font-medium text-xs disabled:opacity-40 transition-all shadow-sm active:scale-95"
-          >
-            确认登记借出
-          </button>
+            <div class="space-y-1.5 text-xs">
+              <label class="text-zinc-300 font-medium block">借用人 / 科研教学团队 <span class="text-rose-400">*</span></label>
+              <input
+                v-model="borrowerInput"
+                type="text"
+                placeholder="填写借用教师姓名与部门..."
+                class="w-full bg-zinc-950/80 border border-white/[0.08] focus:border-cyan-500 rounded-xl px-3.5 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none transition-colors"
+              />
+            </div>
+
+            <div class="flex items-center justify-end space-x-2 pt-2 border-t border-white/[0.06]">
+              <button
+                @click="showBorrowModal = false"
+                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium transition-all"
+              >
+                取消
+              </button>
+              <button
+                @click="confirmBorrow"
+                :disabled="!borrowerInput.trim() || isStudent"
+                class="px-4 py-2 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 font-medium text-xs disabled:opacity-40 transition-all shadow-md active:scale-95"
+              >
+                确认登记借出
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
+import DeviceDetailModal from './DeviceDetailModal.vue'
+import DeviceFormModal from './DeviceFormModal.vue'
+import { api } from '../../api/client'
 
 const props = defineProps({
   assets: {
@@ -350,9 +505,106 @@ const tableContainerRef = ref(null)
 const selectedCategory = ref('ALL')
 const selectedHealth = ref('ALL')
 const keyword = ref('')
+
+// 1. 详情面板状态
+const showDetailModal = ref(false)
+const selectedAssetForDetail = ref(null)
+
+function openDetailModal(asset) {
+  selectedAssetForDetail.value = asset
+  showDetailModal.value = true
+}
+
+function handleInspectFromModal(assetNo) {
+  emit('inspectAsset', assetNo)
+}
+
+function handleBorrowFromModal(asset) {
+  showDetailModal.value = false
+  openBorrowModal(asset)
+}
+
+function handleReturnFromModal(assetNo) {
+  showDetailModal.value = false
+  emit('returnAsset', assetNo)
+}
+
+function handleEditFromModal(asset) {
+  showDetailModal.value = false
+  openEditModal(asset)
+}
+
+// 2. 表单模态框状态 (新增 / 编辑)
+const showFormModal = ref(false)
+const formMode = ref('create')
+const selectedAssetForEdit = ref(null)
+
+function openCreateModal() {
+  if (isStudent.value) return
+  formMode.value = 'create'
+  selectedAssetForEdit.value = null
+  showFormModal.value = true
+}
+
+function openEditModal(asset) {
+  if (isStudent.value) return
+  formMode.value = 'edit'
+  selectedAssetForEdit.value = asset
+  showFormModal.value = true
+}
+
+function handleAssetSaved() {
+  emit('refresh')
+}
+
+// 3. 删除二次确认弹窗
+const showDeleteModal = ref(false)
+const targetAssetForDelete = ref(null)
+const isDeleting = ref(false)
+const deleteError = ref('')
+
+function openDeleteConfirm(asset) {
+  if (!isAdmin.value) return
+  targetAssetForDelete.value = asset
+  deleteError.value = ''
+  showDeleteModal.value = true
+}
+
+async function confirmDelete() {
+  if (!targetAssetForDelete.value || !isAdmin.value) return
+  isDeleting.value = true
+  deleteError.value = ''
+  try {
+    await api.deleteAsset(targetAssetForDelete.value.id)
+    showDeleteModal.value = false
+    showDetailModal.value = false
+    emit('refresh')
+  } catch (err) {
+    deleteError.value = err.message || '删除设备失败'
+  } finally {
+    isDeleting.value = false
+  }
+}
+
+// 4. 借用弹窗
 const showBorrowModal = ref(false)
 const targetAsset = ref(null)
 const borrowerInput = ref('')
+
+function openBorrowModal(asset) {
+  targetAsset.value = asset
+  const name = props.currentUser?.real_name || '机房教师'
+  const dept = props.currentUser?.department ? ` (${props.currentUser.department})` : ''
+  borrowerInput.value = `${name}${dept}`
+  showBorrowModal.value = true
+}
+
+function confirmBorrow() {
+  if (isStudent.value) return
+  if (!targetAsset.value || !borrowerInput.value.trim()) return
+  emit('borrowAsset', targetAsset.value.asset_no, borrowerInput.value.trim())
+  showBorrowModal.value = false
+}
 
 watch(
   () => props.highlightedAssetNo,
@@ -375,6 +627,7 @@ watch(
   (newUser) => {
     if (newUser?.role === 'STUDENT') {
       showBorrowModal.value = false
+      showFormModal.value = false
     } else if (showBorrowModal.value) {
       const name = newUser?.real_name || '机房教师'
       const dept = newUser?.department ? ` (${newUser.department})` : ''
@@ -412,26 +665,13 @@ const filteredAssets = computed(() => {
       const matchNo = (a.asset_no || '').toLowerCase().includes(kw)
       const matchName = (a.name || '').toLowerCase().includes(kw)
       const matchLoc = (a.location || '').toLowerCase().includes(kw)
-      return matchNo || matchName || matchLoc
+      const matchIp = (a.detail?.management_ip || '').toLowerCase().includes(kw)
+      const matchModel = (a.detail?.model_name || '').toLowerCase().includes(kw)
+      return matchNo || matchName || matchLoc || matchIp || matchModel
     }
     return true
   })
 })
-
-function openBorrowModal(asset) {
-  targetAsset.value = asset
-  const name = props.currentUser?.real_name || '机房教师'
-  const dept = props.currentUser?.department ? ` (${props.currentUser.department})` : ''
-  borrowerInput.value = `${name}${dept}`
-  showBorrowModal.value = true
-}
-
-function confirmBorrow() {
-  if (isStudent.value) return
-  if (!targetAsset.value || !borrowerInput.value.trim()) return
-  emit('borrowAsset', targetAsset.value.asset_no, borrowerInput.value.trim())
-  showBorrowModal.value = false
-}
 
 function healthClass(status) {
   switch (status) {

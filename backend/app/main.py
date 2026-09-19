@@ -9,9 +9,10 @@
 
 from contextlib import asynccontextmanager
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.db.init_db import init_db
@@ -58,12 +59,6 @@ app.include_router(tickets.router, prefix="/api/tickets", tags=["运维工单管
 app.include_router(assets.router, prefix="/api/assets", tags=["机房资产管理"])
 
 
-@app.get("/", include_in_schema=False)
-def root():
-    """根路径重定向至 Swagger API 交互文档"""
-    return RedirectResponse(url="/docs")
-
-
 @app.get(
     "/api/health",
     tags=["系统健康"],
@@ -77,6 +72,40 @@ def health_check():
         "version": settings.APP_VERSION,
         "debug": settings.DEBUG,
     }
+
+
+# 统一门户与静态前端托管 (支持免安装便携整合包与前后端一体化生产模式)
+if settings.WEB_DIR.is_dir() and (settings.WEB_DIR / "index.html").is_file():
+    assets_dir = settings.WEB_DIR / "assets"
+    if assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    @app.get("/", include_in_schema=False)
+    async def serve_spa_root():
+        """提供前端单页应用统一门户入口"""
+        return FileResponse(settings.WEB_DIR / "index.html")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa_fallback(full_path: str):
+        """处理前端静态资源文件直链与 SPA History 模式路由回退"""
+        # API 路由 404 返回标准 JSON 异常，避免 SPA 回退掩盖接口错误
+        if full_path == "api" or full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API route not found")
+
+        try:
+            target_path = (settings.WEB_DIR / full_path).resolve()
+            web_root = settings.WEB_DIR.resolve()
+            if target_path.is_file() and target_path.is_relative_to(web_root):
+                return FileResponse(target_path)
+        except (ValueError, Exception):
+            pass
+
+        return FileResponse(settings.WEB_DIR / "index.html")
+else:
+    @app.get("/", include_in_schema=False)
+    def root():
+        """根路径重定向至 Swagger API 交互文档"""
+        return RedirectResponse(url="/docs")
 
 
 if __name__ == "__main__":

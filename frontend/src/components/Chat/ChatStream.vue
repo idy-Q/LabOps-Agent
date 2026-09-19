@@ -174,9 +174,15 @@
             />
           </div>
 
-          <!-- 4. 助手最终正文回答 (Codex Glass Card) -->
+          <!-- 4. 权限拦截警报专属卡片 (当检测到被系统拦截越权时以安全盾牌卡片渲染) -->
+          <PermissionAlertCard
+            v-if="msg.content && isPermissionAlert(msg.content)"
+            :content="msg.content"
+          />
+
+          <!-- 5. 助手常规正文回答 (Codex Glass Card) -->
           <div
-            v-if="msg.content"
+            v-else-if="msg.content"
             class="p-4 rounded-2xl rounded-tl-sm glass-card border text-xs sm:text-sm text-zinc-200 leading-relaxed shadow-sm space-y-2"
           >
             <div
@@ -208,6 +214,14 @@ import { ref, watch, nextTick } from 'vue'
 import ThinkingCard from './ThinkingCard.vue'
 import ToolCard from './ToolCard.vue'
 import CitationBadge from './CitationBadge.vue'
+import PermissionAlertCard from './PermissionAlertCard.vue'
+
+function isPermissionAlert(content) {
+  return typeof content === 'string' && (
+    content.includes('【权限拦截警报】') ||
+    content.includes('已被系统拦截')
+  )
+}
 
 const props = defineProps({
   messages: {

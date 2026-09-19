@@ -1,10 +1,10 @@
 """机房资产台账与设备借还管理工具 (Asset Tools)"""
 
 from typing import Any, Dict, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, or_
 
-from app.db.models import Asset
+from app.db.models import Asset, AssetDetail
 from app.tools.registry import tool
 
 VALID_HEALTH_STATUSES = {"HEALTHY", "WARNING", "OVERHEAT", "OFFLINE"}
@@ -44,7 +44,7 @@ def query_assets(
         return {"status": "error", "message": "数据库会话不可用，无法查询资产台账"}
 
     try:
-        query = active_db.query(Asset)
+        query = active_db.query(Asset).options(joinedload(Asset.detail))
 
         if keyword and keyword.strip():
             kw = keyword.strip()
@@ -87,6 +87,19 @@ def query_assets(
                     "borrow_status": a.borrow_status,
                     "borrower": a.borrower,
                     "specs": a.specs,
+                    "detail": {
+                        "serial_number": a.detail.serial_number,
+                        "brand": a.detail.brand,
+                        "model_name": a.detail.model_name,
+                        "management_ip": a.detail.management_ip,
+                        "cpu_info": a.detail.cpu_info,
+                        "memory_info": a.detail.memory_info,
+                        "storage_info": a.detail.storage_info,
+                        "gpu_info": a.detail.gpu_info,
+                        "network_interfaces": a.detail.network_interfaces,
+                        "power_supply": a.detail.power_supply,
+                        "warranty_period": a.detail.warranty_period,
+                    } if a.detail else None,
                 }
                 for a in assets
             ],
@@ -303,6 +316,194 @@ def update_asset_health(
                 "asset_no": asset.asset_no,
                 "name": asset.name,
                 "health_status": asset.health_status,
+            },
+        }
+    finally:
+        if close_local_db and active_db is not None:
+            active_db.close()
+
+
+@tool(name="get_asset_detail", description="查询指定设备资产的完整硬件参数物理规格与详细台账（包含CPU、内存、存储、GPU、管理IP、出厂序列号SN及维保到期日等）")
+def get_asset_detail(
+    asset_no: str,
+    db: Optional[Session] = None,
+) -> Dict[str, Any]:
+    """查询单台设备资产的完整硬件详细参数
+
+    :param asset_no: 资产设备编号，如 DEV-SRV-201
+    :param db: 数据库会话 (由系统自动注入)
+    :return: 包含主台账与详细硬件参数的字典
+    """
+    close_local_db = False
+    active_db = db
+    if active_db is None:
+        try:
+            from app.db.session import SessionLocal
+            active_db = SessionLocal()
+            close_local_db = True
+        except Exception:
+            active_db = None
+
+    if active_db is None:
+        return {"status": "error", "message": "数据库会话不可用，无法查询设备详情"}
+
+    try:
+        clean_no = (asset_no or "").strip().upper()
+        if not clean_no:
+            return {"status": "error", "message": "资产编号不能为空"}
+
+        asset = (
+            active_db.query(Asset)
+            .options(joinedload(Asset.detail))
+            .filter(Asset.asset_no == clean_no)
+            .first()
+        )
+        if not asset:
+            return {"status": "error", "message": f"未在台账中检索到设备编号为 '{clean_no}' 的资产"}
+
+        detail_info = None
+        if asset.detail:
+            d = asset.detail
+            detail_info = {
+                "serial_number": d.serial_number,
+                "brand": d.brand,
+                "model_name": d.model_name,
+                "os_firmware": d.os_firmware,
+                "mac_address": d.mac_address,
+                "management_ip": d.management_ip,
+                "cpu_info": d.cpu_info,
+                "memory_info": d.memory_info,
+                "storage_info": d.storage_info,
+                "gpu_info": d.gpu_info,
+                "network_interfaces": d.network_interfaces,
+                "power_supply": d.power_supply,
+                "purchase_date": d.purchase_date,
+                "warranty_period": d.warranty_period,
+                "supplier": d.supplier,
+                "extra_params": d.extra_params,
+            }
+
+        return {
+            "status": "success",
+            "asset": {
+                "id": asset.id,
+                "asset_no": asset.asset_no,
+                "name": asset.name,
+                "category": asset.category,
+                "location": asset.location,
+                "health_status": asset.health_status,
+                "borrow_status": asset.borrow_status,
+                "borrower": asset.borrower,
+                "specs": asset.specs,
+                "created_at": asset.created_at.strftime("%Y-%m-%d %H:%M:%S") if asset.created_at else None,
+                "detail": detail_info,
+            },
+        }
+    finally:
+        if close_local_db and active_db is not None:
+            active_db.close()
+
+
+@tool(name="add_asset", description="在机房资产台账中录入新设备，支持设置设备编号、名称、分类、机柜位置以及可选的硬件详细参数（型号、管理IP、CPU、内存等）")
+def add_asset(
+    asset_no: str,
+    name: str,
+    category: str,
+    location: str,
+    specs: Optional[str] = None,
+    brand: Optional[str] = None,
+    model_name: Optional[str] = None,
+    management_ip: Optional[str] = None,
+    serial_number: Optional[str] = None,
+    cpu_info: Optional[str] = None,
+    memory_info: Optional[str] = None,
+    db: Optional[Session] = None,
+) -> Dict[str, Any]:
+    """录入新设备资产与硬件物理参数
+
+    :param asset_no: 资产唯一编号，如 DEV-SRV-206
+    :param name: 设备名称，如 2号机房-通用计算节点06
+    :param category: 类别 (服务器/网络设备/实验教学/配电温控)
+    :param location: 机柜/物理位置，如 实训楼201-机柜A06
+    :param specs: 简要规格配置说明
+    :param brand: 厂商品牌
+    :param model_name: 具体设备型号
+    :param management_ip: 带外/管理IP
+    :param serial_number: 出厂序列号
+    :param cpu_info: CPU规格及核心
+    :param memory_info: 内存规格
+    :param db: 数据库会话 (由系统自动注入)
+    :return: 录入操作结果
+    """
+    close_local_db = False
+    active_db = db
+    if active_db is None:
+        try:
+            from app.db.session import SessionLocal
+            active_db = SessionLocal()
+            close_local_db = True
+        except Exception:
+            active_db = None
+
+    if active_db is None:
+        return {"status": "error", "message": "数据库会话不可用，无法录入新设备"}
+
+    try:
+        clean_no = (asset_no or "").strip().upper()
+        clean_name = (name or "").strip()
+        clean_category = (category or "").strip()
+        clean_location = (location or "").strip()
+
+        if not clean_no or not clean_name or not clean_category or not clean_location:
+            return {"status": "error", "message": "设备编号、名称、分类和物理位置均为必填项"}
+
+        existing = active_db.query(Asset).filter(Asset.asset_no == clean_no).first()
+        if existing:
+            return {"status": "error", "message": f"资产编号 '{clean_no}' 已存在，不能重复录入"}
+
+        asset = Asset(
+            asset_no=clean_no,
+            name=clean_name,
+            category=clean_category,
+            location=clean_location,
+            health_status="HEALTHY",
+            borrow_status="AVAILABLE",
+            specs=specs,
+        )
+        active_db.add(asset)
+        active_db.flush()
+
+        has_detail = any([brand, model_name, management_ip, serial_number, cpu_info, memory_info])
+        if has_detail:
+            detail = AssetDetail(
+                asset_id=asset.id,
+                brand=brand,
+                model_name=model_name,
+                management_ip=management_ip,
+                serial_number=serial_number,
+                cpu_info=cpu_info,
+                memory_info=memory_info,
+            )
+            active_db.add(detail)
+
+        try:
+            active_db.commit()
+            active_db.refresh(asset)
+        except Exception as exc:
+            active_db.rollback()
+            return {"status": "error", "message": f"持久化录入资产失败: {str(exc)}"}
+
+        return {
+            "status": "success",
+            "message": f"资产设备 '{clean_name}' (编号: {clean_no}) 成功录入机房台账！",
+            "asset": {
+                "id": asset.id,
+                "asset_no": asset.asset_no,
+                "name": asset.name,
+                "category": asset.category,
+                "location": asset.location,
+                "health_status": asset.health_status,
+                "borrow_status": asset.borrow_status,
             },
         }
     finally:

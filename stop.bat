@@ -9,12 +9,12 @@ echo.
 
 echo [*] 正在检测并释放 8000 端口 (FastAPI 后端)...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (
-    taskkill /f /pid %%a >nul 2>&1
+    taskkill /f /t /pid %%a >nul 2>&1
 )
 
 echo [*] 正在检测并释放 5173 端口 (Vite 前端)...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING') do (
-    taskkill /f /pid %%a >nul 2>&1
+    taskkill /f /t /pid %%a >nul 2>&1
 )
 
 echo [*] 正在检查并停止 Docker 容器集群 (若有)...

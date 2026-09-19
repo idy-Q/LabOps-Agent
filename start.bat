@@ -67,8 +67,20 @@ exit /b 1
 
 :START_LOCAL
 echo ==============================================================================
-echo [2/2] 正在启动本地轻量化开发服务 (方案A: 后台终端默认最小化静默运行)...
+echo [2/2] 正在启动本地轻量化开发服务 (FastAPI 后端 + Vite 前端，任务栏静默运行)...
 echo ==============================================================================
+
+if not exist "%ROOT_DIR%backend\.venv\Scripts\python.exe" (
+    echo.
+    echo [错误] 未检测到后端 Python 虚拟环境: "%ROOT_DIR%backend\.venv"
+    echo 请在 backend 目录下初始化虚拟环境并安装依赖:
+    echo   cd backend
+    echo   python -m venv .venv
+    echo   .\.venv\Scripts\pip install -r requirements.txt
+    echo.
+    pause
+    exit /b 1
+)
 
 echo [*] 正在启动后端 FastAPI ASGI 服务 (端口 8000，任务栏最小化)...
 start "LabOps-Backend (FastAPI)" /min /d "%ROOT_DIR%backend" cmd /k "chcp 65001 >nul & .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000"

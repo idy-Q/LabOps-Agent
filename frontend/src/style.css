@@ -265,6 +265,9 @@ html.light [class*="bg-emerald-500/10"] {
 html.light [class*="bg-indigo-500/10"] {
   background-color: rgba(224, 231, 255, 0.7) !important;
 }
+html.light [class*="bg-amber-500/10"] {
+  background-color: rgba(254, 243, 199, 0.8) !important;
+}
 html.light [class*="border-rose-500/20"] {
   border-color: rgba(251, 113, 133, 0.4) !important;
 }
@@ -276,6 +279,9 @@ html.light [class*="border-emerald-500/20"] {
 }
 html.light [class*="border-indigo-500/20"] {
   border-color: rgba(129, 140, 248, 0.4) !important;
+}
+html.light [class*="border-amber-500/20"] {
+  border-color: rgba(245, 158, 11, 0.4) !important;
 }
 html.light [class*="hover:border-indigo-500/40"]:hover {
   border-color: rgba(99, 102, 241, 0.55) !important;

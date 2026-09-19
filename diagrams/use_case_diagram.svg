@@ -1,0 +1,216 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1450 1260" width="1450" height="1260" style="background-color: #FFFFFF; font-family: 'SimSun', 'STSong', 'SimHei', 'Microsoft YaHei', sans-serif;">
+
+    <defs>
+        <marker id="open-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 2 L 8 5 L 0 8" fill="none" stroke="#000000" stroke-width="1.5" />
+        </marker>
+    </defs>
+    
+
+    <g id="header">
+        <rect x="30" y="20" width="1390" height="50" fill="#000000" stroke="#000000" stroke-width="1"/>
+        <text x="50" y="52" font-size="18" font-weight="bold" fill="#FFFFFF">图 3-2 面向高校实验室的智能自治运维系统 (LabOps-Agent) 系统用例图</text>
+        <text x="1390" y="52" font-size="12" fill="#FFFFFF" text-anchor="end">标准 UML 2.5 纯黑白工程规范</text>
+    </g>
+    
+
+    <rect x="280" y="90" width="930" height="980" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
+    <!-- 系统边界标签：位于 y=105，高 24，与第一个用例顶边 167px 之间留有 38px 纯净空隙，绝不交叠 -->
+    <rect x="295" y="105" width="220" height="24" fill="#F0F0F0" stroke="#000000" stroke-width="1"/>
+    <text x="305" y="121" font-size="12" font-weight="bold" fill="#000000">系统边界：LabOps-Agent</text>
+    
+<g class="actor-stickman">
+<circle cx="120" cy="265.0" r="12" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
+<line x1="120" y1="277.0" x2="120" y2="310.0" stroke="#000000" stroke-width="1.5"/>
+<line x1="98.0" y1="289.0" x2="142.0" y2="289.0" stroke="#000000" stroke-width="1.5"/>
+<line x1="120" y1="310.0" x2="104" y2="337.0" stroke="#000000" stroke-width="1.5"/>
+<line x1="120" y1="310.0" x2="136" y2="337.0" stroke="#000000" stroke-width="1.5"/>
+<rect x="50.0" y="345.0" width="140" height="34" fill="#FFFFFF" stroke="#000000" stroke-width="1"/>
+<text x="120" y="360.0" font-size="12" font-weight="bold" fill="#000000" text-anchor="middle">在读学生</text>
+<text x="120" y="373.0" font-size="10" fill="#444444" text-anchor="middle">STUDENT</text>
+</g>
+<g class="actor-stickman">
+<circle cx="120" cy="553.0" r="12" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
+<line x1="120" y1="565.0" x2="120" y2="598.0" stroke="#000000" stroke-width="1.5"/>
+<line x1="98.0" y1="577.0" x2="142.0" y2="577.0" stroke="#000000" stroke-width="1.5"/>
+<line x1="120" y1="598.0" x2="104" y2="625.0" stroke="#000000" stroke-width="1.5"/>
+<line x1="120" y1="598.0" x2="136" y2="625.0" stroke="#000000" stroke-width="1.5"/>
+<rect x="50.0" y="633.0" width="140" height="34" fill="#FFFFFF" stroke="#000000" stroke-width="1"/>
+<text x="120" y="648.0" font-size="12" font-weight="bold" fill="#000000" text-anchor="middle">指导教师</text>
+<text x="120" y="661.0" font-size="10" fill="#444444" text-anchor="middle">TEACHER</text>
+</g>
+<g class="actor-stickman">
+<circle cx="120" cy="841.0" r="12" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
+<line x1="120" y1="853.0" x2="120" y2="886.0" stroke="#000000" stroke-width="1.5"/>
+<line x1="98.0" y1="865.0" x2="142.0" y2="865.0" stroke="#000000" stroke-width="1.5"/>
+<line x1="120" y1="886.0" x2="104" y2="913.0" stroke="#000000" stroke-width="1.5"/>
+<line x1="120" y1="886.0" x2="136" y2="913.0" stroke="#000000" stroke-width="1.5"/>
+<rect x="50.0" y="921.0" width="140" height="34" fill="#FFFFFF" stroke="#000000" stroke-width="1"/>
+<text x="120" y="936.0" font-size="12" font-weight="bold" fill="#000000" text-anchor="middle">机房管理员</text>
+<text x="120" y="949.0" font-size="10" fill="#444444" text-anchor="middle">ADMIN</text>
+</g>
+<g class="actor-agent">
+<rect x="1308" y="465.0" width="44" height="32" rx="4" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
+<circle cx="1321" cy="481.0" r="3" fill="#000000"/>
+<circle cx="1339" cy="481.0" r="3" fill="#000000"/>
+<line x1="1320" y1="491.0" x2="1340" y2="491.0" stroke="#000000" stroke-width="1.2"/>
+<line x1="1330" y1="465.0" x2="1330" y2="455.0" stroke="#000000" stroke-width="1.5"/>
+<circle cx="1330" cy="453.0" r="2.5" fill="#000000"/>
+<rect x="1312" y="507.0" width="36" height="28" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
+<line x1="1320" y1="517.0" x2="1340" y2="517.0" stroke="#000000" stroke-width="1"/>
+<line x1="1320" y1="523.0" x2="1340" y2="523.0" stroke="#000000" stroke-width="1"/>
+<line x1="1312" y1="513.0" x2="1302" y2="525.0" stroke="#000000" stroke-width="1.5"/>
+<line x1="1348" y1="513.0" x2="1358" y2="525.0" stroke="#000000" stroke-width="1.5"/>
+<line x1="1321" y1="535.0" x2="1321" y2="547.0" stroke="#000000" stroke-width="1.5"/>
+<line x1="1339" y1="535.0" x2="1339" y2="547.0" stroke="#000000" stroke-width="1.5"/>
+<rect x="1260" y="555.0" width="140" height="34" fill="#FFFFFF" stroke="#000000" stroke-width="1"/>
+<text x="1330" y="570.0" font-size="12" font-weight="bold" fill="#000000" text-anchor="middle">智能自治 Agent</text>
+<text x="1330" y="583.0" font-size="10" fill="#444444" text-anchor="middle">AI ACTOR</text>
+</g>
+<line x1="190" y1="305.0" x2="365" y2="185" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="185" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="189" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">账号登录与身份认证</text>
+            
+<line x1="190" y1="305.0" x2="365" y2="233" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="233" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="237" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">新用户注册与信息登记</text>
+            
+<line x1="190" y1="305.0" x2="365" y2="281" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="281" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="285" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">自然语言运维规章咨询</text>
+            
+<line x1="190" y1="305.0" x2="365" y2="329" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="329" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="333" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">实验教学设备在库查询</text>
+            
+<line x1="190" y1="305.0" x2="365" y2="377" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="377" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="381" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">设备故障报修申报提单</text>
+            
+<line x1="190" y1="305.0" x2="365" y2="425" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="425" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="429" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">个人报修进度与看板浏览</text>
+            
+<line x1="190" y1="593.0" x2="365" y2="473" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="473" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="477" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">硬件物理规格参数查看</text>
+            
+<line x1="190" y1="593.0" x2="365" y2="521" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="521" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="525" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">设备实名绑定借调申请</text>
+            
+<line x1="190" y1="593.0" x2="365" y2="569" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="569" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="573" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">设备归还入库核验验收</text>
+            
+<line x1="190" y1="593.0" x2="365" y2="617" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="617" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="621" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">设备借还时序历史追溯</text>
+            
+<line x1="190" y1="593.0" x2="365" y2="665" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="665" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="669" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">教学工单流转协同处置</text>
+            
+<line x1="190" y1="593.0" x2="365" y2="713" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="713" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="717" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">责任机房与配电台账查看</text>
+            
+<line x1="190" y1="881.0" x2="365" y2="761" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="761" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="765" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">admin666 专属口令提权</text>
+            
+<line x1="190" y1="881.0" x2="365" y2="809" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="809" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="813" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">资产设备录入编辑与调配</text>
+            
+<line x1="190" y1="881.0" x2="365" y2="857" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="857" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="861" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">全量工单闭环处置与办结</text>
+            
+<line x1="190" y1="881.0" x2="365" y2="905" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="905" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="909" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">Agent 工具审计审查 (AuditLog)</text>
+            
+<line x1="190" y1="881.0" x2="365" y2="953" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="953" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="957" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">多会话推理历史归档检索</text>
+            
+<line x1="190" y1="881.0" x2="365" y2="1001" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="470" cy="1001" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="470" y="1005" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">规程源文档切块与向量维护</text>
+            
+<line x1="1260" y1="515.0" x2="1085" y2="280" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="980" cy="280" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="980" y="284" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">宿主机运行指标自主感知</text>
+            
+<line x1="1260" y1="515.0" x2="1085" y2="355" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="980" cy="355" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="980" y="359" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">超温故障自主研判决策提单</text>
+            
+<line x1="1260" y1="515.0" x2="1085" y2="430" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="980" cy="430" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="980" y="434" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">ReAct 细粒度思维链推理</text>
+            
+<line x1="1260" y1="515.0" x2="1085" y2="505" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="980" cy="505" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="980" y="509" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">工具调用指令卡片生成审查</text>
+            
+<line x1="1260" y1="515.0" x2="1085" y2="580" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="980" cy="580" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="980" y="584" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">机房规程向量知识检索溯源</text>
+            
+<line x1="1260" y1="515.0" x2="1085" y2="655" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="980" cy="655" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="980" y="659" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">SSE 实时大盘局部突变推送</text>
+            
+<line x1="1260" y1="515.0" x2="1085" y2="730" stroke="#000000" stroke-width="0.9"/>
+
+            <ellipse cx="980" cy="730" rx="105" ry="18" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+            <text x="980" y="734" font-size="11" font-weight="bold" fill="#000000" text-anchor="middle">工具调用行为物理落盘审计</text>
+            
+
+    <line x1="980" y1="298" x2="980" y2="337" stroke="#000000" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#open-arrow)"/>
+    <rect x="990" y="309.5" width="65" height="16" fill="#FFFFFF" stroke="#000000" stroke-width="0.8"/>
+    <text x="1022" y="321.5" font-size="9" fill="#000000" text-anchor="middle">&lt;&lt;include&gt;&gt;</text>
+    
+
+    <g id="footer-legend" transform="translate(30, 1100)">
+        <rect x="0" y="0" width="1390" height="34" fill="#FAFAFA" stroke="#000000" stroke-width="1"/>
+        <text x="15" y="22" font-size="11" font-weight="bold" fill="#000000">规范图例：</text>
+        <line x1="80" y1="17" x2="120" y2="17" stroke="#000000" stroke-width="1"/>
+        <text x="130" y="22" font-size="10" fill="#000000">角色关联关系 (Association)</text>
+        <line x1="300" y1="17" x2="340" y2="17" stroke="#000000" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#open-arrow)"/>
+        <text x="350" y="22" font-size="10" fill="#000000">用例包含依赖 (Include Dependency)</text>
+        <ellipse cx="560" cy="17" rx="20" ry="9" fill="#FFFFFF" stroke="#000000" stroke-width="1"/>
+        <text x="590" y="22" font-size="10" fill="#000000">业务用例 (Use Case)</text>
+        <text x="1375" y="22" font-size="10" fill="#555555" text-anchor="end">拓扑连线严格无相交 · 布局独立清晰</text>
+    </g>
+    
+
+    <text x="725.0" y="1165" font-size="15" font-weight="bold" fill="#000000" text-anchor="middle">图 3-2 系统用例图</text>
+    
+</svg>

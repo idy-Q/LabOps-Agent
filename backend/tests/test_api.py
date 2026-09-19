@@ -20,7 +20,18 @@ from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.config import Settings
 from app.db.session import Base, get_db
-from app.db.models import Ticket, Asset, AuditLog, ChatHistory
+from app.db.models import (
+    Ticket,
+    Asset,
+    AuditLog,
+    ChatHistory,
+    User,
+    ServerRoom,
+    AssetBorrowLog,
+    TicketWorkflow,
+    KnowledgeDocument,
+    KnowledgeChunk,
+)
 from app.db.init_db import init_db
 from app.schemas.audit import AuditLogCreate, AuditLogResponse
 from app.schemas.chat import ChatHistoryCreate, ChatHistoryResponse
@@ -448,6 +459,18 @@ def test_init_db_idempotency(test_db_env):
         assert session.query(Asset).count() == 15
         assert session.query(Ticket).count() == 9
         assert session.query(ChatHistory).count() == 4
+        assert session.query(User).count() == 4
+        assert session.query(ServerRoom).count() == 3
+        assert session.query(AssetBorrowLog).count() == 3
+        assert session.query(TicketWorkflow).count() == 4
+        assert session.query(KnowledgeDocument).count() == 3
+        assert session.query(KnowledgeChunk).count() == 22
+
+        # 验证 ORM 关系与双向访问
+        doc = session.query(KnowledgeDocument).filter(KnowledgeDocument.doc_id == "DOC-RAG-001").first()
+        assert doc is not None
+        assert len(doc.chunks) > 0
+        assert doc.chunks[0].document == doc
     finally:
         session.close()
 
@@ -520,4 +543,124 @@ def test_offline_assets_and_metrics_summary_api(client):
     assert sum_data["tickets"]["resolved"] >= 2
     assert sum_data["tickets"]["closed"] >= 2
     assert sum_data["overview"]["active_alerts_count"] >= 3
+
+
+def test_asset_detail_crud(client):
+    """测试设备硬件物理参数表的创建、级联读取、原子更新与级联清理"""
+    new_device = {
+        "asset_no": "DEV-TEST-GPU99",
+        "name": "测试-超算训练节点99",
+        "category": "服务器",
+        "location": "实训楼201-测试机柜A",
+        "health_status": "HEALTHY",
+        "borrow_status": "AVAILABLE",
+        "specs": "2x Xeon, 512GB RAM, 8x RTX 4090",
+        "detail": {
+            "serial_number": "SN-TEST-2026-GPU99",
+            "brand": "Dell",
+            "model_name": "PowerEdge XE8545",
+            "os_firmware": "Ubuntu 22.04 LTS",
+            "mac_address": "00:50:56:AA:BB:CC",
+            "management_ip": "192.168.10.99",
+            "cpu_info": "2x AMD EPYC 7763 128核",
+            "memory_info": "512GB DDR4 3200 ECC",
+            "storage_info": "4x 3.84TB NVMe SSD",
+            "gpu_info": "4x NVIDIA A100 80GB SXM4",
+            "network_interfaces": "4x 100GE QSFP28 + 2x 10GE",
+            "power_supply": "双路冗余 3000W",
+            "purchase_date": "2026-05-01",
+            "warranty_period": "2029-05-01",
+            "supplier": "戴尔科技企业方案部",
+            "extra_params": '{"cluster_role": "compute_worker"}',
+        },
+    }
+
+    # 1. 创建包含完整硬件参数的设备
+    create_res = client.post("/api/assets/", json=new_device)
+    assert create_res.status_code == 201
+    created = create_res.json()
+    asset_id = created["id"]
+    assert created["asset_no"] == "DEV-TEST-GPU99"
+    assert created["detail"] is not None
+    assert created["detail"]["serial_number"] == "SN-TEST-2026-GPU99"
+    assert created["detail"]["management_ip"] == "192.168.10.99"
+    assert created["detail"]["gpu_info"] == "4x NVIDIA A100 80GB SXM4"
+
+    # 2. 单台详情获取与级联验证
+    get_res = client.get(f"/api/assets/{asset_id}")
+    assert get_res.status_code == 200
+    got = get_res.json()
+    assert got["detail"]["cpu_info"] == "2x AMD EPYC 7763 128核"
+    assert got["detail"]["brand"] == "Dell"
+
+    # 3. 更新主表与硬件参数
+    patch_payload = {
+        "name": "测试-超算训练节点99-已升配",
+        "detail": {
+            "memory_info": "1TB DDR4 3200 ECC",
+            "management_ip": "192.168.10.199",
+        },
+    }
+    patch_res = client.patch(f"/api/assets/{asset_id}", json=patch_payload)
+    assert patch_res.status_code == 200
+    patched = patch_res.json()
+    assert patched["name"] == "测试-超算训练节点99-已升配"
+    assert patched["detail"]["memory_info"] == "1TB DDR4 3200 ECC"
+    assert patched["detail"]["management_ip"] == "192.168.10.199"
+    # 原先的未修改字段保持完好
+    assert patched["detail"]["serial_number"] == "SN-TEST-2026-GPU99"
+
+    # 4. 删除设备并验证级联清理
+    del_res = client.delete(f"/api/assets/{asset_id}")
+    assert del_res.status_code == 204
+
+    # 再次查询应返回 404
+    get_after_del = client.get(f"/api/assets/{asset_id}")
+    assert get_after_del.status_code == 404
+
+
+def test_asset_tools_detail_and_add():
+    """测试 Agent 工具库中的设备详情查询与新增设备工具"""
+    from app.tools.asset_tools import get_asset_detail, add_asset, query_assets
+    from app.db.session import SessionLocal
+
+    db = SessionLocal()
+    try:
+        # 1. 详情查询工具
+        detail_res = get_asset_detail("DEV-SRV-201", db=db)
+        assert detail_res["status"] == "success"
+        assert detail_res["asset"]["asset_no"] == "DEV-SRV-201"
+        assert detail_res["asset"]["detail"]["brand"] == "Dell"
+        assert "RTX 4090" in detail_res["asset"]["detail"]["gpu_info"]
+
+        # 2. 新增设备工具
+        add_res = add_asset(
+            asset_no="DEV-NET-999",
+            name="测试核心万兆交换机99",
+            category="网络设备",
+            location="实训楼201-测试机柜B",
+            specs="48口全光",
+            brand="Huawei",
+            model_name="CE6800-Test",
+            management_ip="192.168.1.99",
+            serial_number="SN-HW-TEST-999",
+            db=db,
+        )
+        assert add_res["status"] == "success"
+        assert add_res["asset"]["asset_no"] == "DEV-NET-999"
+
+        # 3. 再次通过详情查询核验
+        check_res = get_asset_detail("DEV-NET-999", db=db)
+        assert check_res["status"] == "success"
+        assert check_res["asset"]["detail"]["management_ip"] == "192.168.1.99"
+
+        # 4. 清理测试添加的数据
+        from app.db.models import Asset
+        created_asset = db.query(Asset).filter(Asset.asset_no == "DEV-NET-999").first()
+        if created_asset:
+            db.delete(created_asset)
+            db.commit()
+    finally:
+        db.close()
+
 
