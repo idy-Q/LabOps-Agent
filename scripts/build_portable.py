@@ -25,6 +25,27 @@ def main():
 
     portable_root.mkdir(parents=True, exist_ok=True)
 
+    # 0. 维护并同步专属品牌多分辨率图标 (app.ico / app.png)
+    print_step("0. 维护并同步 LabOps-Agent 专属品牌多分辨率图标 (app.ico)")
+    if str(script_dir) not in sys.path:
+        sys.path.insert(0, str(script_dir))
+    try:
+        from make_icons import build_icons
+        build_icons(workspace_root)
+    except Exception as e:
+        print(f"[WARN] 动态生成图标异常 ({e})，正在检查使用预置图标缓存...")
+        cached_ico = dev_root / "frontend" / "src" / "assets" / "app.ico"
+        cached_png = dev_root / "frontend" / "src" / "assets" / "app.png"
+        setup_root = workspace_root / "03-安装向导工程_LabOps-Setup"
+        if cached_ico.exists():
+            shutil.copy2(cached_ico, portable_root / "app.ico")
+            if setup_root.exists():
+                shutil.copy2(cached_ico, setup_root / "app.ico")
+        if cached_png.exists():
+            shutil.copy2(cached_png, portable_root / "app.png")
+            if setup_root.exists():
+                shutil.copy2(cached_png, setup_root / "app.png")
+
     # 1. 确保前端已完成生产编译
     print_step("1. 编译前端 Vue 3 生产静态资源")
     frontend_dir = dev_root / "frontend"
@@ -255,6 +276,38 @@ exit /b 0
 """
     (portable_root / "停止系统.bat").write_text(stop_bat_content, encoding="utf-8")
 
+    shortcut_bat_content = """@echo off
+chcp 65001 >nul
+title 面向高校实验室的轻量化智能自治运维系统 (LabOps-Agent) - 快捷方式生成器
+
+set "PORTABLE_DIR=%~dp0"
+cd /d "%PORTABLE_DIR%"
+
+echo ==============================================================================
+echo       面向高校实验室的轻量化智能自治运维系统 (LabOps-Agent)
+echo       一键生成带有品牌 Logo 的桌面快捷方式
+echo ==============================================================================
+echo.
+
+set "TARGET_BAT=%PORTABLE_DIR%启动系统.bat"
+set "ICON_PATH=%PORTABLE_DIR%app.ico"
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $desktop = [Environment]::GetFolderPath('Desktop'); $link = $ws.CreateShortcut((Join-Path $desktop 'LabOps-Agent 高校实验室智能运维系统.lnk')); $link.TargetPath = '%TARGET_BAT%'; $link.WorkingDirectory = '%PORTABLE_DIR%'; $link.IconLocation = '%ICON_PATH%,0'; $link.Description = '面向高校实验室的轻量化智能自治运维系统 (LabOps-Agent)'; $link.Save()"
+
+if errorlevel 1 (
+    echo.
+    echo [错误] 创建桌面快捷方式失败。
+) else (
+    echo.
+    echo [成功] 桌面快捷方式已成功创建到桌面！
+    echo 图标已指定为 LabOps-Agent 专属品牌 Logo (app.ico)。
+)
+echo.
+pause
+exit /b 0
+"""
+    (portable_root / "创建桌面快捷方式.bat").write_text(shortcut_bat_content, encoding="utf-8")
+
     readme_content = """# 面向高校实验室的轻量化智能自治运维系统 (LabOps-Agent) - 便携整合版
 
 ## 1. 方案说明
@@ -270,6 +323,8 @@ exit /b 0
    - 系统将自动检测端口、拉起后台服务并自动在默认浏览器中打开 `http://127.0.0.1:8000/`。
 2. **停止系统**：
    - 双击运行根目录下的 `停止系统.bat`，即可安全下线服务并释放端口。
+3. **创建桌面快捷方式（带专属 Logo）**：
+   - 双击运行根目录下的 `创建桌面快捷方式.bat`，即可自动在 Windows 桌面上创建带有项目专属 Logo 图标的快捷方式。
 
 ## 3. 预置体验账号
 | 角色 | 用户名 | 密码 | 权限范围 |
@@ -283,6 +338,8 @@ exit /b 0
 02-免安装便携包_LabOps-Portable/
 ├── 启动系统.bat        # 双击一键启动系统并拉起浏览器
 ├── 停止系统.bat        # 双击一键停止后台服务
+├── 创建桌面快捷方式.bat # 一键在桌面创建带有专属 Logo 的快捷方式
+├── app.ico            # 专属品牌多分辨率应用图标
 ├── README.md          # 本使用说明
 ├── .env               # 系统环境变量配置（如需配置真实大模型 Key）
 ├── app/               # 系统核心后端服务代码与数据底座
