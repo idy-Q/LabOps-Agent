@@ -183,10 +183,10 @@
           <!-- 5. 助手常规正文回答 (Codex Glass Card) -->
           <div
             v-else-if="msg.content"
-            class="p-4 rounded-2xl rounded-tl-sm glass-card border text-xs sm:text-sm text-zinc-200 leading-relaxed shadow-sm space-y-2"
+            class="p-4 rounded-2xl rounded-tl-sm glass-card border text-xs sm:text-sm text-slate-800 dark:text-zinc-200 leading-relaxed shadow-sm space-y-2"
           >
             <div
-              class="prose prose-xs max-w-none whitespace-pre-wrap break-words font-sans leading-relaxed text-zinc-200"
+              class="prose prose-xs max-w-none break-words font-sans leading-relaxed text-slate-800 dark:text-zinc-200"
               v-html="renderMarkdown(msg.content)"
             ></div>
           </div>
@@ -299,52 +299,237 @@ watch(
 
 defineExpose({ scrollToBottom })
 
+function formatInline(str) {
+  if (!str) return ''
+
+  // 先提取并保护行内代码 `code`，防止代码内部的 ** 或其他字符被误判为 Markdown 语法
+  const inlineCodes = []
+  let s = str.replace(/`([^`\n]+)`/g, (match, code) => {
+    const placeholder = `__LABOPS_INLINE_CODE_${inlineCodes.length}__`
+    inlineCodes.push(`<code class="px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-black/50 border border-slate-300/80 dark:border-white/10 text-emerald-700 dark:text-emerald-400 font-mono text-[11px] font-medium">${code}</code>`)
+    return placeholder
+  })
+
+  // 加粗 **bold**
+  s = s.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-slate-900 dark:text-zinc-100">$1</strong>')
+
+  // 安全还原行内代码 (使用回调函数防止 $ 字符被错误解释)
+  inlineCodes.forEach((codeHtml, idx) => {
+    s = s.replace(`__LABOPS_INLINE_CODE_${idx}__`, () => codeHtml)
+  })
+
+  return s
+}
+
+// 智能切分 GFM 表格行，妥善处理转义管道符 \| 以及代码反引号内的管道符 `a | b`
+function splitTableRow(line) {
+  let text = line.trim()
+  if (text.startsWith('|')) text = text.slice(1)
+  if (text.endsWith('|') && !text.endsWith('\\|')) text = text.slice(0, -1)
+
+  const cells = []
+  let current = ''
+  let inBacktick = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (ch === '\\' && i + 1 < text.length && text[i + 1] === '|') {
+      current += '|'
+      i++
+      continue
+    }
+    if (ch === '`') {
+      inBacktick = !inBacktick
+      current += ch
+      continue
+    }
+    if (ch === '|' && !inBacktick) {
+      cells.push(current.trim())
+      current = ''
+      continue
+    }
+    current += ch
+  }
+  cells.push(current.trim())
+  return cells
+}
+
 function renderMarkdown(text) {
   if (!text) return ''
-  // 1. 转义 HTML 实体防止 XSS
+
+  // 1. 转义 HTML 实体防止 XSS，并保留合法排版空格 &nbsp;
   let escaped = String(text)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+    .replace(/&amp;nbsp;/g, '&nbsp;')
 
   // 2. 提取并保护多行代码块 ```lang \n code \n ```
   const codeBlocks = []
+  // 首先提取标准闭合代码块
   escaped = escaped.replace(/```([a-zA-Z0-9_-]*)[^\S\r\n]*\r?\n([\s\S]*?)```/g, (match, lang, code) => {
     const langLabel = lang
       ? `<span class="px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-300 text-[10px] font-mono border border-white/[0.08]">${lang}</span>`
       : ''
-    const blockHtml = `<div class="my-2.5 rounded-xl border border-white/[0.08] bg-black/40 backdrop-blur-md text-zinc-200 overflow-hidden shadow-sm">
+    const blockHtml = `<div class="my-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-900/90 dark:bg-black/40 backdrop-blur-md text-zinc-200 overflow-hidden shadow-sm whitespace-normal">
       <div class="px-3 py-1.5 bg-white/[0.04] border-b border-white/[0.06] flex items-center justify-between text-[11px] text-zinc-400">
-        <span class="font-mono text-[10px] text-zinc-500">Code Snippet</span>
+        <span class="font-mono text-[10px] text-zinc-400">Code Snippet</span>
         ${langLabel}
       </div>
-      <pre class="p-3 text-xs text-zinc-200 font-mono leading-relaxed overflow-x-auto"><code>${code.trim()}</code></pre>
+      <pre class="p-3 text-xs text-zinc-200 font-mono leading-relaxed overflow-x-auto custom-scrollbar"><code>${code.trim()}</code></pre>
     </div>`
     const placeholder = `__LABOPS_CODEBLOCK_${codeBlocks.length}__`
     codeBlocks.push(blockHtml)
-    return placeholder
+    return `\n\n${placeholder}\n\n`
   })
 
-  // 3. 标题语法 (#, ##, ###)
-  escaped = escaped.replace(/^###[ \t]+(.*)$/gm, '<h4 class="font-medium text-zinc-100 text-xs sm:text-sm mt-2 mb-1">$1</h4>')
-  escaped = escaped.replace(/^##[ \t]+(.*)$/gm, '<h3 class="font-medium text-zinc-100 text-sm sm:text-base mt-2.5 mb-1">$1</h3>')
-  escaped = escaped.replace(/^#[ \t]+(.*)$/gm, '<h2 class="font-medium text-zinc-100 text-base sm:text-lg mt-3 mb-1.5">$1</h2>')
-
-  // 4. 列表语法
-  escaped = escaped.replace(/^[ \t]*[-*][ \t]+(.*)$/gm, '<div class="flex items-start space-x-1.5 my-0.5"><span class="text-zinc-500 font-bold">•</span><span>$1</span></div>')
-  escaped = escaped.replace(/^[ \t]*(\d+)\.[ \t]+(.*)$/gm, '<div class="flex items-start space-x-1.5 my-0.5"><span class="font-mono text-zinc-400 text-xs">$1.</span><span>$2</span></div>')
-
-  // 5. 加粗语法 **text**
-  escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong class="font-medium text-zinc-100">$1</strong>')
-
-  // 6. 行内代码 `code`
-  escaped = escaped.replace(/`([^`\n]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-black/40 backdrop-blur-sm border border-white/[0.08] text-emerald-400 font-mono text-[11px]">$1</code>')
-
-  // 7. 还原代码块
-  codeBlocks.forEach((blockHtml, idx) => {
-    escaped = escaped.replace(`__LABOPS_CODEBLOCK_${idx}__`, blockHtml)
+  // 流式输出中若末尾包含尚未闭合的代码块，同样优雅予以闭合渲染
+  escaped = escaped.replace(/```([a-zA-Z0-9_-]*)[^\S\r\n]*\r?\n([\s\S]*)$/, (match, lang, code) => {
+    const langLabel = lang
+      ? `<span class="px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-300 text-[10px] font-mono border border-white/[0.08]">${lang}</span>`
+      : ''
+    const blockHtml = `<div class="my-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-900/90 dark:bg-black/40 backdrop-blur-md text-zinc-200 overflow-hidden shadow-sm whitespace-normal">
+      <div class="px-3 py-1.5 bg-white/[0.04] border-b border-white/[0.06] flex items-center justify-between text-[11px] text-zinc-400">
+        <span class="font-mono text-[10px] text-zinc-400">Code Snippet</span>
+        ${langLabel}
+      </div>
+      <pre class="p-3 text-xs text-zinc-200 font-mono leading-relaxed overflow-x-auto custom-scrollbar"><code>${code.trim()}</code></pre>
+    </div>`
+    const placeholder = `__LABOPS_CODEBLOCK_${codeBlocks.length}__`
+    codeBlocks.push(blockHtml)
+    return `\n\n${placeholder}\n\n`
   })
 
-  return escaped
+  // 3. 提取并解析 GFM 表格语法（结构化 HTML <table> + overflow-x-auto 自适应横向滑动容器）
+  const tableBlocks = []
+  const rawLines = escaped.split(/\r?\n/)
+  const nonTableLines = []
+  let lineIdx = 0
+
+  while (lineIdx < rawLines.length) {
+    const curLine = rawLines[lineIdx].trim()
+    if (curLine.includes('|') && lineIdx + 1 < rawLines.length) {
+      const nextLine = rawLines[lineIdx + 1].trim()
+      const headerCells = splitTableRow(curLine)
+      const sepCells = splitTableRow(nextLine)
+      // 判断下一行是否为 GFM 分隔行 (如 |:---|:---:|---:| 或 |-|-|)
+      const isSep = headerCells.length > 0 &&
+                    headerCells.length === sepCells.length &&
+                    sepCells.every(c => /^:?-+:?$/.test(c))
+
+      if (isSep) {
+        // 解析各列对齐方式
+        const alignments = sepCells.map(c => {
+          const l = c.startsWith(':')
+          const r = c.endsWith(':')
+          if (l && r) return 'text-center'
+          if (r) return 'text-right'
+          return 'text-left'
+        })
+
+        // 收集后续连续数据行
+        const bodyRows = []
+        let rowCursor = lineIdx + 2
+        while (rowCursor < rawLines.length) {
+          const rowLine = rawLines[rowCursor].trim()
+          if (!rowLine) break
+          if (rowLine.includes('|')) {
+            const rawRowCells = splitTableRow(rowLine)
+            // 规范化单元格列数对齐表头，缺失列填充空串，杜绝畸形 <tr>
+            const cells = headerCells.map((_, i) => rawRowCells[i] !== undefined ? rawRowCells[i] : '')
+            bodyRows.push(cells)
+            rowCursor++
+          } else {
+            break
+          }
+        }
+
+        // 组装精美结构化 HTML 表格 (自适应横向滚动、细边框、斑马纹、半透磨砂背景)
+        let tableHtml = `<div class="my-3 overflow-x-auto rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/70 dark:bg-black/30 backdrop-blur-md shadow-sm custom-scrollbar whitespace-normal">`
+        tableHtml += `<table class="min-w-full divide-y divide-slate-200/90 dark:divide-white/10 text-xs text-left">`
+        tableHtml += `<thead class="bg-slate-100/90 dark:bg-white/[0.05] text-slate-700 dark:text-zinc-200 font-semibold tracking-wider"><tr>`
+        headerCells.forEach((th, idx) => {
+          const align = alignments[idx] || 'text-left'
+          tableHtml += `<th scope="col" class="px-3.5 py-2.5 ${align} whitespace-nowrap font-medium">${formatInline(th)}</th>`
+        })
+        tableHtml += `</tr></thead>`
+        tableHtml += `<tbody class="divide-y divide-slate-200/60 dark:divide-white/[0.04]">`
+        bodyRows.forEach((row, rIdx) => {
+          const zebra = rIdx % 2 === 1 ? 'bg-slate-100/40 dark:bg-white/[0.015]' : ''
+          tableHtml += `<tr class="hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors ${zebra}">`
+          row.forEach((td, idx) => {
+            const align = alignments[idx] || 'text-left'
+            tableHtml += `<td class="px-3.5 py-2.5 ${align} whitespace-nowrap text-slate-800 dark:text-zinc-200 font-normal leading-normal">${formatInline(td)}</td>`
+          })
+          tableHtml += `</tr>`
+        })
+        tableHtml += `</tbody></table></div>`
+
+        const placeholder = `__LABOPS_TABLE_${tableBlocks.length}__`
+        tableBlocks.push(tableHtml)
+        nonTableLines.push('')
+        nonTableLines.push(placeholder)
+        nonTableLines.push('')
+        lineIdx = rowCursor
+        continue
+      }
+    }
+    nonTableLines.push(rawLines[lineIdx])
+    lineIdx++
+  }
+
+  let intermediate = nonTableLines.join('\n')
+
+  // 4. 提取并解析 Markdown 引用块（>）渲染为左侧彩色垂直边条的半透引用卡片
+  const quoteBlocks = []
+  intermediate = intermediate.replace(/(?:^[ \t]*&gt;[ \t]?(?:.*)(?:\r?\n|$))+/gm, (match) => {
+    const quoteLines = match
+      .split(/\r?\n/)
+      .map(l => l.replace(/^[ \t]*&gt;[ \t]?/, '').trim())
+      .filter(Boolean)
+    const quoteContent = quoteLines.map(l => formatInline(l)).join('<br>')
+    const quoteHtml = `<div class="my-2.5 px-3.5 py-2.5 rounded-xl border-l-4 border-indigo-500 bg-indigo-50/75 dark:bg-indigo-950/30 text-slate-700 dark:text-zinc-300 text-xs leading-relaxed shadow-sm whitespace-normal">${quoteContent}</div>`
+    const placeholder = `__LABOPS_QUOTE_${quoteBlocks.length}__`
+    quoteBlocks.push(quoteHtml)
+    return `\n\n${placeholder}\n\n`
+  })
+
+  // 5. 水平分割线 (--- / *** / ___)
+  intermediate = intermediate.replace(/^[ \t]*(?:---|\*\*\*|___)[ \t]*$/gm, '\n\n<hr class="my-3.5 border-t border-slate-200 dark:border-white/[0.08]">\n\n')
+
+  // 6. 标题语法 (#, ##, ###)
+  intermediate = intermediate.replace(/^###[ \t]+(.*)$/gm, (m, p1) => `\n\n<h4 class="font-semibold text-slate-900 dark:text-zinc-100 text-xs sm:text-sm mt-3 mb-1.5">${formatInline(p1)}</h4>\n\n`)
+  intermediate = intermediate.replace(/^##[ \t]+(.*)$/gm, (m, p1) => `\n\n<h3 class="font-semibold text-slate-900 dark:text-zinc-100 text-sm sm:text-base mt-3.5 mb-1.5">${formatInline(p1)}</h3>\n\n`)
+  intermediate = intermediate.replace(/^#[ \t]+(.*)$/gm, (m, p1) => `\n\n<h2 class="font-bold text-slate-900 dark:text-zinc-100 text-base sm:text-lg mt-4 mb-2">${formatInline(p1)}</h2>\n\n`)
+
+  // 7. 列表语法 (- / * / 1.)
+  intermediate = intermediate.replace(/^[ \t]*[-*][ \t]+(.*)$/gm, (m, p1) => `<div class="flex items-start space-x-1.5 my-1 text-slate-800 dark:text-zinc-200"><span class="text-indigo-500 dark:text-indigo-400 font-bold leading-none mt-1">•</span><span class="flex-1">${formatInline(p1)}</span></div>`)
+  intermediate = intermediate.replace(/^[ \t]*(\d+)\.[ \t]+(.*)$/gm, (m, p1, p2) => `<div class="flex items-start space-x-1.5 my-1 text-slate-800 dark:text-zinc-200"><span class="font-mono text-indigo-500 dark:text-indigo-400 text-xs font-semibold leading-none mt-0.5">${p1}.</span><span class="flex-1">${formatInline(p2)}</span></div>`)
+
+  // 8. 普通段落与换行组织 (保留正文段落内自然换行，同时避免对块级结构产生多余包裹)
+  const paragraphs = intermediate.split(/\n{2,}/)
+  const parsedParagraphs = paragraphs.map(p => {
+    const trimmedP = p.trim()
+    if (!trimmedP) return ''
+    if (/^__LABOPS_(?:CODEBLOCK|TABLE|QUOTE)_/.test(trimmedP) || /^<(?:h[2-4]|hr|div)/.test(trimmedP)) {
+      return trimmedP
+    }
+    const formattedLines = trimmedP.split('\n').map(line => formatInline(line.trim())).join('<br>')
+    return `<p class="my-1.5 leading-relaxed">${formattedLines}</p>`
+  })
+
+  let result = parsedParagraphs.filter(Boolean).join('\n')
+
+  // 9. 还原所有占位符 (严格使用函数替换，防止内容中的 $1, $&, $', $$ 等字符被 JS 模式化吞噬或错误插值)
+  tableBlocks.forEach((tbl, idx) => {
+    result = result.replace(`__LABOPS_TABLE_${idx}__`, () => tbl)
+  })
+  quoteBlocks.forEach((q, idx) => {
+    result = result.replace(`__LABOPS_QUOTE_${idx}__`, () => q)
+  })
+  codeBlocks.forEach((cb, idx) => {
+    result = result.replace(`__LABOPS_CODEBLOCK_${idx}__`, () => cb)
+  })
+
+  return result
 }
 </script>

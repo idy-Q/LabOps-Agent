@@ -246,13 +246,13 @@
         @mousedown="startDragging"
         @touchstart.passive="startDragging"
         @dblclick="resetSplit"
-        title="按住左右拖拽调整分栏比例 (30%~70%)，双击复位"
+        title="按住左右拖拽调整分栏比例 (28%~58%)，双击复位"
       >
         <div class="w-1 h-8 rounded-full bg-zinc-700/60 group-hover:bg-indigo-400 transition-colors"></div>
       </div>
 
-      <!-- 右侧：实时数据看板与业务分段流转区 -->
-      <section class="flex-1 flex flex-col bg-transparent overflow-hidden min-w-0">
+      <!-- 右侧：实时数据看板与业务分段流转区 (min-w-0 lg:min-w-[420px] 物理保护防挤压) -->
+      <section class="flex-1 flex flex-col bg-transparent overflow-hidden min-w-0 lg:min-w-[420px]">
         <!-- 右侧顶部 Segmented Controls Tab 导航栏 -->
         <div class="px-4 py-2.5 glass-panel border-b flex items-center justify-between shrink-0">
           <!-- 分段控制器 Tabs -->
@@ -601,8 +601,8 @@ const chatStreamRef = ref(null)
 const chatInputRef = ref(null)
 let abortController = null
 
-// 分栏宽度与拖拽状态 (30% ~ 70%，默认 43%)
-const leftWidthPercent = ref(43)
+// 分栏宽度与拖拽状态 (28% ~ 58%，默认 42%)
+const leftWidthPercent = ref(42)
 const isDragging = ref(false)
 const isLargeScreen = ref(true)
 
@@ -625,8 +625,8 @@ function onDragging(e) {
   if (!isDragging.value) return
   const totalWidth = window.innerWidth
   const newPercent = (e.clientX / totalWidth) * 100
-  // 严格约束 30% 到 70% 边界
-  leftWidthPercent.value = Math.min(Math.max(newPercent, 30), 70)
+  // 严格约束 28% 到 58% 边界，防止右侧看板被挤压变形
+  leftWidthPercent.value = Math.min(Math.max(newPercent, 28), 58)
 }
 
 function onTouchDragging(e) {
@@ -635,7 +635,7 @@ function onTouchDragging(e) {
   const touch = e.touches[0]
   const totalWidth = window.innerWidth
   const newPercent = (touch.clientX / totalWidth) * 100
-  leftWidthPercent.value = Math.min(Math.max(newPercent, 30), 70)
+  leftWidthPercent.value = Math.min(Math.max(newPercent, 28), 58)
 }
 
 function stopDragging() {
@@ -649,7 +649,7 @@ function stopDragging() {
 }
 
 function resetSplit() {
-  leftWidthPercent.value = 43
+  leftWidthPercent.value = 42
 }
 
 // 右侧分段 Tab 控制

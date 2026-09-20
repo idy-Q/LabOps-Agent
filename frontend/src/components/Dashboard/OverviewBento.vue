@@ -150,9 +150,9 @@
     </div>
 
     <!-- 2. 中层 Bento: 设备健康分布环图 (5 Cols) + 最新工单事件快照 (7 Cols) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-3.5">
       <!-- 左磁贴：纯原生 SVG 设备健康度圆环分布图 (5 Cols) -->
-      <div class="lg:col-span-5 rounded-xl glass-card border p-4 flex flex-col justify-between shadow-sm">
+      <div class="donut-bento-card xl:col-span-5 rounded-xl glass-card border p-4 flex flex-col justify-between shadow-sm">
         <div class="flex items-center justify-between pb-2 border-b border-white/[0.06]">
           <div class="flex items-center space-x-2">
             <span class="p-1 rounded-md bg-zinc-900/90 border border-white/[0.08] text-emerald-400">
@@ -174,9 +174,9 @@
           </button>
         </div>
 
-        <!-- 纯 SVG Donut Chart -->
-        <div class="py-3 flex flex-col sm:flex-row items-center justify-around gap-4">
-          <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
+        <!-- 纯 SVG Donut Chart (容器查询防挤压自适应布局) -->
+        <div class="donut-bento-body py-3 flex flex-col items-center justify-center gap-4">
+          <div class="relative w-28 h-28 flex items-center justify-center shrink-0">
             <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <!-- 底环 -->
               <circle
@@ -243,40 +243,40 @@
             </svg>
             <!-- 环中心文字 -->
             <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span class="text-xl font-bold font-mono text-zinc-100">{{ totalAssetsCount }}</span>
+              <span class="text-lg font-bold font-mono text-zinc-100">{{ totalAssetsCount }}</span>
               <span class="text-[9px] text-zinc-500 uppercase tracking-wider">总设备数</span>
             </div>
           </div>
 
-          <!-- 图例清单 -->
-          <div class="space-y-2 text-xs flex-1 max-w-[180px]">
-            <div class="flex items-center justify-between text-zinc-300">
-              <span class="flex items-center space-x-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span>正常运行</span>
+          <!-- 图例清单：自适应网格与防折字强制声明，坚决杜绝单个汉字竖排 -->
+          <div class="donut-bento-legend grid grid-cols-2 gap-2 text-xs w-full max-w-[260px]">
+            <div class="flex items-center justify-between text-zinc-300 gap-3">
+              <span class="flex items-center space-x-1.5 whitespace-nowrap shrink-0">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                <span class="whitespace-nowrap shrink-0">正常运行</span>
               </span>
-              <span class="font-mono text-[11px] text-zinc-400">{{ healthyCount }} ({{ chartData.healthyPct }}%)</span>
+              <span class="font-mono text-[11px] text-zinc-400 whitespace-nowrap shrink-0">{{ healthyCount }} ({{ chartData.healthyPct }}%)</span>
             </div>
-            <div class="flex items-center justify-between text-zinc-300">
-              <span class="flex items-center space-x-1.5">
-                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                <span>异常预警</span>
+            <div class="flex items-center justify-between text-zinc-300 gap-3">
+              <span class="flex items-center space-x-1.5 whitespace-nowrap shrink-0">
+                <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+                <span class="whitespace-nowrap shrink-0">异常预警</span>
               </span>
-              <span class="font-mono text-[11px] text-zinc-400">{{ warningCount }} ({{ chartData.warningPct }}%)</span>
+              <span class="font-mono text-[11px] text-zinc-400 whitespace-nowrap shrink-0">{{ warningCount }} ({{ chartData.warningPct }}%)</span>
             </div>
-            <div class="flex items-center justify-between text-zinc-300">
-              <span class="flex items-center space-x-1.5">
-                <span class="w-2 h-2 rounded-full bg-rose-400"></span>
-                <span>超温高温</span>
+            <div class="flex items-center justify-between text-zinc-300 gap-3">
+              <span class="flex items-center space-x-1.5 whitespace-nowrap shrink-0">
+                <span class="w-2 h-2 rounded-full bg-rose-400 shrink-0"></span>
+                <span class="whitespace-nowrap shrink-0">超温高温</span>
               </span>
-              <span class="font-mono text-[11px] text-rose-400">{{ overheatCount }} ({{ chartData.overheatPct }}%)</span>
+              <span class="font-mono text-[11px] text-rose-400 whitespace-nowrap shrink-0">{{ overheatCount }} ({{ chartData.overheatPct }}%)</span>
             </div>
-            <div class="flex items-center justify-between text-zinc-300">
-              <span class="flex items-center space-x-1.5">
-                <span class="w-2 h-2 rounded-full bg-zinc-500"></span>
-                <span>脱网离线</span>
+            <div class="flex items-center justify-between text-zinc-300 gap-3">
+              <span class="flex items-center space-x-1.5 whitespace-nowrap shrink-0">
+                <span class="w-2 h-2 rounded-full bg-zinc-500 shrink-0"></span>
+                <span class="whitespace-nowrap shrink-0">脱网离线</span>
               </span>
-              <span class="font-mono text-[11px] text-zinc-500">{{ offlineCount }} ({{ chartData.offlinePct }}%)</span>
+              <span class="font-mono text-[11px] text-zinc-500 whitespace-nowrap shrink-0">{{ offlineCount }} ({{ chartData.offlinePct }}%)</span>
             </div>
           </div>
         </div>
@@ -288,7 +288,7 @@
       </div>
 
       <!-- 右磁贴：最新运维工单与事件流快照 (7 Cols) -->
-      <div class="lg:col-span-7 rounded-xl glass-card border p-4 flex flex-col justify-between shadow-sm">
+      <div class="xl:col-span-7 rounded-xl glass-card border p-4 flex flex-col justify-between shadow-sm">
         <div class="flex items-center justify-between pb-2 border-b border-white/[0.06]">
           <div class="flex items-center space-x-2">
             <span class="p-1 rounded-md bg-zinc-900/90 border border-white/[0.08] text-amber-400">
@@ -359,9 +359,9 @@
     </div>
 
     <!-- 3. 下层 Bento: 重点感知节点硬件探针 (8 Cols) + 高频运维快捷通道 (4 Cols) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-3.5">
       <!-- 硬件探针节点 (8 Cols) -->
-      <div class="lg:col-span-8 rounded-xl glass-card border p-4 space-y-3 shadow-sm">
+      <div class="xl:col-span-8 rounded-xl glass-card border p-4 space-y-3 shadow-sm">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-2">
             <span class="p-1 rounded-md bg-zinc-900/90 border border-white/[0.08] text-cyan-400">
@@ -407,7 +407,7 @@
       </div>
 
       <!-- 快捷运维通道 (4 Cols) -->
-      <div class="lg:col-span-4 rounded-xl glass-card border p-4 flex flex-col justify-between space-y-3 shadow-sm">
+      <div class="xl:col-span-4 rounded-xl glass-card border p-4 flex flex-col justify-between space-y-3 shadow-sm">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-2">
             <span class="p-1 rounded-md bg-zinc-900/90 border border-white/[0.08] text-indigo-400">
@@ -654,3 +654,21 @@ function statusBadgeClass(status) {
   }
 }
 </script>
+
+<style scoped>
+.donut-bento-card {
+  container-type: inline-size;
+}
+
+@container (min-width: 320px) {
+  .donut-bento-body {
+    flex-direction: row;
+    justify-content: space-around;
+  }
+  .donut-bento-legend {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    width: auto;
+    max-width: 220px;
+  }
+}
+</style>
