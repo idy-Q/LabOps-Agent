@@ -10,7 +10,7 @@ from app.tools.registry import (
 )
 
 # 自动导入各业务工具模块以触发 @tool 装饰器注册
-from app.tools import metric_tools, ticket_tools, asset_tools, regulation_tools
+from app.tools import metric_tools, ticket_tools, asset_tools, regulation_tools, patrol_tools
 
 __all__ = [
     "tool",
@@ -23,4 +23,5 @@ __all__ = [
     "ticket_tools",
     "asset_tools",
     "regulation_tools",
+    "patrol_tools",
 ]

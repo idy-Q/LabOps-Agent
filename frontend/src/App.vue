@@ -371,6 +371,7 @@
               @inspectTicket="handleInspectTicket"
               @inspectAsset="handleInspectAsset"
               @quickAction="handleQuickAction"
+              @patrolCompleted="handlePatrolCompleted"
             />
           </div>
 
@@ -464,6 +465,14 @@
       :currentUser="currentUser"
       @loginSuccess="handleLoginSuccess"
     />
+
+    <!-- 全网主动自治体检《运行健康研判简报》弹窗 -->
+    <PatrolReportModal
+      v-model="showPatrolModal"
+      :report="patrolReportData"
+      :theme="currentTheme"
+      @inspectTicket="handleInspectTicketFromReport"
+    />
   </div>
 </template>
 
@@ -477,11 +486,16 @@ import OverviewBento from './components/Dashboard/OverviewBento.vue'
 import TicketTable from './components/Dashboard/TicketTable.vue'
 import AssetTable from './components/Dashboard/AssetTable.vue'
 import AuthModal from './components/Auth/AuthModal.vue'
+import PatrolReportModal from './components/Dashboard/PatrolReportModal.vue'
 import { api } from './api/client'
 import { fetchSSE } from './api/sse'
 
 // 用户认证与权限模态框状态
 const showAuthModal = ref(false)
+
+// 全网主动自治体检简报弹窗状态
+const showPatrolModal = ref(false)
+const patrolReportData = ref({})
 
 // 当前登录用户 (会话期内存状态，F5 刷新页面即安全重置为默认管理员)
 const currentUser = ref({
@@ -781,6 +795,44 @@ async function handleRefreshAssets() {
 }
 
 // -------------------------------------------------------------
+// 全机房主动自治体检联动处理
+// -------------------------------------------------------------
+function handlePatrolCompleted(report) {
+  patrolReportData.value = report || {}
+  showPatrolModal.value = true
+  refreshAllData()
+
+  // 在左侧 AI 对话流中同步追加系统自治体检研判播报
+  messages.value.push({
+    id: `ast-${Date.now()}`,
+    role: 'assistant',
+    content: report.markdown_report || `【全机房主动自治巡检完成】综合健康得分：${report.health_score} 分（${report.posture_text}）\n${report.summary_text}`,
+    thought: `【全网自治巡检完成】\n巡检批次：${report.batch_no || '实时'}\n总计扫描设备 ${report.kpi?.total_scanned || 0} 台，检出异常 ${report.abnormal_devices?.length || 0} 台，自动工单闭环已触发。`,
+    isThinking: false,
+    isStreaming: false,
+    toolCalls: [
+      {
+        name: 'run_autonomous_patrol',
+        args: { operator: report.operator || '全网自治巡检' },
+        result: { status: 'success', report },
+      },
+    ],
+    citations: (report.cited_regulations || []).map((r) => ({
+      source: r.doc_name,
+      section: r.clause,
+      content: r.content,
+    })),
+    created_at: new Date().toISOString(),
+  })
+}
+
+function handleInspectTicketFromReport(ticketNo) {
+  showPatrolModal.value = false
+  currentTab.value = 'tickets'
+  triggerTicketHighlight(ticketNo)
+}
+
+// -------------------------------------------------------------
 // SSE 对话交互与事件分发核心
 // -------------------------------------------------------------
 async function handleSendMessage(promptText) {
@@ -874,9 +926,11 @@ function handleIncomingSSEEvent(event, assistantMsg) {
       step: event.step,
     })
   } else if (type === 'ticket_mutation') {
-    // 左右业务联动：工单突变，自动切换至工单Tab，刷新看板并触发黄色高亮动画！
-    currentTab.value = 'tickets'
-    triggerTicketHighlight(event.ticket_no)
+    // 左右业务联动：工单突变，刷新看板。若巡检弹窗正在显示，不抢焦切Tab，留给用户在简报中点击直达
+    if (!showPatrolModal.value) {
+      currentTab.value = 'tickets'
+      triggerTicketHighlight(event.ticket_no)
+    }
     loadTickets()
     loadMetrics()
   } else if (type === 'asset_mutation') {
@@ -885,6 +939,13 @@ function handleIncomingSSEEvent(event, assistantMsg) {
     triggerAssetHighlight(event.asset_no)
     loadAssets()
     loadMetrics()
+  } else if (type === 'patrol_completed') {
+    // 全网自治巡检完成事件：同步挂载简报数据并弹出微光简报模态框
+    patrolReportData.value = event.report || {}
+    showPatrolModal.value = true
+    loadMetrics()
+    loadTickets()
+    loadAssets()
   } else if (type === 'content') {
     assistantMsg.isThinking = false
     agentStatusText.value = '生成答复中...'

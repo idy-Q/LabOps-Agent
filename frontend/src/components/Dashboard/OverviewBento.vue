@@ -16,6 +16,37 @@
       </div>
 
       <div class="flex items-center space-x-2">
+        <!-- 发起全网自治体检 (雷达扫描动效按钮) -->
+        <button
+          @click="handleRunPatrol"
+          :disabled="isPatrolling"
+          class="text-xs flex items-center space-x-1.5 transition-all px-3 py-1 rounded-md border font-medium active:scale-95 shadow-sm select-none"
+          :class="[
+            isPatrolling
+              ? 'bg-indigo-950/60 border-indigo-500/40 text-indigo-300 cursor-wait'
+              : 'bg-indigo-600/90 hover:bg-indigo-500 text-white border-indigo-400/30 hover:border-indigo-400 shadow-indigo-500/20'
+          ]"
+          title="调度探针遍历机房核心设备，研判风险并生成健康研判简报"
+        >
+          <!-- 旋转雷达扫描图标 -->
+          <span class="relative flex h-3.5 w-3.5 items-center justify-center">
+            <svg
+              class="w-3.5 h-3.5 text-indigo-200"
+              :class="{ 'animate-spin': isPatrolling }"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a10 10 0 1010 10A10 10 0 0012 2zm0 18a8 8 0 118-8 8 8 0 01-8 8zm0-14a6 6 0 106 6 6 6 0 00-6-6zm0 10a4 4 0 114-4 4 4 0 01-4 4z" />
+            </svg>
+            <span
+              v-if="isPatrolling"
+              class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"
+            ></span>
+          </span>
+          <span>{{ isPatrolling ? '全网巡检探测中...' : '发起全网自治体检' }}</span>
+        </button>
+
         <button
           @click="$emit('refresh')"
           class="text-zinc-400 hover:text-zinc-200 text-xs flex items-center space-x-1.5 transition-all px-2.5 py-1 rounded-md bg-zinc-900/90 hover:bg-zinc-800 border border-white/[0.08] hover:border-white/[0.15] active:scale-95 shadow-sm"
@@ -439,7 +470,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
+import { api } from '../../api/client'
 
 const props = defineProps({
   metrics: {
@@ -471,7 +503,29 @@ const emit = defineEmits([
   'inspectTicket',
   'inspectAsset',
   'quickAction',
+  'patrolCompleted',
 ])
+
+const isPatrolling = ref(false)
+
+async function handleRunPatrol() {
+  if (isPatrolling.value) return
+  isPatrolling.value = true
+  try {
+    const res = await api.runAutonomousPatrol()
+    if (res && res.status === 'success' && res.data) {
+      emit('patrolCompleted', res.data)
+      emit('refresh')
+    } else {
+      alert(`发起全网自治体检未成功: ${res?.message || '未知异常'}`)
+    }
+  } catch (err) {
+    console.error('发起全网自治体检失败:', err)
+    alert(`发起全网自治体检失败: ${err.message || '网络连接或后端异常'}`)
+  } finally {
+    isPatrolling.value = false
+  }
+}
 
 // 1. 指标计算
 const overview = computed(() => props.metrics?.overview || {})

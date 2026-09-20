@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.db.models import Asset, Ticket
 from app.tools.metric_tools import get_server_metrics
+from app.services.patrol_service import execute_autonomous_patrol
 
 logger = logging.getLogger(__name__)
 
@@ -95,4 +96,18 @@ def get_metrics_summary(db: Session = Depends(get_db)) -> Dict[str, Any]:
             },
             "nodes": node_metrics,
         },
+    }
+
+
+@router.post(
+    "/patrol",
+    summary="一键发起全机房主动自治巡检并生成健康研判简报",
+    description="主动扫描全部机房核心设备，结合RAG知识库研判超温及脱网异常，自动防重创建工单闭环，出具运行健康研判简报",
+)
+def run_patrol(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """触发全网自治巡检流水线"""
+    report = execute_autonomous_patrol(db=db, operator="全网一键自治巡检")
+    return {
+        "status": "success",
+        "data": report,
     }

@@ -120,6 +120,60 @@ class MockDecisionBrain:
         ticket_no = ticket_match.group(1).upper() if ticket_match else None
 
         # -------------------------------------------------------------
+        # 决策逻辑 0.0：全机房主动自治巡检与健康研判简报 (run_autonomous_patrol)
+        # 识别“巡检”、“体检”、“机房健康”、“生成简报”等全网自治体检意图
+        # -------------------------------------------------------------
+        is_regulation_question = any(
+            kw in user_prompt for kw in [
+                "要求", "规定", "规范", "规章", "制度", "周期", "频次", "标准", "指引", "规则", "时间表", "规范是什么", "制度是什么", "流程是什么"
+            ]
+        )
+
+        has_patrol_keyword = (
+            "巡检" in user_prompt
+            or "体检" in user_prompt
+            or any(kw in user_prompt for kw in ["机房健康", "运行健康", "机房态势", "运行态势", "健康态势"])
+            or (("简报" in user_prompt or "报告" in user_prompt) and any(w in user_prompt for w in ["生成", "出具", "导出", "研判", "健康", "巡检", "体检", "态势", "机房", "运行"]))
+        )
+
+        # 当前轮次用户输入是否显式指定了单个特定设备
+        current_device_match = re.search(r"(DEV[_-][A-Z0-9]+-[0-9]+|DEV-[A-Z]+-[0-9]+)", user_prompt, re.IGNORECASE)
+        if current_device_match:
+            is_whole_patrol = any(kw in user_prompt for kw in [
+                "全网", "全机房", "全面", "全体", "所有设备", "全部设备", "全部", "所有",
+                "自治巡检", "主动巡检", "全网体检", "全机房体检", "自治体检"
+            ])
+        else:
+            is_whole_patrol = True
+
+        is_patrol_request = has_patrol_keyword and is_whole_patrol and not is_regulation_question
+        if is_patrol_request:
+            if "run_autonomous_patrol" not in executed_tools:
+                return {
+                    "thought": f"用户（{name}，角色: {role}）指令发起全机房主动自治巡检并出具健康研判简报，调用 run_autonomous_patrol 工具全面采集设备遥测并进行智能态势研判。",
+                    "tool_calls": [
+                        {
+                            "id": f"call_{uuid.uuid4().hex[:8]}",
+                            "function": {
+                                "name": "run_autonomous_patrol",
+                                "arguments": json.dumps({"operator": f"{name}({role})"}, ensure_ascii=False),
+                            },
+                        }
+                    ],
+                }
+
+            patrol_res = tool_results.get("run_autonomous_patrol", {})
+            report = patrol_res.get("report", {}) if isinstance(patrol_res, dict) else {}
+            md_report = report.get("markdown_report")
+            if not md_report:
+                md_report = patrol_res.get("message", "全机房自治巡检已执行完毕。")
+
+            return {
+                "thought": "已完成全机房主动自治巡检，生成权威《运行健康研判简报》，向用户输出完整结构化报告。",
+                "content": md_report,
+            }
+
+        # -------------------------------------------------------------
         # 决策逻辑 0：规章制度与应急规范问答检索 (query_regulations) 优先判断
         # 避免用户咨询规程、借用规则、办结流程、应急预案时误触发操作或权限拦截
         # -------------------------------------------------------------
@@ -1033,6 +1087,30 @@ class ReActEngine:
                                 "step": step,
                             },
                         ).to_dict()
+
+                    # 4. 全网主动自治巡检完成事件 (附带完整研判简报与提单联动)
+                    if t_name == "run_autonomous_patrol" and isinstance(result, dict) and result.get("status") == "success":
+                        report_data = result.get("report", {})
+                        created_tickets = result.get("created_tickets", [])
+                        yield AgentEvent(
+                            type="patrol_completed",
+                            data={
+                                "report": report_data,
+                                "created_tickets": created_tickets,
+                                "step": step,
+                            },
+                        ).to_dict()
+                        if created_tickets:
+                            first_tk = created_tickets[0]
+                            yield AgentEvent(
+                                type="ticket_mutation",
+                                data={
+                                    "action": "create",
+                                    "ticket": first_tk,
+                                    "ticket_no": first_tk.get("ticket_no") if isinstance(first_tk, dict) else None,
+                                    "step": step,
+                                },
+                            ).to_dict()
 
                     # 将对应工具的执行结果接入会话上下文
                     messages.append({

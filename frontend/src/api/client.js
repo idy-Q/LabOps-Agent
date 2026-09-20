@@ -49,8 +49,9 @@ export const api = {
   // 0. 健康检查
   getHealth: () => request('/health'),
 
-  // 1. 大盘监控指标
+  // 1. 大盘监控指标与主动自治巡检
   getMetricsSummary: () => request('/metrics/summary'),
+  runAutonomousPatrol: () => request('/metrics/patrol', { method: 'POST' }),
 
   // 2. 运维工单
   listTickets: (params = {}) => {
