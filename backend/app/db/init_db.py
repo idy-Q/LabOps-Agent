@@ -23,6 +23,7 @@ from app.db.models import (
     TicketWorkflow,
     KnowledgeDocument,
     KnowledgeChunk,
+    UserNotification,
     hash_password,
 )
 from app.rag.chunking import MarkdownChunker
@@ -39,7 +40,7 @@ SEED_ASSETS = [
         "location": "实训楼201-机柜A01",
         "health_status": "OVERHEAT",
         "borrow_status": "IN_USE",
-        "borrower": "人工智能科研组",
+        "borrower": "李老师 (物联网工程教研室)",
         "specs": "2x Intel Xeon Gold 6330, 256GB RAM, 4x NVIDIA RTX 4090 24G",
         "detail": {
             "serial_number": "SN-DELL-2024-GPU01",
@@ -57,14 +58,14 @@ SEED_ASSETS = [
             "purchase_date": "2024-03-15",
             "warranty_period": "2027-03-14 (原厂 3年 7x24金牌服务)",
             "supplier": "戴尔科技集团企业客户部 (客服: 400-881-1852)",
-            "extra_params": '{"rack_units": "4U", "cooling": "前冷后热加压风道", "cuda_version": "12.4"}',
+            "extra_params": '{"rack_units": "4U", "start_u": 28, "u_height": 4, "cooling": "前冷后热加压风道", "cuda_version": "12.4"}',
         },
     },
     {
         "asset_no": "DEV-SRV-202",
         "name": "2号机房-CPU计算节点02",
         "category": "服务器",
-        "location": "实训楼201-机柜A02",
+        "location": "实训楼201-机柜A01",
         "health_status": "HEALTHY",
         "borrow_status": "AVAILABLE",
         "borrower": None,
@@ -85,17 +86,17 @@ SEED_ASSETS = [
             "purchase_date": "2024-04-10",
             "warranty_period": "2027-04-09 (新华三 3年联保)",
             "supplier": "新华三技术有限公司 (400-810-0504)",
-            "extra_params": '{"rack_units": "2U", "purpose": "科学计算高通量仿真集群"}',
+            "extra_params": '{"rack_units": "2U", "start_u": 24, "u_height": 2, "purpose": "科学计算高通量仿真集群"}',
         },
     },
     {
         "asset_no": "DEV-SRV-203",
         "name": "2号机房-分布式存储服务器03",
         "category": "服务器",
-        "location": "实训楼201-机柜A03",
+        "location": "实训楼201-机柜A01",
         "health_status": "HEALTHY",
         "borrow_status": "IN_USE",
-        "borrower": "大数据实验室",
+        "borrower": "王主管",
         "specs": "2x Intel Xeon Silver 4314, 128GB RAM, 12x 16TB SAS HDD RAID6",
         "detail": {
             "serial_number": "SN-INSPUR-2023-STR03",
@@ -113,7 +114,7 @@ SEED_ASSETS = [
             "purchase_date": "2023-11-20",
             "warranty_period": "2026-11-19 (浪潮 3年原厂支持)",
             "supplier": "浪潮信息系统股份有限公司 (400-860-0011)",
-            "extra_params": '{"raid_controller": "LSI 3108 MegaRAID 2GB Cache", "raw_capacity_tb": "192TB"}',
+            "extra_params": '{"rack_units": "4U", "start_u": 18, "u_height": 4, "raid_controller": "LSI 3108 MegaRAID 2GB Cache", "raw_capacity_tb": "192TB"}',
         },
     },
     {
@@ -141,7 +142,7 @@ SEED_ASSETS = [
             "purchase_date": "2023-09-01",
             "warranty_period": "2026-08-31 (联想企业级 3年上门服务)",
             "supplier": "联想开天科技有限公司 (400-810-8888)",
-            "extra_params": '{"hypervisor": "VMware vSphere ESXi 8.0u2", "vms_hosted": 18}',
+            "extra_params": '{"rack_units": "2U", "start_u": 34, "u_height": 2, "hypervisor": "VMware vSphere ESXi 8.0u2", "vms_hosted": 18}',
         },
     },
     {
@@ -169,14 +170,14 @@ SEED_ASSETS = [
             "purchase_date": "2016-06-15",
             "warranty_period": "已过保 (2019-06-14 到期)",
             "supplier": "惠普中国 (设备已停产退市)",
-            "extra_params": '{"scrap_status": "已获审批待残值评估回收"}',
+            "extra_params": '{"rack_units": "2U", "scrap_status": "已获审批待残值评估回收"}',
         },
     },
     {
         "asset_no": "DEV-NET-301",
         "name": "核心主干路由交换机01",
         "category": "网络设备",
-        "location": "实训楼201-网络核心柜",
+        "location": "实训楼201-机柜A01",
         "health_status": "HEALTHY",
         "borrow_status": "IN_USE",
         "borrower": "网络中心",
@@ -197,14 +198,14 @@ SEED_ASSETS = [
             "purchase_date": "2024-01-10",
             "warranty_period": "2027-01-09 (华为原厂 3年硬件保修)",
             "supplier": "华为技术有限公司企业 BG (400-822-9999)",
-            "extra_params": '{"switching_capacity": "2.16 Tbps", "forwarding_rate": "720 Mpps", "vlans": "1-4094"}',
+            "extra_params": '{"rack_units": "2U", "start_u": 40, "u_height": 2, "switching_capacity": "2.16 Tbps", "forwarding_rate": "720 Mpps", "vlans": "1-4094"}',
         },
     },
     {
         "asset_no": "DEV-NET-302",
         "name": "实验室千兆汇聚交换机02",
         "category": "网络设备",
-        "location": "实训楼101-弱电井",
+        "location": "实训楼101-机柜B01",
         "health_status": "HEALTHY",
         "borrow_status": "IN_USE",
         "borrower": "网络中心",
@@ -225,14 +226,14 @@ SEED_ASSETS = [
             "purchase_date": "2023-10-18",
             "warranty_period": "2026-10-17 (思科 Smart Net Total Care)",
             "supplier": "思科系统 (中国) 网络技术有限公司 (400-810-8886)",
-            "extra_params": '{"poe_budget": "437W", "stacking_bandwidth": "480 Gbps"}',
+            "extra_params": '{"rack_units": "1U", "start_u": 40, "u_height": 1, "poe_budget": "437W", "stacking_bandwidth": "480 Gbps"}',
         },
     },
     {
         "asset_no": "DEV-NET-303",
         "name": "机房边界安全防火墙01",
         "category": "网络设备",
-        "location": "实训楼201-网络核心柜",
+        "location": "实训楼201-机柜A01",
         "health_status": "HEALTHY",
         "borrow_status": "IN_USE",
         "borrower": "网络安全教研室",
@@ -253,14 +254,14 @@ SEED_ASSETS = [
             "purchase_date": "2023-08-25",
             "warranty_period": "2026-08-24 (FortiCare 24x7 维保与威胁库升级)",
             "supplier": "飞塔信息科技 (400-600-5255)",
-            "extra_params": '{"ips_throughput": "5 Gbps", "ngfw_throughput": "3.5 Gbps", "threat_protection": "3 Gbps"}',
+            "extra_params": '{"rack_units": "2U", "start_u": 36, "u_height": 2, "ips_throughput": "5 Gbps", "ngfw_throughput": "3.5 Gbps", "threat_protection": "3 Gbps"}',
         },
     },
     {
         "asset_no": "DEV-NET-304",
         "name": "物联网无线AP控制器AC01",
         "category": "网络设备",
-        "location": "实训楼105-弱电箱",
+        "location": "实训楼101-弱电箱",
         "health_status": "OFFLINE",
         "borrow_status": "IN_USE",
         "borrower": "物联网教研室",
@@ -372,7 +373,7 @@ SEED_ASSETS = [
         "asset_no": "DEV-LAB-105",
         "name": "网络安全渗透实验箱-A组",
         "category": "实验教学",
-        "location": "实训楼105-器材柜B",
+        "location": "实训楼101-器材柜B",
         "health_status": "HEALTHY",
         "borrow_status": "AVAILABLE",
         "borrower": None,
@@ -400,7 +401,7 @@ SEED_ASSETS = [
         "asset_no": "DEV-LAB-106",
         "name": "嵌入式ARM综合开发实验箱-03号",
         "category": "实验教学",
-        "location": "实训楼103-器材架A",
+        "location": "实训楼101-器材架A",
         "health_status": "HEALTHY",
         "borrow_status": "IN_USE",
         "borrower": "物联网实验班",
@@ -428,7 +429,7 @@ SEED_ASSETS = [
         "asset_no": "DEV-LAB-107",
         "name": "工控PLC仿真教学实训台-02号",
         "category": "实验教学",
-        "location": "实训楼104-工位4",
+        "location": "实训楼101-工位4",
         "health_status": "WARNING",
         "borrow_status": "AVAILABLE",
         "borrower": None,
@@ -609,27 +610,27 @@ SEED_USERS = [
 SEED_SERVER_ROOMS = [
     {
         "room_code": "ROOM-201",
-        "room_name": "人工智能与大数据实训机房",
-        "total_racks": 12,
-        "power_capacity_kw": 60.0,
-        "manager_teacher": "李老师",
+        "room_name": "实训楼201 人工智能与高密算力实训机房",
+        "total_racks": 1,
+        "power_capacity_kw": 80.0,
+        "manager_teacher": "王主管",
         "location": "实训楼2层东侧201室",
     },
     {
         "room_code": "ROOM-101",
-        "room_name": "通用云计算与网络互联实训机房",
-        "total_racks": 8,
+        "room_name": "实训楼101 综合网络与虚拟化教学机房",
+        "total_racks": 1,
         "power_capacity_kw": 45.0,
-        "manager_teacher": "张老师",
+        "manager_teacher": "李老师",
         "location": "实训楼1层中段101室",
     },
     {
-        "room_code": "ROOM-105",
-        "room_name": "物联网与工控安全仿真实验室",
-        "total_racks": 6,
-        "power_capacity_kw": 30.0,
-        "manager_teacher": "王主管",
-        "location": "实训楼1层西侧105室",
+        "room_code": "ROOM-301",
+        "room_name": "实训楼301 备用与退役实验仪器库房",
+        "total_racks": 0,
+        "power_capacity_kw": 20.0,
+        "manager_teacher": "赵实验员",
+        "location": "实训楼3层西侧301室",
     },
 ]
 
@@ -642,22 +643,22 @@ SEED_BORROW_LOGS = [
         "borrower_name": "李老师",
         "purpose": "大模型多模态推理教学实验与算力压测",
         "borrow_time": datetime(2026, 9, 1, 9, 0, 0),
-        "expected_return_time": datetime(2026, 9, 15, 18, 0, 0),
+        "expected_return_time": datetime(2026, 9, 3, 18, 0, 0),
         "actual_return_time": None,
         "return_status": "OVERDUE",
         "approver": "王主管",
     },
     {
-        "log_no": "BORROW-20260905-002",
-        "asset_id": "DEV-LAB-106",
-        "borrower_username": "teacher_li",
-        "borrower_name": "李老师",
-        "purpose": "嵌入式与物联网综合设计课外实验课",
-        "borrow_time": datetime(2026, 9, 5, 14, 0, 0),
-        "expected_return_time": datetime(2026, 9, 25, 18, 0, 0),
+        "log_no": "BORROW-20260919-002",
+        "asset_id": "DEV-SRV-203",
+        "borrower_username": "admin_wang",
+        "borrower_name": "王主管",
+        "purpose": "分布式存储性能基准调优与容灾备份演练",
+        "borrow_time": datetime(2026, 9, 19, 10, 0, 0),
+        "expected_return_time": datetime(2026, 10, 3, 18, 0, 0),
         "actual_return_time": None,
         "return_status": "BORROWING",
-        "approver": "王主管",
+        "approver": "李老师",
     },
     {
         "log_no": "BORROW-20260825-001",
@@ -737,6 +738,19 @@ SEED_KNOWLEDGE_DOCS_META = [
     },
 ]
 
+# 预置用户站内待办与超期督促通知种子数据 (为李老师预置 DEV-SRV-201 借用超期督促待办)
+SEED_NOTIFICATIONS = [
+    {
+        "username": "teacher_li",
+        "title": "【超期催促】DEV-SRV-201 借用已超期 18 天，请及时办理归还或续借手续",
+        "content": "尊敬的李老师：您于 2026-09-01 借调的设备「2号机房-GPU计算节点01 (DEV-SRV-201)」应还日期为 2026-09-03 18:00:00，当前已严重超期 18 天。请尽快归还设备或联系实训中心主管办理延期审批。",
+        "notice_type": "OVERDUE_URGE",
+        "asset_no": "DEV-SRV-201",
+        "is_read": False,
+        "created_at": datetime(2026, 9, 21, 9, 30, 0),
+    }
+]
+
 
 
 def init_db(
@@ -755,7 +769,7 @@ def init_db(
 
     logger.info("开始初始化数据库结构...")
     Base.metadata.create_all(bind=target_engine)
-    logger.info("数据库表结构校验/创建完成 (tickets, assets, asset_details, audit_logs, chat_history, users, server_rooms, asset_borrow_logs, ticket_workflows, knowledge_documents, knowledge_chunks)")
+    logger.info("数据库表结构校验/创建完成 (tickets, assets, asset_details, audit_logs, chat_history, users, server_rooms, asset_borrow_logs, ticket_workflows, knowledge_documents, knowledge_chunks, user_notifications)")
 
     if not seed:
         return
@@ -859,6 +873,8 @@ def init_db(
         logger.info("系统用户种子数据处理完成: 新增 %d 个，同步更新 %d 个 (当前共 %d 个)。", added_users, updated_users, len(SEED_USERS))
 
         # 5. 机房区域与机柜台账种子数据幂等填充 (按唯一 room_code 判定)
+        valid_codes = [r["room_code"] for r in SEED_SERVER_ROOMS]
+        db.query(ServerRoom).filter(ServerRoom.room_code.notin_(valid_codes)).delete(synchronize_session=False)
         added_rooms = 0
         updated_rooms = 0
         for room_data in SEED_SERVER_ROOMS:
@@ -1012,6 +1028,35 @@ def init_db(
             updated_docs,
             added_chunks,
             updated_chunks,
+        )
+
+        # 9. 用户站内待办与超期督促通知种子数据幂等填充 (按 username 与 asset_no 与 notice_type 判定)
+        added_notifications = 0
+        updated_notifications = 0
+        for notif_data in SEED_NOTIFICATIONS:
+            exists = (
+                db.query(UserNotification)
+                .filter(
+                    UserNotification.username == notif_data["username"],
+                    UserNotification.asset_no == notif_data["asset_no"],
+                    UserNotification.notice_type == notif_data["notice_type"],
+                )
+                .first()
+            )
+            if not exists:
+                notif = UserNotification(**notif_data)
+                db.add(notif)
+                added_notifications += 1
+            else:
+                for k, v in notif_data.items():
+                    setattr(exists, k, v)
+                updated_notifications += 1
+        db.commit()
+        logger.info(
+            "用户站内待办通知种子数据处理完成: 新增 %d 条，同步更新 %d 条 (当前共 %d 条)。",
+            added_notifications,
+            updated_notifications,
+            len(SEED_NOTIFICATIONS),
         )
 
     except Exception as e:

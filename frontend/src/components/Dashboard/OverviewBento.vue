@@ -47,6 +47,31 @@
           <span>{{ isPatrolling ? '全网巡检探测中...' : '发起全网自治体检' }}</span>
         </button>
 
+        <!-- 高危告警语音播报 TTS 开关 (默认静音关闭) -->
+        <button
+          @click="toggleTts"
+          :disabled="!isTtsSupported"
+          type="button"
+          class="overview-tts-btn text-xs flex items-center space-x-1.5 transition-all px-2.5 py-1 rounded-md border font-medium active:scale-95 shadow-sm select-none disabled:opacity-40 disabled:cursor-not-allowed"
+          :class="[
+            ttsEnabled && isTtsSupported
+              ? 'tts-active bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25 shadow-amber-500/10'
+              : 'text-zinc-400 hover:text-zinc-200 bg-zinc-900/90 hover:bg-zinc-800 border-white/[0.08]'
+          ]"
+          :title="!isTtsSupported ? '当前浏览器不支持语音播报' : (ttsEnabled ? '告警语音播报：已开启 (点击静音)' : '告警语音播报：已静音 (点击开启)')"
+        >
+          <!-- 开启：扬声器发声图标 🔊 -->
+          <svg v-if="ttsEnabled && isTtsSupported" class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>
+          <!-- 关闭：扬声器静音图标 🔇 -->
+          <svg v-else class="w-3.5 h-3.5 text-zinc-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+          </svg>
+          <span>{{ ttsEnabled && isTtsSupported ? '告警播报' : '静音' }}</span>
+        </button>
+
         <button
           @click="$emit('refresh')"
           class="text-zinc-400 hover:text-zinc-200 text-xs flex items-center space-x-1.5 transition-all px-2.5 py-1 rounded-md bg-zinc-900/90 hover:bg-zinc-800 border border-white/[0.08] hover:border-white/[0.15] active:scale-95 shadow-sm"
@@ -494,6 +519,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  ttsEnabled: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits([
@@ -504,7 +533,15 @@ const emit = defineEmits([
   'inspectAsset',
   'quickAction',
   'patrolCompleted',
+  'update:ttsEnabled',
 ])
+
+const isTtsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window
+
+function toggleTts() {
+  if (!isTtsSupported) return
+  emit('update:ttsEnabled', !props.ttsEnabled)
+}
 
 const isPatrolling = ref(false)
 
@@ -670,5 +707,23 @@ function statusBadgeClass(status) {
     width: auto;
     max-width: 220px;
   }
+}
+
+:deep(html.light) .overview-tts-btn:not(.tts-active),
+html.light .overview-tts-btn:not(.tts-active) {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(226, 232, 240, 0.9) !important;
+  color: #64748b !important;
+}
+:deep(html.light) .overview-tts-btn:not(.tts-active):hover,
+html.light .overview-tts-btn:not(.tts-active):hover {
+  background: rgba(241, 245, 249, 0.95) !important;
+  color: #0f172a !important;
+}
+:deep(html.light) .overview-tts-btn.tts-active,
+html.light .overview-tts-btn.tts-active {
+  background: rgba(254, 243, 199, 0.9) !important;
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  color: #b45309 !important;
 }
 </style>

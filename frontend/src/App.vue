@@ -54,27 +54,53 @@
 
       <!-- 右侧全局控制与状态 -->
       <div class="flex items-center space-x-2 text-xs">
-        <!-- 当前登录用户身份状态胶囊 (点击弹出切换/登录弹窗) -->
+        <!-- 当前登录用户身份状态胶囊 (更清晰地展示“真实姓名 [角色名]”与工号，点击弹出切换/登录弹窗) -->
         <button
           @click="showAuthModal = true"
-          class="px-2.5 py-1.5 rounded-lg border text-xs flex items-center space-x-1.5 transition-all shadow-sm active:scale-95 select-none"
+          class="px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs flex items-center space-x-1.5 sm:space-x-2 transition-all shadow-sm active:scale-95 select-none group"
           :class="[
             currentTheme === 'light'
-              ? 'bg-white/90 hover:bg-indigo-50/80 text-slate-800 border-slate-200 hover:border-indigo-400/60'
-              : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-200 border-white/[0.08] hover:border-indigo-500/30'
+              ? 'bg-white/90 hover:bg-indigo-50/80 text-slate-800 border-slate-200 hover:border-indigo-400/60 shadow-slate-200/50'
+              : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-200 border-white/[0.08] hover:border-indigo-500/40 shadow-black/40'
           ]"
-          :title="`当前登录: ${currentUser.real_name} [${currentUser.role}] (${currentUser.department})，点击切换身份`"
+          :title="`当前登录: ${currentUser.real_name} [${userRoleLabel(currentUser.role)}] (${currentUser.username} · ${currentUser.department})，点击切换身份`"
         >
+          <div class="flex items-center space-x-1 min-w-0">
+            <span class="font-medium max-w-[80px] sm:max-w-[110px] truncate">{{ currentUser.real_name }}</span>
+            <span class="hidden sm:inline-block font-mono text-[10px] text-zinc-400">({{ currentUser.username }})</span>
+          </div>
           <span
-            class="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border"
+            class="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border whitespace-nowrap shrink-0"
             :class="userRoleClass(currentUser.role)"
           >
-            {{ currentUser.role }}
+            {{ userRoleLabel(currentUser.role) }}
           </span>
-          <span class="font-medium max-w-[70px] sm:max-w-[100px] truncate">{{ currentUser.real_name }}</span>
-          <svg class="w-3 h-3 text-zinc-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-3 h-3 text-zinc-400 group-hover:text-zinc-200 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
+        </button>
+
+        <!-- 站内待办通知铃铛 🔔 按钮 (含呼吸微光未读红点与数字徽标) -->
+        <button
+          @click="toggleNotificationToast"
+          class="relative p-2 rounded-xl border text-xs flex items-center justify-center transition-all shadow-sm active:scale-95 select-none"
+          :class="[
+            currentTheme === 'light'
+              ? 'bg-white/90 hover:bg-indigo-50/80 text-slate-700 hover:text-indigo-600 border-slate-200 hover:border-indigo-400/60 shadow-slate-200/50'
+              : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white border-white/[0.08] hover:border-indigo-500/40 shadow-black/40'
+          ]"
+          :title="unreadNotificationCount > 0 ? `有 ${unreadNotificationCount} 条待办通知待处理，点击查看` : '站内待办通知 (无未读)'"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          <span
+            v-if="unreadNotificationCount > 0"
+            class="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm shadow-rose-500/50"
+          >
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+            <span class="relative">{{ unreadNotificationCount }}</span>
+          </span>
         </button>
 
         <!-- 风格切换按钮：清晰指示“明亮”或“暗黑”，每点击一下切换一次风格 -->
@@ -310,6 +336,36 @@
                 {{ assets.length }}
               </span>
             </button>
+
+            <button
+              @click="currentTab = 'topology'"
+              :class="[
+                'px-3 py-1.5 rounded-lg font-medium transition-all flex items-center space-x-1.5',
+                currentTab === 'topology'
+                  ? 'bg-zinc-800 text-white shadow-sm border border-white/[0.08]'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+              ]"
+            >
+              <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+              </svg>
+              <span>机柜拓扑</span>
+            </button>
+
+            <button
+              @click="currentTab = 'regulations'"
+              :class="[
+                'px-3 py-1.5 rounded-lg font-medium transition-all flex items-center space-x-1.5',
+                currentTab === 'regulations'
+                  ? 'bg-zinc-800 text-white shadow-sm border border-white/[0.08]'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+              ]"
+            >
+              <svg class="w-3.5 h-3.5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              <span>规章规程</span>
+            </button>
           </div>
 
           <!-- 右侧轻量指标状态 -->
@@ -360,6 +416,7 @@
           <!-- Tab 1: 全景概览 Bento 磁贴看板 -->
           <div v-show="currentTab === 'overview'" class="animate-fade-in">
             <OverviewBento
+              v-model:ttsEnabled="ttsEnabled"
               :metrics="metricsSummary"
               :tickets="tickets"
               :assets="assets"
@@ -384,6 +441,7 @@
               @refresh="loadTickets"
               @updateStatus="handleUpdateTicketStatus"
               @inspectTicket="handleInspectTicket"
+              @viewTimeline="handleViewTicketTimeline"
             />
           </div>
 
@@ -393,11 +451,33 @@
               :assets="assets"
               :currentUser="currentUser"
               :highlightedAssetNo="highlightedAssetNo"
+              :overdueMap="overdueMap"
               @refresh="handleRefreshAssets"
               @borrowAsset="handleBorrowAsset"
               @returnAsset="handleReturnAsset"
               @updateHealth="handleUpdateAssetHealth"
               @inspectAsset="handleInspectAsset"
+              @viewTimeline="handleViewAssetTimeline"
+              @openOverdueNotice="handleOpenOverdueNotice"
+            />
+          </div>
+
+          <!-- Tab 4: 机柜 2D 拓扑大盘 -->
+          <div v-show="currentTab === 'topology'" class="animate-fade-in">
+            <RackTopologyView
+              ref="rackTopologyRef"
+              :theme="currentTheme"
+              @inspectAsset="handleInspectAssetFromTopology"
+              @refresh="refreshAllData"
+            />
+          </div>
+
+          <!-- Tab 5: 规章规程知识中心 -->
+          <div v-show="currentTab === 'regulations'" class="animate-fade-in">
+            <RegulationsCenter
+              :theme="currentTheme"
+              @askAI="handleAskAIAboutRegulation"
+              @refresh="refreshAllData"
             />
           </div>
         </div>
@@ -473,11 +553,52 @@
       :theme="currentTheme"
       @inspectTicket="handleInspectTicketFromReport"
     />
+
+    <!-- 硬件设备全景台账弹窗 (从机架拓扑槽位唤出) -->
+    <DeviceDetailModal
+      v-model="showTopologyDeviceModal"
+      :asset="selectedTopologyAsset"
+      :currentUser="currentUser"
+      @inspect="handleInspectAsset"
+      @borrow="handleBorrowAssetFromTopology"
+      @return="handleReturnAssetFromTopology"
+      @edit="handleEditAssetFromTopology"
+      @viewTimeline="handleViewAssetTimeline"
+    />
+
+    <!-- 运维工单流转与资产全生命周期履历时间轴抽屉 (Timeline Drawer) -->
+    <TimelineDrawer
+      v-model="showTimelineDrawer"
+      :mode="timelineMode"
+      :target="timelineTarget"
+      :currentUser="currentUser"
+      :theme="currentTheme"
+      @ticketUpdated="refreshAllData"
+    />
+
+    <!-- 设备资产超期使用归还催告单模态框 (Overdue Notice Modal) -->
+    <OverdueNoticeModal
+      v-model="showOverdueNoticeModal"
+      :assetNo="selectedOverdueAssetNo"
+      :currentUser="currentUser"
+      :theme="currentTheme"
+      @promptAgent="handlePromptAgentFromNotice"
+      @urgeSent="handleUrgeSentFromNotice"
+    />
+
+    <!-- 资产超期催收站内待办督促浮窗 (Urge Notification Toast) -->
+    <UrgeNotificationToast
+      v-model="showUrgeToast"
+      :notification="activeNotification"
+      :theme="currentTheme"
+      @viewNotice="handleViewNoticeFromToast"
+      @markRead="handleNotificationMarkRead"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import CodexCanvasBackground from './components/Background/CodexCanvasBackground.vue'
 import GlassController from './components/Common/GlassController.vue'
 import ChatStream from './components/Chat/ChatStream.vue'
@@ -485,17 +606,121 @@ import ChatInput from './components/Chat/ChatInput.vue'
 import OverviewBento from './components/Dashboard/OverviewBento.vue'
 import TicketTable from './components/Dashboard/TicketTable.vue'
 import AssetTable from './components/Dashboard/AssetTable.vue'
+import RackTopologyView from './components/Dashboard/RackTopologyView.vue'
+import DeviceDetailModal from './components/Dashboard/DeviceDetailModal.vue'
+import TimelineDrawer from './components/Dashboard/TimelineDrawer.vue'
 import AuthModal from './components/Auth/AuthModal.vue'
 import PatrolReportModal from './components/Dashboard/PatrolReportModal.vue'
+import OverdueNoticeModal from './components/Dashboard/OverdueNoticeModal.vue'
+import UrgeNotificationToast from './components/Dashboard/UrgeNotificationToast.vue'
+import RegulationsCenter from './components/Dashboard/RegulationsCenter.vue'
 import { api } from './api/client'
 import { fetchSSE } from './api/sse'
 
 // 用户认证与权限模态框状态
 const showAuthModal = ref(false)
 
+// 时间轴抽屉状态与全局统一调度 (工单流转与资产履历双模态自适应)
+const showTimelineDrawer = ref(false)
+const timelineMode = ref('ticket') // 'ticket' | 'asset'
+const timelineTarget = ref('')
+
+function handleViewTicketTimeline(ticketNoOrId) {
+  timelineMode.value = 'ticket'
+  timelineTarget.value = ticketNoOrId
+  showTimelineDrawer.value = true
+}
+
+function handleViewAssetTimeline(assetNo) {
+  timelineMode.value = 'asset'
+  timelineTarget.value = assetNo
+  showTimelineDrawer.value = true
+}
+
 // 全网主动自治体检简报弹窗状态
 const showPatrolModal = ref(false)
 const patrolReportData = ref({})
+
+// 超期借用催告公函弹窗状态与全局调度
+const showOverdueNoticeModal = ref(false)
+const selectedOverdueAssetNo = ref('DEV-SRV-201')
+const overdueAssets = ref([])
+const overdueMap = computed(() => {
+  const map = {}
+  ;(overdueAssets.value || []).forEach((it) => {
+    map[it.asset_no] = it
+  })
+  return map
+})
+
+function handleOpenOverdueNotice(assetNo) {
+  selectedOverdueAssetNo.value = assetNo || 'DEV-SRV-201'
+  showOverdueNoticeModal.value = true
+}
+
+function handlePromptAgentFromNotice(promptText) {
+  handleSendMessage(promptText)
+}
+
+function handleUrgeSentFromNotice() {
+  fetchUserNotifications(currentUser.value?.username)
+}
+
+// 站内待办与超期督促通知状态
+const showUrgeToast = ref(false)
+const userNotifications = ref([])
+const unreadNotificationCount = computed(() => {
+  return (userNotifications.value || []).filter((n) => !n.is_read).length
+})
+const activeNotification = computed(() => {
+  const unreads = (userNotifications.value || []).filter((n) => !n.is_read)
+  if (unreads.length > 0) return unreads[0]
+  if (userNotifications.value && userNotifications.value.length > 0) return userNotifications.value[0]
+  return {
+    id: 0,
+    username: currentUser.value?.username || 'user',
+    title: '机房运转正常，暂无未读待办',
+    content: '当前机房资产借用流转与运维工单均处于合规正常周期内，暂无需要紧急催办处置的待办事宜。',
+    notice_type: 'SYSTEM',
+    asset_no: '',
+    is_read: true,
+    created_at: '',
+  }
+})
+
+async function fetchUserNotifications(username) {
+  if (!username) return { unread_count: 0, items: [] }
+  try {
+    const data = await api.getNotifications(username)
+    userNotifications.value = data.items || []
+    return data
+  } catch (err) {
+    console.error('拉取站内待办通知失败:', err)
+    return { unread_count: 0, items: [] }
+  }
+}
+
+function toggleNotificationToast() {
+  if (userNotifications.value.length === 0) {
+    fetchUserNotifications(currentUser.value?.username).then(() => {
+      showUrgeToast.value = true
+    })
+  } else {
+    showUrgeToast.value = !showUrgeToast.value
+  }
+}
+
+function handleViewNoticeFromToast(assetNo) {
+  handleOpenOverdueNotice(assetNo)
+}
+
+function handleNotificationMarkRead(id) {
+  const target = userNotifications.value.find((n) => n.id === id)
+  if (target) {
+    target.is_read = true
+  }
+  fetchUserNotifications(currentUser.value?.username)
+}
 
 // 当前登录用户 (会话期内存状态，F5 刷新页面即安全重置为默认管理员)
 const currentUser = ref({
@@ -510,6 +735,21 @@ function handleLoginSuccess(user) {
   currentUser.value = user
 }
 
+// 监听当前登录角色切换：当切换为李老师 (teacher_li) 时自动拉取待办并滑出提醒浮窗
+watch(
+  () => currentUser.value,
+  async (newUser) => {
+    if (!newUser) return
+    const notifs = await fetchUserNotifications(newUser.username)
+    if (newUser.username === 'teacher_li' && notifs.unread_count > 0) {
+      showUrgeToast.value = true
+    } else {
+      showUrgeToast.value = false
+    }
+  },
+  { deep: true }
+)
+
 function userRoleClass(role) {
   switch (role) {
     case 'ADMIN':
@@ -520,6 +760,19 @@ function userRoleClass(role) {
       return 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
     default:
       return 'bg-zinc-800 border-white/[0.08] text-zinc-400'
+  }
+}
+
+function userRoleLabel(role) {
+  switch (role) {
+    case 'ADMIN':
+      return '超级管理员'
+    case 'TEACHER':
+      return '专业教师'
+    case 'STUDENT':
+      return '在读学生'
+    default:
+      return role || '用户'
   }
 }
 
@@ -694,15 +947,43 @@ const sessionList = ref([])
 onMounted(async () => {
   checkScreenSize()
   window.addEventListener('resize', checkScreenSize)
+  initAudioContextUnlock()
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    updateVoicesList()
+    window.speechSynthesis.onvoiceschanged = () => {
+      updateVoicesList()
+      // 语音列表注入更新后，静默预热一次云端链路
+      warmupTtsConnection()
+    }
+  }
   startNewSession()
   await refreshAllData()
+  // 方案 2: 页面加载完成后轻微延迟静默预热 Edge/Azure 云端语音链路，彻底消除首次告警冷启动耗时
+  setTimeout(() => {
+    warmupTtsConnection()
+  }, 1200)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkScreenSize)
+  removeAudioContextUnlock()
   stopDragging()
   if (ticketHighlightTimer) clearTimeout(ticketHighlightTimer)
   if (assetHighlightTimer) clearTimeout(assetHighlightTimer)
+  clearWatchdogTimer()
+  clearWarmupTimer()
+  if (fallbackDispatchTimer) clearTimeout(fallbackDispatchTimer)
+  if (audioCtx && audioCtx.close) {
+    audioCtx.close().catch(() => {})
+    audioCtx = null
+  }
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = null
+    try {
+      window.speechSynthesis.cancel()
+      clearAllUtterances()
+    } catch {}
+  }
 })
 
 function startNewSession() {
@@ -755,8 +1036,35 @@ async function switchToSession(sessionId) {
   }
 }
 
+// 规章规程知识中心在册数量与 AI 提问联动
+const regulationsCount = ref(3)
+
+function handleAskAIAboutRegulation(prompt) {
+  if (prompt) {
+    handleSendMessage(prompt)
+  }
+}
+
+async function loadRegulationsSummary() {
+  try {
+    const summary = await api.getRegulationsSummary()
+    if (summary && typeof summary.total_documents === 'number') {
+      regulationsCount.value = summary.total_documents
+    }
+  } catch (err) {
+    console.error('加载规程概览失败:', err)
+  }
+}
+
 async function refreshAllData() {
-  await Promise.allSettled([loadMetrics(), loadTickets(), loadAssets()])
+  await Promise.allSettled([
+    loadMetrics(),
+    loadTickets(),
+    loadAssets(),
+    loadRegulationsSummary(),
+    fetchUserNotifications(currentUser.value?.username),
+  ])
+  rackTopologyRef.value?.loadTopology?.()
 }
 
 async function loadMetrics() {
@@ -781,9 +1089,23 @@ async function loadTickets() {
   }
 }
 
+async function loadOverdueAssets() {
+  try {
+    const res = await api.getOverdueAssets()
+    if (res && res.status === 'success') {
+      overdueAssets.value = res.items || res.assets || []
+    }
+  } catch (err) {
+    console.error('加载借用超期设备概要失败:', err)
+  }
+}
+
 async function loadAssets() {
   try {
-    const list = await api.listAssets({ limit: 50 })
+    const [list] = await Promise.all([
+      api.listAssets({ limit: 50 }),
+      loadOverdueAssets(),
+    ])
     assets.value = list
   } catch (err) {
     console.error('加载资产台账失败:', err)
@@ -791,7 +1113,504 @@ async function loadAssets() {
 }
 
 async function handleRefreshAssets() {
-  await Promise.allSettled([loadAssets(), loadMetrics()])
+  await Promise.allSettled([loadAssets(), loadMetrics(), loadOverdueAssets()])
+}
+
+// -------------------------------------------------------------
+// 高危告警原生语音 TTS 播报与四级容灾优化核心
+// -------------------------------------------------------------
+const ttsEnabled = ref(false)
+const activeUtterances = new Set()
+let activeWatchdogTimer = null
+let warmupSafetyTimer = null
+let fallbackDispatchTimer = null
+let isWarmingUp = false
+let audioCtx = null
+let unlockAudioListenersAdded = false
+const cachedVoices = ref([])
+
+function clearWatchdogTimer() {
+  if (activeWatchdogTimer) {
+    clearTimeout(activeWatchdogTimer)
+    activeWatchdogTimer = null
+  }
+}
+
+function clearWarmupTimer() {
+  if (warmupSafetyTimer) {
+    clearTimeout(warmupSafetyTimer)
+    warmupSafetyTimer = null
+  }
+}
+
+function trackUtterance(u) {
+  if (u) activeUtterances.add(u)
+}
+
+function untrackUtterance(u) {
+  if (u) activeUtterances.delete(u)
+}
+
+function clearAllUtterances() {
+  activeUtterances.clear()
+}
+
+// -------------------------------------------------------------
+// 方案 1: 0毫秒声学先导音 (纯原生 Web Audio API，消除首包死寂感)
+// -------------------------------------------------------------
+function initAudioContextUnlock() {
+  if (typeof window === 'undefined' || unlockAudioListenersAdded) return
+  unlockAudioListenersAdded = true
+  const unlock = () => {
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {})
+    }
+  }
+  window.addEventListener('click', unlock, { passive: true })
+  window.addEventListener('keydown', unlock, { passive: true })
+  window.addEventListener('touchstart', unlock, { passive: true })
+}
+
+function removeAudioContextUnlock() {
+  if (typeof window === 'undefined' || !unlockAudioListenersAdded) return
+  unlockAudioListenersAdded = false
+}
+
+function getAudioContext() {
+  if (typeof window === 'undefined') return null
+  if (!audioCtx) {
+    const AudioCtxClass = window.AudioContext || window.webkitAudioContext
+    if (AudioCtxClass) {
+      audioCtx = new AudioCtxClass()
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {})
+  }
+  return audioCtx
+}
+
+function playAlertChime() {
+  try {
+    const ctx = getAudioContext()
+    if (!ctx) return
+    const now = ctx.currentTime
+
+    // 主音振荡器：880Hz (A5) 柔和爬升至 1320Hz (E6)，具备清晰警示与科技质感
+    const osc1 = ctx.createOscillator()
+    const gain1 = ctx.createGain()
+    osc1.type = 'sine'
+    osc1.frequency.setValueAtTime(880, now)
+    osc1.frequency.exponentialRampToValueAtTime(1320, now + 0.12)
+
+    // 主音量包络：15ms 平滑起振消除扬声器阶跃爆破音，辅以 0.35s 柔和指数衰减
+    gain1.gain.setValueAtTime(0.0001, now)
+    gain1.gain.linearRampToValueAtTime(0.18, now + 0.015)
+    gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.35)
+
+    osc1.connect(gain1)
+    gain1.connect(ctx.destination)
+    osc1.start(now)
+    osc1.stop(now + 0.36)
+
+    // 泛音谐波点缀 (1760Hz)：增强空间先导清脆感与数字机房立体态势感
+    const osc2 = ctx.createOscillator()
+    const gain2 = ctx.createGain()
+    osc2.type = 'sine'
+    osc2.frequency.setValueAtTime(1760, now)
+    gain2.gain.setValueAtTime(0.0001, now)
+    gain2.gain.linearRampToValueAtTime(0.06, now + 0.015)
+    gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.22)
+
+    osc2.connect(gain2)
+    gain2.connect(ctx.destination)
+    osc2.start(now)
+    osc2.stop(now + 0.23)
+  } catch (err) {
+    console.warn('[LabOps Audio] 告警先导和弦音播放微异常:', err)
+  }
+}
+
+// 初始化与更新语音列表 (兼容 Edge / Chromium 异步注入云端神经音色)
+function updateVoicesList() {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return
+  const voices = window.speechSynthesis.getVoices() || []
+  if (voices.length > 0) {
+    cachedVoices.value = voices
+  }
+}
+
+// -------------------------------------------------------------
+// 方案 4 发音人调度模型：主用云端晓晓，容灾本地瑶瑶
+// -------------------------------------------------------------
+function isChineseVoice(v) {
+  if (!v) return false
+  const lang = (v.lang || '').toLowerCase()
+  return lang.includes('zh') || lang.includes('cn') || lang.includes('cmn')
+}
+
+function isLocalVoice(v) {
+  if (!v) return false
+  if (v.localService === true) return true
+  const nameLower = (v.name || '').toLowerCase()
+  if (nameLower.includes('online') || nameLower.includes('natural')) return false
+  return true
+}
+
+function getAllAvailableVoices() {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return []
+  const live = window.speechSynthesis.getVoices() || []
+  if (live.length > 0) {
+    cachedVoices.value = live
+    return live
+  }
+  return cachedVoices.value || []
+}
+
+// 1. 获取主用发音人：首选微软晓晓云端自然音 (Xiaoxiao Online Natural)
+function getPrimaryCloudVoice() {
+  const voices = getAllAvailableVoices()
+  if (!voices || voices.length === 0) return null
+
+  // 首选：微软晓晓在线自然音 (Xiaoxiao Online Natural)
+  const xiaoxiao = voices.find(
+    (v) =>
+      (v.name.toLowerCase().includes('xiaoxiao') || v.name.includes('晓晓')) &&
+      isChineseVoice(v)
+  )
+  if (xiaoxiao) return xiaoxiao
+
+  // 次选：包含 Natural 或 Online 的微软优质中文发音人 (如 Yunxi, Xiaoyi 等)
+  const naturalChinese = voices.find(
+    (v) =>
+      (v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('online')) &&
+      isChineseVoice(v)
+  )
+  if (naturalChinese) return naturalChinese
+
+  return null
+}
+
+// 2. 获取本地容灾发音人：严格首选系统本地微软瑶瑶 (Microsoft Yaoyao，非云端 Online 发音人)
+function getFallbackLocalVoice() {
+  const voices = getAllAvailableVoices()
+  if (!voices || voices.length === 0) return null
+
+  // 首选本地容灾：系统本地微软瑶瑶 (Microsoft Yaoyao，排除包含 Online/Natural 的云端版本)
+  const yaoyao = voices.find(
+    (v) =>
+      (v.name.toLowerCase().includes('yaoyao') || v.name.includes('瑶瑶')) &&
+      isChineseVoice(v) &&
+      isLocalVoice(v)
+  )
+  if (yaoyao) return yaoyao
+
+  // 次选本地容灾：标有 localService 或离线的微软慧慧/康康
+  const huihuiOrKangkang = voices.find(
+    (v) =>
+      isChineseVoice(v) &&
+      isLocalVoice(v) &&
+      (v.name.toLowerCase().includes('huihui') ||
+        v.name.includes('慧慧') ||
+        v.name.toLowerCase().includes('kangkang') ||
+        v.name.includes('康康'))
+  )
+  if (huihuiOrKangkang) return huihuiOrKangkang
+
+  // 再次选：标有 localService 的本地中文发音人
+  const localServiceChinese = voices.find((v) => isChineseVoice(v) && v.localService === true)
+  if (localServiceChinese) return localServiceChinese
+
+  // 四选：非 Online/Natural 的离线中文发音人
+  const offlineChinese = voices.find((v) => isChineseVoice(v) && isLocalVoice(v))
+  if (offlineChinese) return offlineChinese
+
+  // 终极兜底：任意可用中文发音人
+  const generalChinese = voices.find((v) => isChineseVoice(v))
+  if (generalChinese) return generalChinese
+
+  return null
+}
+
+// -------------------------------------------------------------
+// 方案 2: 静默链路预热 (消除 Edge/Azure 云端首包冷启动延迟)
+// -------------------------------------------------------------
+function warmupTtsConnection() {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return
+  if (isWarmingUp) return
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+
+  try {
+    isWarmingUp = true
+    clearWarmupTimer()
+
+    // 采用具发音音节的极短微词（避免纯标点符号导致 Chromium 引擎挂起或 speaking: true 假死锁）
+    const warmupUtterance = new SpeechSynthesisUtterance('点')
+    warmupUtterance.lang = 'zh-CN'
+    warmupUtterance.volume = 0.01 // 极低微音，静默无感
+    warmupUtterance.rate = 2.0   // 极速跑完
+
+    const primaryVoice = getPrimaryCloudVoice()
+    if (primaryVoice) {
+      warmupUtterance.voice = primaryVoice
+    }
+
+    trackUtterance(warmupUtterance)
+
+    const finishWarmup = () => {
+      clearWarmupTimer()
+      isWarmingUp = false
+      untrackUtterance(warmupUtterance)
+    }
+
+    warmupUtterance.onend = finishWarmup
+    warmupUtterance.onerror = finishWarmup
+
+    // 预热防挂死安全看门狗：最长 1000ms 强制重置预热锁，确保后续正式播报永不阻塞
+    warmupSafetyTimer = setTimeout(() => {
+      if (isWarmingUp) {
+        finishWarmup()
+      }
+    }, 1000)
+
+    window.speechSynthesis.speak(warmupUtterance)
+  } catch (e) {
+    isWarmingUp = false
+    clearWarmupTimer()
+  }
+}
+
+// -------------------------------------------------------------
+// 方案 4: 容灾兜底播放执行器 (本地微软瑶瑶无感降级)
+// -------------------------------------------------------------
+function executeFallbackSpeech(text, reason) {
+  clearWatchdogTimer()
+  if (fallbackDispatchTimer) {
+    clearTimeout(fallbackDispatchTimer)
+    fallbackDispatchTimer = null
+  }
+
+  const fallbackVoice = getFallbackLocalVoice()
+  console.warn(`[LabOps TTS 容灾] ${reason}，已无感切换本地发音人: ${fallbackVoice?.name || '本地默认'}`)
+
+  try {
+    // 强制截断正在等待或超时的前序语音
+    window.speechSynthesis.cancel()
+
+    // Chromium 容灾竞态防御：cancel() 与 speak() 同步连续调用在 Chromium 会导致新语音被一并截断
+    // 引入 40ms 微延时让底层语音合成队列 IPC 彻底重置，确保本地瑶瑶稳固发声
+    fallbackDispatchTimer = setTimeout(() => {
+      fallbackDispatchTimer = null
+      if (!ttsEnabled.value) return
+
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume()
+      }
+
+      const fallbackUtterance = new SpeechSynthesisUtterance(text)
+      fallbackUtterance.lang = 'zh-CN'
+      if (fallbackVoice) {
+        fallbackUtterance.voice = fallbackVoice
+      }
+      fallbackUtterance.rate = 1.05
+      fallbackUtterance.pitch = 1.0
+
+      trackUtterance(fallbackUtterance)
+
+      fallbackUtterance.onend = () => {
+        untrackUtterance(fallbackUtterance)
+      }
+      fallbackUtterance.onerror = (e) => {
+        if (e.error !== 'canceled' && e.error !== 'interrupted') {
+          console.warn('[LabOps TTS] 本地容灾发音人播报事件:', e)
+        }
+        untrackUtterance(fallbackUtterance)
+      }
+
+      window.speechSynthesis.speak(fallbackUtterance)
+    }, 40)
+  } catch (err) {
+    console.warn('[LabOps TTS] 本地容灾发音人启动失败:', err)
+  }
+}
+
+// -------------------------------------------------------------
+// 语音告警核心调度：云端晓晓为主，无感容灾兜底为辅
+// -------------------------------------------------------------
+function speakAlert(text) {
+  if (typeof window === 'undefined' || !window.speechSynthesis || !text) return
+
+  try {
+    clearWatchdogTimer()
+    if (fallbackDispatchTimer) {
+      clearTimeout(fallbackDispatchTimer)
+      fallbackDispatchTimer = null
+    }
+
+    const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false
+    const primaryVoice = !isOffline ? getPrimaryCloudVoice() : null
+
+    // 容灾分支 1：检测到离线脱网，或未检测到云端高保真音色，直接走本地瑶瑶无感播报
+    if (isOffline || !primaryVoice) {
+      const reason = isOffline ? '网络处于离线断网状态(!navigator.onLine)' : '未检测到云端晓晓音色'
+      executeFallbackSpeech(text, reason)
+      return
+    }
+
+    // 主用分支：在线且具备微软晓晓云端自然音
+    const isBusy = window.speechSynthesis.speaking || window.speechSynthesis.pending
+    if (isBusy) {
+      window.speechSynthesis.cancel()
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'zh-CN'
+    utterance.voice = primaryVoice
+    utterance.rate = 1.05
+    utterance.pitch = 1.0
+    console.info(`[LabOps TTS] 已激活主用云端发音人: ${primaryVoice.name}`)
+
+    trackUtterance(utterance)
+
+    let hasStarted = false
+    let hasFallbackRun = false
+
+    // 容灾分支 2：5000ms 超时看门狗，给云端充足的网络建立与音频流缓冲时间，超时方才无感切本地瑶瑶
+    activeWatchdogTimer = setTimeout(() => {
+      if (!hasStarted && !hasFallbackRun) {
+        hasFallbackRun = true
+        console.warn('[LabOps TTS 容灾] 云端合成网络耗时超出 5000ms，触发本地瑶瑶容灾兜底')
+        executeFallbackSpeech(text, '云端合成响应超时 (5000ms 未出声)')
+      }
+    }, 5000)
+
+    utterance.onstart = () => {
+      hasStarted = true
+      clearWatchdogTimer()
+      console.info(`[LabOps TTS 成功发声] 微软晓晓已成功开始播报语音`)
+    }
+
+    utterance.onend = () => {
+      clearWatchdogTimer()
+      untrackUtterance(utterance)
+    }
+
+    // 容灾分支 3：云端合成报错（网络中断、认证失败等），无感切本地瑶瑶
+    utterance.onerror = (e) => {
+      clearWatchdogTimer()
+      untrackUtterance(utterance)
+      if (e.error === 'canceled' || e.error === 'interrupted' || hasFallbackRun) {
+        return
+      }
+      if (!hasStarted) {
+        hasFallbackRun = true
+        console.warn(`[LabOps TTS 容灾] 云端播报触发异常事件: ${e.error || 'unknown'}`)
+        executeFallbackSpeech(text, `云端合成异常 (${e.error || 'unknown'})`)
+      }
+    }
+
+    // 安全调度：若此前调用了 cancel() 截断旧播报，引入 40ms 微延时让 IPC 重置；若本来空闲则即刻发声
+    if (isBusy) {
+      setTimeout(() => {
+        if (!ttsEnabled.value) return
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume()
+        }
+        window.speechSynthesis.speak(utterance)
+      }, 40)
+    } else {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume()
+      }
+      window.speechSynthesis.speak(utterance)
+    }
+  } catch (err) {
+    console.warn('TTS 语音播报异常:', err)
+  }
+}
+
+// 监听 TTS 开关：一旦用户主动开启，静默预热并激活声学引擎；一旦静音，清空定时器并强制截断
+watch(ttsEnabled, (newVal) => {
+  if (newVal) {
+    getAudioContext()
+    warmupTtsConnection()
+  } else if (typeof window !== 'undefined' && window.speechSynthesis) {
+    try {
+      clearWatchdogTimer()
+      clearWarmupTimer()
+      if (fallbackDispatchTimer) {
+        clearTimeout(fallbackDispatchTimer)
+        fallbackDispatchTimer = null
+      }
+      isWarmingUp = false
+      window.speechSynthesis.cancel()
+      clearAllUtterances()
+    } catch {}
+  }
+})
+
+function buildTtsAlertText(report) {
+  if (!report) return ''
+  const abnormals = report.abnormal_devices || []
+  const criticals = abnormals.filter(
+    (d) =>
+      d.is_overheat ||
+      d.is_offline ||
+      d.health_status === 'OVERHEAT' ||
+      d.health_status === 'OFFLINE' ||
+      (report.created_tickets && report.created_tickets.some((t) => t.device_id === d.asset_no))
+  )
+
+  if (criticals.length === 0) {
+    // 若 abnormal_devices 为空但包含紧急新建工单时的安全兜底
+    if (report.created_tickets && report.created_tickets.length > 0) {
+      return `警告：全网自治体检已触发 ${report.created_tickets.length} 项紧急运维工单，请立即响应。`
+    }
+    return ''
+  }
+
+  if (criticals.length === 1) {
+    const d = criticals[0]
+    const devName = d.name || d.asset_no || '核心设备'
+    const isOverheat = d.is_overheat || d.health_status === 'OVERHEAT'
+    const isOffline = d.is_offline || d.health_status === 'OFFLINE'
+    if (isOverheat) {
+      const tempText = (d.temperature !== undefined && d.temperature !== null) ? `${d.temperature}度` : '超过警戒阈值'
+      return `警告：检测到${devName}核心温度达到${tempText}，已自动触发紧急工单，请立即响应。`
+    } else if (isOffline) {
+      return `警告：检测到${devName}处于脱网掉线状态，已自动触发运维工单，请立即核查网络连通性。`
+    } else {
+      return `警告：检测到${devName}处于高危异常状态，已自动触发紧急工单，请立即响应。`
+    }
+  }
+
+  // 多台设备高危异常
+  const descriptions = criticals.slice(0, 2).map((d) => {
+    const devName = d.name || d.asset_no || '核心设备'
+    const isOverheat = d.is_overheat || d.health_status === 'OVERHEAT'
+    const isOffline = d.is_offline || d.health_status === 'OFFLINE'
+    if (isOverheat) {
+      const tempText = (d.temperature !== undefined && d.temperature !== null) ? `核心温度达到${d.temperature}度` : '核心温度超标'
+      return `${devName}${tempText}`
+    } else if (isOffline) {
+      return `${devName}掉线失联`
+    }
+    return `${devName}状态异常`
+  })
+
+  const remaining = criticals.length > 2 ? `等共${criticals.length}台设备` : ''
+  return `警告：检测到${descriptions.join('，')}${remaining}存在高危异常，已自动触发紧急工单，请立即响应。`
+}
+
+function triggerTtsAlert(report) {
+  if (!ttsEnabled.value) return
+  const alertText = buildTtsAlertText(report)
+  if (alertText) {
+    // 方案 1: 第 0 毫秒立即发出科技感声学先导和弦音，彻底消灭等待死寂感
+    playAlertChime()
+    // 方案 4: 告警自然语音播报（主用云端晓晓，结合断网离线与超时无感降级本地瑶瑶）
+    speakAlert(alertText)
+  }
 }
 
 // -------------------------------------------------------------
@@ -800,7 +1619,16 @@ async function handleRefreshAssets() {
 function handlePatrolCompleted(report) {
   patrolReportData.value = report || {}
   showPatrolModal.value = true
-  refreshAllData()
+
+  // 方案 3 (网络与调度避让): 语音播报提升至第一优先级发出，彻底规避同毫秒网络与主线程拥塞
+  if (ttsEnabled.value && report) {
+    triggerTtsAlert(report)
+  }
+
+  // 将包含 5 个接口高负载并发的 refreshAllData() 推迟 80ms 执行
+  setTimeout(() => {
+    refreshAllData()
+  }, 80)
 
   // 在左侧 AI 对话流中同步追加系统自治体检研判播报
   messages.value.push({
@@ -939,13 +1767,20 @@ function handleIncomingSSEEvent(event, assistantMsg) {
     triggerAssetHighlight(event.asset_no)
     loadAssets()
     loadMetrics()
+    rackTopologyRef.value?.loadTopology?.()
   } else if (type === 'patrol_completed') {
     // 全网自治巡检完成事件：同步挂载简报数据并弹出微光简报模态框
     patrolReportData.value = event.report || {}
     showPatrolModal.value = true
-    loadMetrics()
-    loadTickets()
-    loadAssets()
+    // 方案 3 (网络与调度避让): 语音播报提升至第一优先级发出，彻底规避同毫秒网络与主线程拥塞
+    if (ttsEnabled.value && event.report) {
+      triggerTtsAlert(event.report)
+    }
+    setTimeout(() => {
+      loadMetrics()
+      loadTickets()
+      loadAssets()
+    }, 80)
   } else if (type === 'content') {
     assistantMsg.isThinking = false
     agentStatusText.value = '生成答复中...'
@@ -1011,13 +1846,59 @@ function handleInspectAsset(assetNo) {
   handleSendMessage(`巡检设备 ${assetNo} 的当前健康状态与借用情况`)
 }
 
+// -------------------------------------------------------------
+// 机架拓扑相关状态与全景台账弹窗联动事件
+// -------------------------------------------------------------
+const rackTopologyRef = ref(null)
+
+const rackedAssetsCount = computed(() => {
+  if (!assets.value || assets.value.length === 0) return 0
+  return assets.value.filter(
+    (a) => a.location && (a.location.includes('机柜') || a.location.includes('核心柜'))
+  ).length
+})
+
+const totalRacksCount = computed(() => {
+  return rackTopologyRef.value?.topologyData?.summary?.total_racks ?? 2
+})
+
+const showTopologyDeviceModal = ref(false)
+const selectedTopologyAsset = ref(null)
+
+function handleInspectAssetFromTopology(asset) {
+  const matched = assets.value.find((a) => a.asset_no === asset.asset_no)
+  selectedTopologyAsset.value = matched || asset
+  showTopologyDeviceModal.value = true
+}
+
+function handleBorrowAssetFromTopology(assetOrNo) {
+  showTopologyDeviceModal.value = false
+  const no = typeof assetOrNo === 'object' && assetOrNo !== null ? assetOrNo.asset_no : assetOrNo
+  handleBorrowAsset(no, currentUser.value.real_name)
+}
+
+function handleReturnAssetFromTopology(assetOrNo) {
+  showTopologyDeviceModal.value = false
+  const no = typeof assetOrNo === 'object' && assetOrNo !== null ? assetOrNo.asset_no : assetOrNo
+  handleReturnAsset(no)
+}
+
+function handleEditAssetFromTopology(asset) {
+  showTopologyDeviceModal.value = false
+  currentTab.value = 'assets'
+  triggerAssetHighlight(asset?.asset_no)
+}
+
 function handleInspectTicket(ticketNo) {
   handleSendMessage(`查询工单 ${ticketNo} 的详细处置进展与排查说明`)
 }
 
 async function handleUpdateTicketStatus(ticketId, newStatus) {
   try {
-    await api.updateTicket(ticketId, { status: newStatus })
+    await api.updateTicket(ticketId, {
+      status: newStatus,
+      operator: currentUser.value?.real_name || currentUser.value?.username || '管理员',
+    })
     await loadTickets()
     await loadMetrics()
   } catch (err) {

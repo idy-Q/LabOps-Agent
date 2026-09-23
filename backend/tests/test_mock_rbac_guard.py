@@ -123,3 +123,23 @@ def test_teacher_ticket_close_intercepted():
     assert "孙老师" in reply
     assert "教师 TEACHER" in reply
     assert "验收核验闭环" in reply
+
+
+def test_student_urge_intercepted():
+    """测试学生尝试向教师发起催还通知时被严正拦截"""
+    engine = ReActEngine()
+    events = list(
+        engine.stream_run(
+            user_prompt="催还李老师 DEV-SRV-201，下发催办通知",
+            user_role="STUDENT",
+            user_name="周同学",
+            user_department="软件工程2023级",
+        )
+    )
+    content_events = [e for e in events if e.get("type") == "content"]
+    assert len(content_events) > 0
+    reply = content_events[0].get("text", "")
+    assert "【权限拦截警报】超期催办操作已被系统拦截！" in reply
+    assert "周同学" in reply
+    assert "学生 STUDENT" in reply
+    assert "机房专职主管专属职权" in reply

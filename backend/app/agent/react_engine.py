@@ -454,12 +454,145 @@ class MockDecisionBrain:
             }
 
         # -------------------------------------------------------------
+        # 决策逻辑 2.8：超期借用催告通知函起草与站内催还待办下发
+        # 识别“催还”、“催告函”、“催告单”、“催促李老师”、“催还李老师”、“发催还通知”等意图
+        # -------------------------------------------------------------
+        is_urge_teacher = (
+            any(kw in user_prompt for kw in ["催还李老师", "催促李老师", "发催还通知", "发催办通知", "下发催还通知", "下发催办通知", "发送催办通知", "向李老师发催还通知", "向李老师发送催办通知", "向李老师发催促通知"])
+            or ("李老师" in user_prompt and any(k in user_prompt for k in ["催还", "催促", "催办", "催一下", "发催还"]))
+        ) and not is_query_regulations
+
+        is_overdue_notice = (
+            is_urge_teacher
+            or any(kw in user_prompt for kw in ["催告函", "催告单", "催还", "催促归还", "督促归还", "催告通知", "起草催告", "草拟催告", "催办", "督促催还", "催还通知", "超期催告"])
+            or (any(kw in user_prompt for kw in ["催告", "督促", "催促", "催", "催办", "催还"]) and any(w in user_prompt for w in ["设备", "归还", "超期", "逾期", "DEV-", "老师", "借用", "还设备", "还"]))
+        ) and not is_query_regulations
+        if is_overdue_notice:
+            # RBAC 拦截: 学生角色禁止对教师发起行政催办或下发站内催促通知
+            if is_urge_teacher and role == "STUDENT":
+                return {
+                    "thought": f"检测到当前交互用户角色为学生（{name}），根据机房运维分权管理规程，学生无权对教师发起设备超期催办或下发站内待办通知，执行权限硬拦截。",
+                    "content": (
+                        f"【权限拦截警报】超期催办操作已被系统拦截！\n\n"
+                        f"- 尝试操作：向借调教师下发超期催还待办与公文催告\n"
+                        f"- 当前身份：{name}（角色: 学生 STUDENT{dept_desc}）\n"
+                        f"- 拦截原因：根据《高校机房资产安全管理条例》，设备超期催办与行政督促属于机房专职主管专属职权，在读学生无权对教师发起催办督促。\n"
+                        f"- 权限边界：学生身份仅可查验设备台账与机房规章，严禁擅自下发催告公函或待办。\n"
+                        f"- 处置指引：如发现设备超期占用影响教学，请向机房专职主管（王主管）反映，由管理员核验后统一发起公文督促。"
+                    ),
+                }
+
+            target_asset = device_id or "DEV-SRV-201"
+            needed_tools = []
+            if "draft_overdue_notice" not in executed_tools:
+                needed_tools.append({
+                    "id": f"call_{uuid.uuid4().hex[:8]}",
+                    "function": {
+                        "name": "draft_overdue_notice",
+                        "arguments": json.dumps({"asset_no": target_asset}, ensure_ascii=False),
+                    },
+                })
+            if is_urge_teacher and "send_overdue_urge_notification" not in executed_tools:
+                needed_tools.append({
+                    "id": f"call_{uuid.uuid4().hex[:8]}",
+                    "function": {
+                        "name": "send_overdue_urge_notification",
+                        "arguments": json.dumps({"asset_no": target_asset}, ensure_ascii=False),
+                    },
+                })
+
+            if needed_tools:
+                thought_desc = "起草催告公文函并向借调责任教师李老师下发站内催还待办通知" if is_urge_teacher else "起草合规公文催告函"
+                return {
+                    "thought": f"用户（{name}，角色: {role}）指令针对超期借用设备{thought_desc}，调用对应工具为设备 {target_asset} 生成规范催告通知与待办。",
+                    "tool_calls": needed_tools,
+                }
+
+            n_res = tool_results.get("draft_overdue_notice", {})
+            u_res = tool_results.get("send_overdue_urge_notification", {})
+            if n_res.get("status") == "error":
+                return {
+                    "thought": f"起草催告通知函失败: {n_res.get('message')}",
+                    "content": f"【催告函生成提示】\n未成功生成催告函：{n_res.get('message', '未知原因')}",
+                }
+
+            md_content = n_res.get("markdown_content", "")
+            if is_urge_teacher and u_res:
+                urge_msg = u_res.get("message", "已成功向借调责任人李老师 (teacher_li) 下发站内超期催还待办通知！")
+                return {
+                    "thought": f"已完成针对设备 {target_asset} 的合规催告公文起草与向李老师下发站内待办通知，完成催办闭环。",
+                    "content": (
+                        f"🔔 **【站内催还待办已下发】**\n"
+                        f"{urge_msg}\n\n"
+                        f"同时，系统已根据《高校实验室安全与仪器设备借调管理条例》自动签发合规公文催告单：\n\n"
+                        f"{md_content}\n\n"
+                        f"> 💡 **闭环督促提示**：借调责任人李老师登录系统后，顶部导航栏通知铃铛 🔔 将亮起呼吸微光红点，并自动弹出《资产超期催收督促函》进行强触达与即时查阅闭环。"
+                    ),
+                }
+
+            return {
+                "thought": f"已完成针对设备 {target_asset} 的合规催告公文起草与督促规程检索，向用户呈现标准红头通知单与督促处置要求。",
+                "content": (
+                    f"已根据《高校实验室安全与仪器设备借调管理条例》自动生成合规公文催告单：\n\n"
+                    f"{md_content}\n\n"
+                    f"> 💡 **Agent 督促闭环建议**：系统已将催告单自动关联设备档案，并支持在右侧「资产台账」中点击【催告函】一键打印或导出 PDF。"
+                ),
+            }
+
+        # -------------------------------------------------------------
+        # 决策逻辑 2.9：超期借用设备检索与逾期大盘研判 (check_overdue_assets)
+        # 识别“超期设备”、“逾期借用”、“逾期设备”、“超期借用”、“借用超期”等意图
+        # -------------------------------------------------------------
+        is_check_overdue = (
+            any(kw in user_prompt for kw in ["超期设备", "逾期借用", "逾期设备", "超期借用", "借用超期", "借用逾期", "逾期清单", "超期清单", "逾期台账", "超期台账"])
+            or (any(kw in user_prompt for kw in ["超期", "逾期"]) and any(w in user_prompt for w in ["检查", "检索", "查询", "有哪些", "查下", "看下", "清单", "列表", "统计", "有哪些设备", "查", "查一下", "查看", "查查", "哪些"]))
+        ) and not is_query_regulations
+        if is_check_overdue:
+            if "check_overdue_assets" not in executed_tools:
+                return {
+                    "thought": f"用户（{name}，角色: {role}）指令全面排查当前机房借用超期设备，调用 check_overdue_assets 工具检索全网逾期台账与超期天数。",
+                    "tool_calls": [
+                        {
+                            "id": f"call_{uuid.uuid4().hex[:8]}",
+                            "function": {
+                                "name": "check_overdue_assets",
+                                "arguments": "{}",
+                            },
+                        }
+                    ],
+                }
+
+            c_res = tool_results.get("check_overdue_assets", {})
+            total_overdue = c_res.get("total_overdue", 0)
+            max_days = c_res.get("max_overdue_days", 0)
+            items = c_res.get("items", [])
+
+            if total_overdue == 0:
+                reply_text = "【超期借用设备核验】\n经系统全盘核验，当前机房所有借调设备均处于正常借用周期内，未发现任何超期未还设备。"
+            else:
+                lines = [
+                    f"【机房资产借用超期预警汇报】\n",
+                    f"系统检测到当前共有 **{total_overdue} 台** 设备借调已超过约定归还期限，最长逾期达 **{max_days} 天** ⚠️：\n",
+                ]
+                for it in items:
+                    lines.append(
+                        f"- **{it['asset_no']}**（{it['name']}）：借用人 **{it['borrower_name']}** ({it.get('department', '教研室')})，已逾期 **{it['overdue_days']} 天** ⚠️（约定应还：`{it['expected_return_time']}`）"
+                    )
+                lines.append("\n> 📢 **处置建议**：可向 Agent 发送指令（如『为 DEV-SRV-201 起草催告函』）一键生成合规公文单，或在右侧【资产台账】直接点击【催告函】办理督促。")
+                reply_text = "\n".join(lines)
+
+            return {
+                "thought": f"超期借调台账检索完毕，共检索到 {total_overdue} 台超期设备，向用户汇报预警清单与处置指引。",
+                "content": reply_text,
+            }
+
+        # -------------------------------------------------------------
         # 决策逻辑 3：设备资产借用登记 (borrow_asset)
         # -------------------------------------------------------------
         is_borrow = (
             any(kw in user_prompt for kw in ["借用", "借出", "借走", "借调", "借领", "租借"])
             or ("借" in user_prompt and any(w in user_prompt for w in ["我要", "我想", "申请", "帮", "给", "办理", "借一台", "借个", "借一下", "DEV-", "服务器", "设备"]))
-        ) and not is_query_regulations
+        ) and not is_query_regulations and not any(kw in user_prompt for kw in ["超期", "逾期", "催", "催告", "督促", "清单", "检查"])
         if is_borrow:
             # RBAC 拦截 A: 学生坚决不调用 borrow_asset 工具，直接返回严正权限拦截通知
             if role == "STUDENT":
@@ -512,7 +645,7 @@ class MockDecisionBrain:
         # -------------------------------------------------------------
         # 决策逻辑 4：设备资产归还 (return_asset)
         # -------------------------------------------------------------
-        is_return = any(kw in user_prompt for kw in ["归还", "还设备", "还入库", "归还资产"]) and not is_query_regulations
+        is_return = any(kw in user_prompt for kw in ["归还", "还设备", "还入库", "归还资产"]) and not is_query_regulations and not any(kw in user_prompt for kw in ["催", "督促", "催告", "催还", "催促", "通知函", "公函", "超期", "逾期"])
         if is_return:
             # RBAC 拦截: 学生无权办理归还出入库
             if role == "STUDENT":

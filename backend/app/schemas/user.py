@@ -1,7 +1,7 @@
 """系统用户认证与权限数据模式 (Pydantic Schemas)"""
 
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from pydantic import BaseModel, ConfigDict, Field
 
 UserRoleType = Literal["ADMIN", "TEACHER", "STUDENT"]
@@ -54,3 +54,23 @@ class DemoUserResponse(BaseModel):
     department: str = Field(..., description="所属教研室/班级/部门")
     phone: Optional[str] = Field(default=None, description="联系电话")
     default_password: str = Field(..., description="典型演示密码 (供快捷填入测试)")
+
+
+class UserProfileResponse(BaseModel):
+    """用户或系统主体人物详情档案数据模式"""
+
+    username: str = Field(..., description="工号/学号或主体唯一识别号")
+    real_name: str = Field(..., description="真实姓名或主体全称")
+    role: str = Field(..., description="角色标识 (ADMIN/TEACHER/STUDENT/SYSTEM_AGENT/OPERATOR)")
+    role_label: str = Field(..., description="角色展示标签 (如 超级管理员/专业课指导教师/AI 自治智能体)")
+    department: str = Field(..., description="所属教研室/班级/部门")
+    phone: Optional[str] = Field(default=None, description="联系电话")
+    status: str = Field(default="ONLINE", description="在线状态 (如 ONLINE / 7×24H 实时在线)")
+    is_system_agent: bool = Field(default=False, description="是否系统/AI虚拟智能体主体")
+    avatar_text: str = Field(default="", description="头像缩写文字或图标标识")
+    responsibilities: List[str] = Field(default_factory=list, description="职责/权责清单")
+    description: Optional[str] = Field(default=None, description="主体简介或算法架构说明")
+    created_at: Optional[str] = Field(default=None, description="注册或上线时间")
+
+    model_config = ConfigDict(from_attributes=True)
+

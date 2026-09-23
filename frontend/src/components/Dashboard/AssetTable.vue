@@ -1,7 +1,7 @@
 <template>
   <div class="relative rounded-xl glass-panel border p-4 space-y-3.5 shadow-sm transition-colors flex flex-col min-h-[580px]">
-    <!-- 头部与多维分类过滤 -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pb-2 border-b border-white/[0.06]">
+    <!-- 头部：标题 + 操作按钮 -->
+    <div class="flex items-center justify-between gap-2.5 pb-2 border-b border-white/[0.06]">
       <div class="flex items-center space-x-2">
         <span class="p-1 rounded-md bg-zinc-900/90 border border-white/[0.08] text-cyan-400">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -14,22 +14,65 @@
         </span>
       </div>
 
-      <div class="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end">
-        <!-- 分类胶囊 (Linear Segmented Pills) -->
-        <div class="flex items-center space-x-1 text-xs bg-zinc-900/60 p-0.5 rounded-lg border border-white/[0.06]">
+      <div class="flex items-center space-x-2 shrink-0">
+        <!-- 导出 / 打印 下拉菜单按钮 -->
+        <div class="relative" ref="exportMenuRef">
           <button
-            v-for="c in categoryOptions"
-            :key="c.value"
-            @click="selectedCategory = c.value"
-            :class="[
-              'px-2.5 py-1 rounded-md text-[11px] transition-all',
-              selectedCategory === c.value
-                ? 'bg-zinc-800 text-zinc-100 font-medium shadow-sm border border-white/[0.08]'
-                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50 border border-transparent'
-            ]"
+            @click="showExportMenu = !showExportMenu"
+            class="px-2.5 py-1 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition-all shadow-sm active:scale-95 shrink-0 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/[0.08] hover:border-white/[0.16]"
+            title="导出当前筛选台账或调用纸质打印归档"
           >
-            {{ c.label }}
+            <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span class="font-sans">导出 / 打印</span>
+            <svg class="w-3 h-3 text-zinc-400 transition-transform duration-200" :class="showExportMenu ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
           </button>
+
+          <!-- 下拉浮层 -->
+          <Transition
+            enter-active-class="transition duration-150 ease-out"
+            enter-from-class="opacity-0 scale-95"
+            enter-to-class="opacity-100 scale-100"
+            leave-active-class="transition duration-100 ease-in"
+            leave-from-class="opacity-100 scale-100"
+            leave-to-class="opacity-0 scale-95"
+          >
+            <div
+              v-if="showExportMenu"
+              class="absolute right-0 mt-1.5 w-44 rounded-xl bg-zinc-900/95 border border-white/[0.12] shadow-2xl p-1 z-50 backdrop-blur-xl origin-top-right text-xs"
+            >
+              <button
+                @click="exportAssetsCSV(); showExportMenu = false"
+                class="w-full px-2.5 py-1.5 rounded-lg text-left flex items-center space-x-2 text-zinc-200 hover:text-cyan-300 hover:bg-white/[0.08] transition-colors"
+              >
+                <svg class="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <div class="flex-1">
+                  <div class="font-medium">导出 CSV 表格</div>
+                  <div class="text-[10px] text-zinc-400">含 UTF-8 BOM 兼容 Excel</div>
+                </div>
+              </button>
+
+              <div class="my-1 border-t border-white/[0.06]"></div>
+
+              <button
+                @click="printAssetsTable(); showExportMenu = false"
+                class="w-full px-2.5 py-1.5 rounded-lg text-left flex items-center space-x-2 text-zinc-200 hover:text-indigo-300 hover:bg-white/[0.08] transition-colors"
+              >
+                <svg class="w-3.5 h-3.5 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                <div class="flex-1">
+                  <div class="font-medium">打印纸质台账</div>
+                  <div class="text-[10px] text-zinc-400">标准 A4 白底归档清单</div>
+                </div>
+              </button>
+            </div>
+          </Transition>
         </div>
 
         <!-- 录入新设备主按钮 (管理员与教师可用，学生禁用) -->
@@ -50,6 +93,23 @@
           <span class="font-sans">录入新设备</span>
         </button>
       </div>
+    </div>
+
+    <!-- 多维分类过滤胶囊（独立行） -->
+    <div class="flex items-center space-x-1 text-xs bg-zinc-900/60 p-0.5 rounded-lg border border-white/[0.06] w-fit">
+      <button
+        v-for="c in categoryOptions"
+        :key="c.value"
+        @click="selectedCategory = c.value"
+        :class="[
+          'px-2.5 py-1 rounded-md text-[11px] transition-all',
+          selectedCategory === c.value
+            ? 'bg-zinc-800 text-zinc-100 font-medium shadow-sm border border-white/[0.08]'
+            : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50 border border-transparent'
+        ]"
+      >
+        {{ c.label }}
+      </button>
     </div>
 
     <!-- 搜索与健康筛选条 -->
@@ -108,16 +168,16 @@
     </div>
 
     <!-- 资产表格区域 (Linear Dark Table) -->
-    <div ref="tableContainerRef" class="overflow-x-hidden rounded-xl border border-white/[0.08] min-h-[300px] max-h-[580px] overflow-y-auto bg-black/25 backdrop-blur-sm shadow-sm">
-      <table class="w-full table-fixed text-left text-xs text-zinc-300 border-separate border-spacing-0">
+    <div ref="tableContainerRef" class="overflow-x-auto custom-scrollbar rounded-xl border border-white/[0.08] min-h-[300px] max-h-[580px] overflow-y-auto bg-black/25 backdrop-blur-sm shadow-sm">
+      <table class="w-full min-w-[760px] table-fixed text-left text-xs text-zinc-300 border-separate border-spacing-0">
         <thead class="bg-black/50 text-[11px] text-zinc-300 sticky top-0 uppercase tracking-wider border-b border-white/[0.06] backdrop-blur-md z-10">
           <tr>
-            <th class="w-[110px] py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产编号</th>
-            <th class="w-auto py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">设备名称 / 型号规格</th>
-            <th class="w-[115px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">机房机柜 / IP</th>
+            <th class="w-[105px] py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产编号</th>
+            <th class="w-auto min-w-[130px] py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">设备名称 / 型号规格</th>
+            <th class="w-[110px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">机房机柜 / IP</th>
             <th class="w-[86px] py-2.5 px-1 text-center border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">健康度调节</th>
-            <th class="w-[95px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">借用状态</th>
-            <th class="w-[130px] py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产操作</th>
+            <th class="w-[130px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">借用状态</th>
+            <th class="w-[170px] py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产操作</th>
           </tr>
         </thead>
         <tbody class="font-sans">
@@ -204,18 +264,38 @@
             <!-- 借用状态与借用人 -->
             <td class="py-2.5 px-2 whitespace-nowrap truncate">
               <div class="flex items-center space-x-1.5 truncate">
-                <span :class="['px-2 py-0.5 rounded text-[10px] font-mono shrink-0', borrowClass(a.borrow_status)]">
+                <span
+                  v-if="a.borrow_status === 'IN_USE' && overdueMap && overdueMap[a.asset_no]"
+                  @click="$emit('openOverdueNotice', a.asset_no)"
+                  class="px-2 py-0.5 rounded text-[10px] font-mono shrink-0 font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm animate-pulse flex items-center gap-1 cursor-pointer hover:bg-rose-500/30 transition-colors"
+                  :title="`⚠️ 借用已超期！约定应还: ${overdueMap[a.asset_no].expected_return_time || '已逾期'} (点击查看催告函)`"
+                >
+                  <span>⚠️ 逾期 {{ overdueMap[a.asset_no].overdue_days }}天</span>
+                </span>
+                <span v-else :class="['px-2 py-0.5 rounded text-[10px] font-mono shrink-0', borrowClass(a.borrow_status)]">
                   {{ a.borrow_status }}
                 </span>
-                <span v-if="a.borrower" class="text-[10px] text-amber-300 font-medium font-mono truncate" :title="`借调人: ${a.borrower}`">
+                <span v-if="a.borrower" class="text-[10px] text-amber-300 font-medium font-mono truncate max-w-[55px]" :title="`借调人: ${a.borrower}`">
                   ({{ a.borrower }})
                 </span>
               </div>
             </td>
 
-            <!-- 资产多维操作列 (详情 / 编辑 / 借还 / 删除) -->
+            <!-- 资产多维操作列 (详情 / 编辑 / 借还 / 催告函 / 删除) -->
             <td class="py-2.5 px-3 text-right whitespace-nowrap">
               <div class="flex items-center justify-end space-x-1">
+                <!-- 催告函快捷入口 (超期借用设备高亮微光图标) -->
+                <button
+                  v-if="a.borrow_status === 'IN_USE' && overdueMap && overdueMap[a.asset_no]"
+                  @click="$emit('openOverdueNotice', a.asset_no)"
+                  class="p-1 rounded bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 hover:text-rose-200 border border-rose-500/30 transition-all active:scale-95 shadow-sm"
+                  title="借用已超期！点击查看并出具《超期归还催告单》"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </button>
+
                 <!-- 详情按钮 -->
                 <button
                   @click="openDetailModal(a)"
@@ -225,6 +305,17 @@
                   <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+
+                <!-- 履历时间轴按钮 (快捷入口) -->
+                <button
+                  @click="$emit('viewTimeline', a.asset_no)"
+                  class="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-amber-400 transition-colors"
+                  title="查看该资产全生命周期时序履历时间轴"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </button>
 
@@ -298,6 +389,7 @@
       @return="handleReturnFromModal"
       @edit="handleEditFromModal"
       @delete="openDeleteConfirm"
+      @viewTimeline="$emit('viewTimeline', $event)"
     />
 
     <!-- 2. 设备录入/编辑模态表单 (DeviceFormModal) -->
@@ -445,7 +537,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import DeviceDetailModal from './DeviceDetailModal.vue'
 import DeviceFormModal from './DeviceFormModal.vue'
 import { api } from '../../api/client'
@@ -468,9 +560,13 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  overdueMap: {
+    type: Object,
+    default: () => ({}),
+  },
 })
 
-const emit = defineEmits(['refresh', 'borrowAsset', 'returnAsset', 'updateHealth', 'inspectAsset'])
+const emit = defineEmits(['refresh', 'borrowAsset', 'returnAsset', 'updateHealth', 'inspectAsset', 'viewTimeline', 'openOverdueNotice'])
 
 const userRole = computed(() => (props.currentUser?.role || 'STUDENT').toUpperCase())
 const isStudent = computed(() => userRole.value === 'STUDENT')
@@ -636,13 +732,23 @@ watch(
   }
 )
 
-const categoryOptions = [
+const overdueCount = computed(() => {
+  return (props.assets || []).filter(
+    (a) => a.borrow_status === 'IN_USE' && props.overdueMap && props.overdueMap[a.asset_no]
+  ).length
+})
+
+const categoryOptions = computed(() => [
   { label: '全部', value: 'ALL' },
+  {
+    label: overdueCount.value > 0 ? `⚠️ 超期借用 (${overdueCount.value})` : '⚠️ 超期借用',
+    value: 'OVERDUE',
+  },
   { label: '服务器', value: '服务器' },
   { label: '网络设备', value: '网络设备' },
   { label: '配电温控', value: '配电温控' },
   { label: '实验教学', value: '实验教学' },
-]
+])
 
 const healthFilterOptions = [
   { label: '全部健康度', value: 'ALL' },
@@ -654,7 +760,9 @@ const healthFilterOptions = [
 
 const filteredAssets = computed(() => {
   return props.assets.filter((a) => {
-    if (selectedCategory.value !== 'ALL' && a.category !== selectedCategory.value) {
+    if (selectedCategory.value === 'OVERDUE') {
+      if (!props.overdueMap || !props.overdueMap[a.asset_no] || a.borrow_status !== 'IN_USE') return false
+    } else if (selectedCategory.value !== 'ALL' && a.category !== selectedCategory.value) {
       return false
     }
     if (selectedHealth.value !== 'ALL' && a.health_status !== selectedHealth.value) {
@@ -699,5 +807,370 @@ function borrowClass(status) {
     default:
       return 'bg-zinc-800 text-zinc-400 border border-white/[0.06]'
   }
+}
+
+// -------------------------------------------------------------
+// [FEAT-06] 资产台账一键导出 (CSV) 与 A4 纸质打印归档
+// -------------------------------------------------------------
+const exportMenuRef = ref(null)
+const showExportMenu = ref(false)
+
+function handleDocumentClick(e) {
+  if (exportMenuRef.value && !exportMenuRef.value.contains(e.target)) {
+    showExportMenu.value = false
+  }
+}
+
+function handleDocumentKeydown(e) {
+  if (e.key === 'Escape' && showExportMenu.value) {
+    showExportMenu.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleDocumentClick)
+  document.addEventListener('keydown', handleDocumentKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleDocumentClick)
+  document.removeEventListener('keydown', handleDocumentKeydown)
+})
+
+function padZero(n) {
+  return String(n).padStart(2, '0')
+}
+
+function getFormattedTimestamp() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = padZero(now.getMonth() + 1)
+  const d = padZero(now.getDate())
+  const h = padZero(now.getHours())
+  const min = padZero(now.getMinutes())
+  const s = padZero(now.getSeconds())
+  return `${y}${m}${d}_${h}${min}${s}`
+}
+
+function escapeHtml(val) {
+  if (val === null || val === undefined) return ''
+  return String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function escapeCsv(val) {
+  if (val === null || val === undefined) return '""'
+  let str = String(val)
+  // 防范 Excel 宏/公式注入 (DDE attack)
+  if (/^[=+@\t\r]/.test(str) || /^-[0-9a-zA-Z(]/.test(str)) {
+    str = "'" + str
+  }
+  return `"${str.replace(/"/g, '""')}"`
+}
+
+function getHealthLabel(status) {
+  const map = {
+    HEALTHY: '良好',
+    WARNING: '预警',
+    OVERHEAT: '超温',
+    OFFLINE: '离线',
+  }
+  return map[status] || status || '-'
+}
+
+function getBorrowLabel(status) {
+  const map = {
+    AVAILABLE: '空闲可用',
+    IN_USE: '借用中',
+    MAINTENANCE: '维护中',
+  }
+  return map[status] || status || '-'
+}
+
+function exportAssetsCSV() {
+  const list = filteredAssets.value || []
+  const headers = [
+    '资产编号',
+    '设备名称',
+    '设备类别',
+    '物理位置',
+    '健康状态',
+    '借调状态',
+    '当前借调人',
+    '管理IP',
+    '型号规格',
+  ]
+  const rows = list.map((a) => [
+    escapeCsv(a.asset_no || ''),
+    escapeCsv(a.name || ''),
+    escapeCsv(a.category || ''),
+    escapeCsv(a.location || ''),
+    escapeCsv(getHealthLabel(a.health_status)),
+    escapeCsv(getBorrowLabel(a.borrow_status)),
+    escapeCsv(a.borrower || ''),
+    escapeCsv(a.detail?.management_ip || ''),
+    escapeCsv(a.detail?.model_name || ''),
+  ])
+
+  const csvContent = [
+    headers.map(escapeCsv).join(','),
+    ...rows.map((r) => r.join(',')),
+  ].join('\r\n')
+
+  const bom = '\uFEFF'
+  const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', `资产台账_${getFormattedTimestamp()}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+function printAssetsTable() {
+  const list = filteredAssets.value || []
+  const operatorName = props.currentUser?.real_name || props.currentUser?.username || '实验室管理员'
+  const printTime = new Date().toLocaleString('zh-CN', { hour12: false })
+
+  const rowsHtml = list
+    .map((a, index) => {
+      const health = getHealthLabel(a.health_status)
+      let healthBadgeStyle = 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;'
+      if (a.health_status === 'WARNING') healthBadgeStyle = 'background:#fffbeb;color:#92400e;border:1px solid #fde68a;'
+      if (a.health_status === 'OVERHEAT') healthBadgeStyle = 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;font-weight:bold;'
+      if (a.health_status === 'OFFLINE') healthBadgeStyle = 'background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;'
+
+      let borrowBadgeStyle = 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;'
+      if (a.borrow_status === 'IN_USE') borrowBadgeStyle = 'background:#fffbeb;color:#92400e;border:1px solid #fde68a;'
+      if (a.borrow_status === 'MAINTENANCE') borrowBadgeStyle = 'background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;'
+
+      const isOverdue = a.borrow_status === 'IN_USE' && props.overdueMap && props.overdueMap[a.asset_no]
+      const overdueDays = isOverdue ? Number(props.overdueMap[a.asset_no].overdue_days || 0) : 0
+      const overdueText = isOverdue ? ` <span style="color:#dc2626;font-weight:bold;">(逾期${overdueDays}天)</span>` : ''
+
+      return `
+        <tr style="border-bottom: 1px solid #e2e8f0; ${index % 2 === 1 ? 'background-color: #f8fafc;' : ''}">
+          <td style="padding: 6px 8px; text-align: center; color: #64748b; font-family: monospace;">${index + 1}</td>
+          <td style="padding: 6px 8px; text-align: center; font-family: monospace; font-weight: 600; color: #0284c7;">${escapeHtml(a.asset_no || '-')}</td>
+          <td style="padding: 6px 8px; font-weight: 600; color: #0f172a;">${escapeHtml(a.name || '-')}</td>
+          <td style="padding: 6px 8px; text-align: center; color: #334155;">${escapeHtml(a.category || '-')}</td>
+          <td style="padding: 6px 8px; color: #334155;">${escapeHtml(a.location || '-')}</td>
+          <td style="padding: 6px 8px; text-align: center;">
+            <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;${healthBadgeStyle}">${escapeHtml(health)}</span>
+          </td>
+          <td style="padding: 6px 8px; text-align: center;">
+            <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;${borrowBadgeStyle}">
+              ${escapeHtml(getBorrowLabel(a.borrow_status))}${a.borrower ? ' - ' + escapeHtml(a.borrower) : ''}${overdueText}
+            </span>
+          </td>
+          <td style="padding: 6px 8px; text-align: center; font-family: monospace; color: #475569;">${escapeHtml(a.detail?.management_ip || '-')}</td>
+          <td style="padding: 6px 8px; color: #475569;">${escapeHtml(a.detail?.model_name || '-')}</td>
+        </tr>
+      `
+    })
+    .join('')
+
+  const printHtml = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>高校实验室设备资产台账清册</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 12mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #0f172a;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .print-header {
+      border-bottom: 2px solid #0284c7;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .title-area h1 {
+      margin: 0 0 4px 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: #0369a1;
+      letter-spacing: 0.5px;
+    }
+    .title-area p {
+      margin: 0;
+      font-size: 11px;
+      color: #64748b;
+    }
+    .meta-area {
+      text-align: right;
+      font-size: 10px;
+      color: #475569;
+    }
+    .meta-tag {
+      font-weight: 600;
+      color: #0f172a;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #cbd5e1;
+      table-layout: fixed;
+      word-break: break-word;
+    }
+    thead {
+      display: table-header-group;
+    }
+    tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    th {
+      background-color: #f1f5f9;
+      color: #1e293b;
+      font-weight: 600;
+      padding: 7px 8px;
+      border: 1px solid #cbd5e1;
+      text-align: center;
+      font-size: 11px;
+    }
+    td {
+      border: 1px solid #cbd5e1;
+      font-size: 10.5px;
+    }
+    .footer-signatures {
+      margin-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #334155;
+      padding-top: 10px;
+      border-top: 1px dashed #cbd5e1;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .footer-note {
+      margin-top: 12px;
+      font-size: 9.5px;
+      color: #94a3b8;
+      text-align: center;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+  </style>
+</head>
+<body>
+  <div class="print-header">
+    <div class="title-area">
+      <h1>高校实验室仪器设备与硬件资产台账清册</h1>
+      <p>所属单位：高校人工智能与软件工程重点实验室 · 机房硬件运行中心</p>
+    </div>
+    <div class="meta-area">
+      <div>设备总数：<span class="meta-tag">${list.length} 台</span> (当前筛选视图)</div>
+      <div>经办人 / 责任人：<span class="meta-tag">${escapeHtml(operatorName)}</span></div>
+      <div>打印归档时间：<span>${escapeHtml(printTime)}</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 32px;">序号</th>
+        <th style="width: 95px;">资产编号</th>
+        <th style="width: 140px;">设备名称</th>
+        <th style="width: 75px;">设备类别</th>
+        <th style="width: 100px;">物理位置</th>
+        <th style="width: 60px;">健康状态</th>
+        <th style="width: 110px;">借调状态/人</th>
+        <th style="width: 100px;">管理IP</th>
+        <th>型号规格</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml || '<tr><td colspan="9" style="text-align:center;padding:20px;color:#94a3b8;">暂无符合条件的设备台账记录</td></tr>'}
+    </tbody>
+  </table>
+
+  <div class="footer-signatures">
+    <div>实验室主任 / 主管签字：____________________</div>
+    <div>资产台账核验人签字：____________________</div>
+    <div>归档备案日期：20____年____月____日</div>
+  </div>
+
+  <div class="footer-note">
+    高校实验室轻量化智能自治运维系统 (LabOps-Agent) · 资产台账与设备档案专用打印归档件
+  </div>
+</body>
+</html>
+  `
+
+  const printFrame = document.createElement('iframe')
+  printFrame.setAttribute(
+    'style',
+    'position:fixed;top:0;left:0;width:1px;height:1px;border:none;opacity:0.01;pointer-events:none;z-index:-9999;'
+  )
+  document.body.appendChild(printFrame)
+
+  const cleanup = () => {
+    try {
+      if (printFrame && printFrame.parentNode) {
+        printFrame.parentNode.removeChild(printFrame)
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  const frameDoc = printFrame.contentWindow?.document
+  if (!frameDoc) {
+    cleanup()
+    window.print()
+    return
+  }
+
+  frameDoc.open()
+  frameDoc.write(printHtml)
+  frameDoc.close()
+
+  try {
+    printFrame.contentWindow.addEventListener('afterprint', cleanup)
+  } catch (e) {
+    // fallback
+  }
+
+  // 60秒保底释放，防止浏览器不支持 afterprint 时长期驻留 DOM
+  setTimeout(cleanup, 60000)
+
+  setTimeout(() => {
+    try {
+      printFrame.contentWindow.focus()
+      printFrame.contentWindow.print()
+    } catch (err) {
+      console.error('iframe 打印触发失败，回退到主窗口打印:', err)
+      cleanup()
+      window.print()
+    }
+  }, 250)
 }
 </script>

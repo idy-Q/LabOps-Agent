@@ -28,6 +28,31 @@
       ></textarea>
 
       <div class="flex items-center space-x-1.5 pb-1 pr-1">
+        <!-- 语音输入按钮 (浏览器原生 Web Speech API STT) -->
+        <button
+          v-if="isSpeechSupported"
+          @click="toggleSpeechRecognition"
+          :disabled="isLoading"
+          type="button"
+          class="chat-mic-btn relative p-2 rounded-lg transition-all shadow-sm flex items-center justify-center active:scale-95 border disabled:opacity-40 disabled:cursor-not-allowed"
+          :class="[
+            isListening
+              ? 'is-listening bg-rose-500/20 text-rose-400 border-rose-500/50 hover:bg-rose-500/30 ring-2 ring-rose-500/30'
+              : 'text-zinc-400 hover:text-zinc-200 bg-zinc-900/60 hover:bg-zinc-800/80 border-white/[0.08]'
+          ]"
+          :title="isListening ? '录音识别中，点击停止' : '点击通过麦克风语音输入 (中文识别)'"
+        >
+          <!-- 录音呼吸光晕脉冲动效 -->
+          <span
+            v-if="isListening"
+            class="animate-ping absolute inset-0 rounded-lg bg-rose-500/30 pointer-events-none"
+          ></span>
+          <!-- 麦克风图标 -->
+          <svg class="w-4 h-4 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>
+        </button>
+
         <!-- 停止生成按钮 -->
         <button
           v-if="isLoading"
@@ -60,7 +85,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import RolePermissionPopover from './RolePermissionPopover.vue'
 
 const props = defineProps({
@@ -84,6 +109,111 @@ const emit = defineEmits(['send', 'abort'])
 const inputContent = ref('')
 const inputRef = ref(null)
 
+// 浏览器原生语音识别 (STT - Web Speech API) 能力探测与生命周期管控
+const SpeechRecognition = typeof window !== 'undefined'
+  ? (window.SpeechRecognition || window.webkitSpeechRecognition || null)
+  : null
+const isSpeechSupported = ref(!!SpeechRecognition)
+const isListening = ref(false)
+let recognition = null
+let baseContentBeforeSpeech = ''
+
+function startListening() {
+  if (!isSpeechSupported.value || props.isLoading) return
+  // 启动前先彻底停止清理可能存在的前序实例，杜绝并发竞争
+  stopListening()
+
+  try {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition
+    const currentRec = new SpeechRec()
+    recognition = currentRec
+    currentRec.lang = 'zh-CN'
+    currentRec.continuous = true
+    currentRec.interimResults = true
+
+    baseContentBeforeSpeech = inputContent.value ? inputContent.value.trim() + ' ' : ''
+
+    currentRec.onstart = () => {
+      if (recognition === currentRec) {
+        isListening.value = true
+      }
+    }
+
+    currentRec.onresult = (event) => {
+      if (recognition !== currentRec) return
+      let interimTranscript = ''
+      let finalTranscript = ''
+      for (let i = 0; i < event.results.length; ++i) {
+        const item = event.results[i]
+        const transcript = item[0]?.transcript || ''
+        if (item.isFinal) {
+          finalTranscript += transcript
+        } else {
+          interimTranscript += transcript
+        }
+      }
+      inputContent.value = baseContentBeforeSpeech + finalTranscript + interimTranscript
+    }
+
+    currentRec.onerror = (event) => {
+      console.warn('语音识别事件:', event.error)
+      if (recognition === currentRec) {
+        isListening.value = false
+        recognition = null
+      }
+    }
+
+    currentRec.onend = () => {
+      if (recognition === currentRec) {
+        isListening.value = false
+        recognition = null
+      }
+    }
+
+    currentRec.start()
+  } catch (err) {
+    console.error('启动语音识别失败:', err)
+    isListening.value = false
+    recognition = null
+  }
+}
+
+function stopListening() {
+  if (recognition) {
+    const rec = recognition
+    recognition = null
+    rec.onresult = null
+    rec.onerror = null
+    rec.onend = null
+    try {
+      rec.stop()
+    } catch {}
+  }
+  isListening.value = false
+}
+
+function toggleSpeechRecognition() {
+  if (isListening.value) {
+    stopListening()
+  } else {
+    startListening()
+  }
+}
+
+// 若模型正在推理流式生成中，立即切断并中止语音输入
+watch(
+  () => props.isLoading,
+  (loading) => {
+    if (loading && isListening.value) {
+      stopListening()
+    }
+  }
+)
+
+onBeforeUnmount(() => {
+  stopListening()
+})
+
 function handleKeyDown(e) {
   if (e.isComposing) return
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -93,14 +223,19 @@ function handleKeyDown(e) {
 }
 
 function handleSend() {
+  if (isListening.value) {
+    stopListening()
+  }
   const trimmed = inputContent.value.trim()
   if (!trimmed || props.isLoading) return
   emit('send', trimmed)
   inputContent.value = ''
+  baseContentBeforeSpeech = ''
 }
 
 function setInput(text) {
   inputContent.value = text || ''
+  baseContentBeforeSpeech = ''
   nextTick(() => {
     inputRef.value?.focus()
   })
@@ -119,7 +254,11 @@ function focus() {
 }
 
 function clear() {
+  if (isListening.value) {
+    stopListening()
+  }
   inputContent.value = ''
+  baseContentBeforeSpeech = ''
 }
 
 function handleFillPrompt(prompt) {
@@ -132,6 +271,8 @@ defineExpose({
   focus,
   clear,
   inputContent,
+  isListening,
+  toggleSpeechRecognition,
 })
 </script>
 
@@ -146,5 +287,19 @@ html.light .chat-textarea-wrapper textarea {
 }
 html.light .chat-textarea-wrapper textarea::placeholder {
   color: #94a3b8 !important;
+}
+html.light .chat-mic-btn:not(.is-listening) {
+  background: rgba(241, 245, 249, 0.9) !important;
+  border-color: rgba(226, 232, 240, 0.9) !important;
+  color: #64748b !important;
+}
+html.light .chat-mic-btn:not(.is-listening):hover {
+  background: rgba(226, 232, 240, 0.9) !important;
+  color: #0f172a !important;
+}
+html.light .chat-mic-btn.is-listening {
+  background: rgba(254, 226, 226, 0.95) !important;
+  border-color: rgba(244, 63, 94, 0.6) !important;
+  color: #e11d48 !important;
 }
 </style>

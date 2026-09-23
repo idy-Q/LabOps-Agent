@@ -254,6 +254,18 @@
         <!-- 底部操作按钮栏 -->
         <div class="pt-3 border-t border-white/[0.08] flex items-center justify-between gap-2 shrink-0 flex-wrap">
           <div class="flex items-center space-x-2">
+            <!-- 资产流转履历按钮 (全时序时间轴) -->
+            <button
+              @click="emit('viewTimeline', asset?.asset_no)"
+              class="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-medium flex items-center space-x-1.5 transition-all shadow-sm active:scale-95"
+              title="查看该资产从采购投产到借调维保的全生命周期时序履历"
+            >
+              <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>资产流转履历</span>
+            </button>
+
             <!-- 巡检按钮 -->
             <button
               @click="emit('inspect', asset?.asset_no)"
@@ -349,7 +361,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'inspect', 'borrow', 'return', 'edit', 'delete'])
+const emit = defineEmits(['update:modelValue', 'inspect', 'borrow', 'return', 'edit', 'delete', 'viewTimeline'])
 
 const detail = computed(() => props.asset?.detail || null)
 

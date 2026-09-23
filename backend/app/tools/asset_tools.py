@@ -1,10 +1,10 @@
-"""机房资产台账与设备借还管理工具 (Asset Tools)"""
-
+import uuid
+from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, or_
 
-from app.db.models import Asset, AssetDetail
+from app.db.models import Asset, AssetDetail, AssetBorrowLog, UserNotification, User
 from app.tools.registry import tool
 
 VALID_HEALTH_STATUSES = {"HEALTHY", "WARNING", "OVERHEAT", "OFFLINE"}
@@ -162,6 +162,39 @@ def borrow_asset(
         asset.borrow_status = "IN_USE"
         asset.borrower = clean_borrower
 
+        # 自动生成并持久化设备借还流转记录 (AssetBorrowLog)
+        now = datetime.now()
+        date_str = now.strftime("%Y%m%d")
+        prefix = f"BORROW-{date_str}-"
+        count = active_db.query(AssetBorrowLog).filter(AssetBorrowLog.log_no.like(f"{prefix}%")).count()
+        candidate_log_no = None
+        for i in range(count + 1, count + 100):
+            cand = f"{prefix}{i:03d}"
+            if not active_db.query(AssetBorrowLog).filter(AssetBorrowLog.log_no == cand).first():
+                candidate_log_no = cand
+                break
+        if not candidate_log_no:
+            for _ in range(10):
+                cand = f"{prefix}{uuid.uuid4().hex[:4].upper()}"
+                if not active_db.query(AssetBorrowLog).filter(AssetBorrowLog.log_no == cand).first():
+                    candidate_log_no = cand
+                    break
+        if not candidate_log_no:
+            candidate_log_no = f"{prefix}{uuid.uuid4().hex[:6].upper()}"
+
+        borrow_log = AssetBorrowLog(
+            log_no=candidate_log_no,
+            asset_id=clean_no,
+            borrower_username=clean_borrower,
+            borrower_name=clean_borrower,
+            purpose="高校科研与教学实验领用",
+            borrow_time=now,
+            expected_return_time=now + timedelta(days=14),
+            return_status="BORROWING",
+            approver="系统管理员",
+        )
+        active_db.add(borrow_log)
+
         try:
             active_db.commit()
             active_db.refresh(asset)
@@ -234,6 +267,22 @@ def return_asset(
         previous_borrower = asset.borrower
         asset.borrow_status = "AVAILABLE"
         asset.borrower = None
+
+        # 自动闭环更新对应借调记录的实际归还时间与状态
+        now = datetime.now()
+        pending_log = (
+            active_db.query(AssetBorrowLog)
+            .filter(
+                AssetBorrowLog.asset_id == clean_no,
+                AssetBorrowLog.return_status.in_(["BORROWING", "OVERDUE"]),
+            )
+            .order_by(desc(AssetBorrowLog.borrow_time))
+            .first()
+        )
+        if pending_log:
+            pending_log.actual_return_time = now
+            pending_log.return_status = "RETURNED"
+            pending_log.approver = "系统管理员"
 
         try:
             active_db.commit()
@@ -509,3 +558,200 @@ def add_asset(
     finally:
         if close_local_db and active_db is not None:
             active_db.close()
+
+
+@tool(name="check_overdue_assets", description="检查并检索当前机房所有借用已超期的设备清单及逾期天数")
+def check_overdue_assets(db: Optional[Session] = None) -> Dict[str, Any]:
+    """检查机房全量借用逾期设备
+
+    :param db: 数据库会话 (由系统自动注入)
+    :return: 逾期设备总数、最大逾期天数及各设备清单
+    """
+    close_local_db = False
+    active_db = db
+    if active_db is None:
+        try:
+            from app.db.session import SessionLocal
+            active_db = SessionLocal()
+            close_local_db = True
+        except Exception:
+            active_db = None
+
+    if active_db is None:
+        return {"status": "error", "message": "数据库会话不可用，无法检索超期设备台账"}
+
+    try:
+        from app.services.overdue_service import get_overdue_assets_summary
+        return get_overdue_assets_summary(active_db)
+    except Exception as exc:
+        return {"status": "error", "message": f"检索超期设备异常: {str(exc)}"}
+    finally:
+        if close_local_db and active_db is not None:
+            active_db.close()
+
+
+@tool(name="draft_overdue_notice", description="针对指定超期借用的设备编号，自动生成合规的《设备资产超期归还催告通知函》公文通知")
+def draft_overdue_notice(asset_no: str, db: Optional[Session] = None) -> Dict[str, Any]:
+    """针对超期设备生成正式红头催告通知单
+
+    :param asset_no: 资产唯一编号，如 DEV-SRV-201
+    :param db: 数据库会话 (由系统自动注入)
+    :return: 催告公文结构化数据与 Markdown 全文
+    """
+    close_local_db = False
+    active_db = db
+    if active_db is None:
+        try:
+            from app.db.session import SessionLocal
+            active_db = SessionLocal()
+            close_local_db = True
+        except Exception:
+            active_db = None
+
+    if active_db is None:
+        return {"status": "error", "message": "数据库会话不可用，无法生成催告通知"}
+
+    try:
+        clean_no = (asset_no or "").strip().upper()
+        if not clean_no:
+            return {"status": "error", "message": "设备资产编号不能为空"}
+
+        from app.services.overdue_service import generate_overdue_notice
+        return generate_overdue_notice(active_db, clean_no)
+    except ValueError as val_err:
+        return {"status": "error", "message": str(val_err)}
+    except Exception as exc:
+        return {"status": "error", "message": f"生成催告单异常: {str(exc)}"}
+    finally:
+        if close_local_db and active_db is not None:
+            active_db.close()
+
+
+@tool(name="send_overdue_urge_notification", description="向超期借用设备的借调责任教师（如李老师）下发正式站内催还待办通知")
+def send_overdue_urge_notification(
+    asset_no: str,
+    urge_message: Optional[str] = None,
+    db: Optional[Session] = None,
+) -> Dict[str, Any]:
+    """向超期借用责任教师下发站内待办督促通知
+
+    :param asset_no: 资产唯一编号，如 DEV-SRV-201
+    :param urge_message: 可选的定制催促消息文本
+    :param db: 数据库会话 (由系统自动注入)
+    :return: 下发操作结果与待办记录明细
+    """
+    close_local_db = False
+    active_db = db
+    if active_db is None:
+        try:
+            from app.db.session import SessionLocal
+            active_db = SessionLocal()
+            close_local_db = True
+        except Exception:
+            active_db = None
+
+    if active_db is None:
+        return {"status": "error", "message": "数据库会话不可用，无法下发催还通知"}
+
+    try:
+        clean_no = (asset_no or "").strip().upper()
+        if not clean_no:
+            return {"status": "error", "message": "设备资产编号不能为空"}
+
+        asset = active_db.query(Asset).filter(Asset.asset_no == clean_no).first()
+        if not asset:
+            return {"status": "error", "message": f"未找到编号为 {clean_no} 的机房设备"}
+
+        # 查询当前未归还的借调记录与借调教师
+        blog = (
+            active_db.query(AssetBorrowLog)
+            .filter(
+                AssetBorrowLog.asset_id == clean_no,
+                AssetBorrowLog.return_status.in_(["BORROWING", "OVERDUE"]),
+                AssetBorrowLog.actual_return_time.is_(None),
+            )
+            .order_by(desc(AssetBorrowLog.borrow_time))
+            .first()
+        )
+
+        borrower_username = "teacher_li"
+        borrower_name = "李老师"
+        overdue_days = 18
+
+        now = datetime.now()
+        if blog:
+            if blog.borrower_username:
+                borrower_username = blog.borrower_username
+            if blog.borrower_name:
+                borrower_name = blog.borrower_name
+            if blog.expected_return_time:
+                overdue_days = max(1, (now - blog.expected_return_time).days)
+        elif asset.borrower:
+            user = active_db.query(User).filter(User.real_name.contains(asset.borrower) | (User.username == asset.borrower)).first()
+            if user:
+                borrower_username = user.username
+                borrower_name = user.real_name
+            else:
+                borrower_name = asset.borrower
+
+        title = f"【超期催促】{clean_no} 借用已超期 {overdue_days} 天，请及时办理归还或续借手续"
+        default_content = (
+            f"尊敬的{borrower_name}：您借调的设备「{asset.name} ({clean_no})」已超过约定归还期限（超期约 {overdue_days} 天）。"
+            f"请尽快前往实训机房办理设备归还与安全验收，或于系统办理延期审批手续。"
+        )
+        content = f"{default_content}\n\n督促留言：{urge_message.strip()}" if urge_message and urge_message.strip() else default_content
+
+        # 幂等查重：若已存在未读的同设备超期催办待办，更新内容与时间戳，避免重复生成堆叠
+        existing_unread = (
+            active_db.query(UserNotification)
+            .filter(
+                UserNotification.username == borrower_username,
+                UserNotification.asset_no == clean_no,
+                UserNotification.notice_type == "OVERDUE_URGE",
+                UserNotification.is_read == False,
+            )
+            .order_by(desc(UserNotification.created_at))
+            .first()
+        )
+
+        if existing_unread:
+            existing_unread.title = title
+            existing_unread.content = content
+            existing_unread.created_at = datetime.now()
+            notification = existing_unread
+        else:
+            notification = UserNotification(
+                username=borrower_username,
+                title=title,
+                content=content,
+                notice_type="OVERDUE_URGE",
+                asset_no=clean_no,
+                is_read=False,
+            )
+            active_db.add(notification)
+
+        try:
+            active_db.commit()
+            active_db.refresh(notification)
+        except Exception as exc:
+            active_db.rollback()
+            return {"status": "error", "message": f"持久化下发待办通知失败: {str(exc)}"}
+
+        return {
+            "status": "success",
+            "message": f"已成功向借调责任人 {borrower_name} ({borrower_username}) 下发站内超期催还待办通知！",
+            "notification": {
+                "id": notification.id,
+                "username": notification.username,
+                "title": notification.title,
+                "content": notification.content,
+                "notice_type": notification.notice_type,
+                "asset_no": notification.asset_no,
+                "is_read": notification.is_read,
+                "created_at": notification.created_at.strftime("%Y-%m-%d %H:%M:%S") if notification.created_at else "",
+            },
+        }
+    finally:
+        if close_local_db and active_db is not None:
+            active_db.close()
+

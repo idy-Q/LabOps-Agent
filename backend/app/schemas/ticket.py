@@ -39,6 +39,8 @@ class TicketUpdate(BaseModel):
     status: Optional[StatusType] = Field(default=None)
     device_id: Optional[str] = Field(default=None)
     creator: Optional[str] = Field(default=None, min_length=1, max_length=64)
+    operator: Optional[str] = Field(default=None, description="流转处置操作人")
+    comment: Optional[str] = Field(default=None, description="流转处置说明")
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 

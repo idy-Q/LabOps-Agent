@@ -78,6 +78,7 @@ export const api = {
     request(`/tickets/${ticketId}`, {
       method: 'DELETE',
     }),
+  getTicketTimeline: (ticketNoOrId) => request(`/tickets/${ticketNoOrId}/timeline`),
 
   // 3. 资产台账与设备硬件详细参数
   listAssets: (params = {}) => {
@@ -91,6 +92,7 @@ export const api = {
     return request(`/assets/${qs ? `?${qs}` : ''}`)
   },
   getAsset: (assetId) => request(`/assets/${assetId}`),
+  getAssetTimeline: (assetNo) => request(`/assets/${assetNo}/timeline`),
   createAsset: (payload) =>
     request('/assets/', {
       method: 'POST',
@@ -105,6 +107,10 @@ export const api = {
     request(`/assets/${assetId}`, {
       method: 'DELETE',
     }),
+  getTopology: (roomCode) =>
+    request(`/assets/topology${roomCode ? `?room_code=${encodeURIComponent(roomCode)}` : ''}`),
+  getOverdueAssets: () => request('/assets/overdue'),
+  getOverdueNotice: (assetNo) => request(`/assets/${encodeURIComponent(assetNo)}/overdue-notice`),
 
   // 4. 会话与历史
   getChatHistory: (sessionId) =>
@@ -123,5 +129,40 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getDemoUsers: () => request('/auth/demo-users'),
+  getUserProfile: (identifier) => request(`/auth/profile/${encodeURIComponent(identifier)}`),
+
+  // 6. 规章规程知识中心与 RAG 检索
+  getRegulations: (params = {}) => {
+    const query = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        query.append(k, v)
+      }
+    })
+    const qs = query.toString()
+    return request(`/regulations${qs ? `?${qs}` : ''}`)
+  },
+  getRegulationDetail: (docId) => request(`/regulations/${encodeURIComponent(docId)}`),
+  searchRegulations: (payload) =>
+    request('/regulations/search', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getRegulationsSummary: () => request('/regulations/summary'),
+
+  // 7. 站内待办与超期催还通知
+  getNotifications: (username) => {
+    const qs = username ? `?username=${encodeURIComponent(username)}` : ''
+    return request(`/notifications${qs}`)
+  },
+  markNotificationRead: (id) =>
+    request(`/notifications/${id}/read`, {
+      method: 'POST',
+    }),
+  sendOverdueUrge: (assetNo, remark) =>
+    request('/notifications/urge', {
+      method: 'POST',
+      body: JSON.stringify({ asset_no: assetNo, remark }),
+    }),
 }
 

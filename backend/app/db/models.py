@@ -1,6 +1,6 @@
 """SQLAlchemy 2.0 数据底座模型定义
 
-包含十张核心业务、运维流转与知识资产表：
+包含十一张核心业务、运维流转与知识资产表：
 1. Ticket: 运维工单表
 2. Asset: 机房资产设备表
 3. AuditLog: Agent 行为与工具调用审计日志表
@@ -11,12 +11,13 @@
 8. TicketWorkflow: 工单流转处置记录表
 9. KnowledgeDocument: 知识库规程源文档表
 10. KnowledgeChunk: 知识切块索引台账表
+11. UserNotification: 用户站内待办与超期督促通知表
 """
 
 import hashlib
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Text, Integer, Float, DateTime, ForeignKey, func
+from sqlalchemy import String, Text, Integer, Float, DateTime, ForeignKey, Boolean, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -460,5 +461,37 @@ class KnowledgeChunk(Base):
 
     def __repr__(self) -> str:
         return f"<KnowledgeChunk {self.chunk_id} [doc={self.document_id}, idx={self.chunk_index}]>"
+
+
+class UserNotification(Base):
+    """用户站内待办与超期督促通知表"""
+
+    __tablename__ = "user_notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(
+        String(64), index=True, nullable=False, comment="接收通知的用户名，如 teacher_li"
+    )
+    title: Mapped[str] = mapped_column(
+        String(128), nullable=False, comment="通知标题"
+    )
+    content: Mapped[str] = mapped_column(
+        Text, nullable=False, comment="通知详细内容/公文摘要"
+    )
+    notice_type: Mapped[str] = mapped_column(
+        String(32), default="OVERDUE_URGE", nullable=False, comment="类型: OVERDUE_URGE/SYSTEM"
+    )
+    asset_no: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, comment="关联资产编号，如 DEV-SRV-201"
+    )
+    is_read: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, comment="是否已读"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False, comment="创建时间"
+    )
+
+    def __repr__(self) -> str:
+        return f"<UserNotification id={self.id} user={self.username} title={self.title} read={self.is_read}>"
 
 

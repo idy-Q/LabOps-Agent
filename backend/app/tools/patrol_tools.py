@@ -4,7 +4,6 @@ from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 
 from app.tools.registry import tool
-from app.services.patrol_service import execute_autonomous_patrol
 
 
 @tool(
@@ -21,6 +20,8 @@ def run_autonomous_patrol(
     :param db: 数据库会话 (由 Agent 执行引擎自动注入)
     :return: 包含体检得分、KPI、异常清单、工单及 Markdown 简报的结构化结果
     """
+    from app.services.patrol_service import execute_autonomous_patrol
+
     report = execute_autonomous_patrol(db=db, operator=operator)
     return {
         "status": "success",

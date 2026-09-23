@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, or_
 
-from app.db.models import Ticket
+from app.db.models import Ticket, TicketWorkflow
 from app.tools.registry import tool
 
 VALID_PRIORITIES = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
@@ -210,6 +210,7 @@ def update_ticket_status(
     ticket_no: str,
     status: str,
     description_append: Optional[str] = None,
+    operator: Optional[str] = None,
     db: Optional[Session] = None,
 ) -> Dict[str, Any]:
     """更新工单状态及处置详情
@@ -217,6 +218,7 @@ def update_ticket_status(
     :param ticket_no: 目标工单编号，如 TK-20260901-001
     :param status: 目标状态 (PENDING, PROCESSING, RESOLVED, CLOSED)
     :param description_append: 追加的处置过程或排查说明
+    :param operator: 流转处置人或智能体标识，缺省为 'LabOps-Agent'
     :param db: 数据库会话 (由系统自动注入)
     :return: 更新后的工单信息
     """
@@ -246,9 +248,21 @@ def update_ticket_status(
         if not ticket:
             return {"status": "error", "message": f"未找到工单编号为 '{clean_ticket_no}' 的工单"}
 
+        old_status = ticket.status
         ticket.status = norm_status
         if description_append and description_append.strip():
             ticket.description = f"{ticket.description}\n[追加处置]: {description_append.strip()}"
+
+        if old_status != norm_status:
+            clean_op = (operator or "").strip() or "LabOps-Agent"
+            wf = TicketWorkflow(
+                ticket_id=ticket.ticket_no,
+                previous_status=old_status,
+                next_status=norm_status,
+                operator=clean_op,
+                comment=description_append.strip() if (description_append and description_append.strip()) else f"Agent 自动流转工单状态: {old_status} -> {norm_status}",
+            )
+            active_db.add(wf)
 
         try:
             active_db.commit()

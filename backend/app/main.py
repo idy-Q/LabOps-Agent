@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.db.init_db import init_db
 from app.tools.regulation_tools import _init_kb
-from app.api import tickets, assets, chat, metrics, auth
+from app.api import tickets, assets, chat, metrics, auth, regulations, notifications
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,8 @@ app.include_router(chat.router, prefix="/api/chat", tags=["Agent 对话交互"])
 app.include_router(metrics.router, prefix="/api/metrics", tags=["机房运行监控大盘"])
 app.include_router(tickets.router, prefix="/api/tickets", tags=["运维工单管理"])
 app.include_router(assets.router, prefix="/api/assets", tags=["机房资产管理"])
+app.include_router(regulations.router, prefix="/api/regulations", tags=["规章规程知识中心"])
+app.include_router(notifications.router, prefix="/api/notifications", tags=["站内待办与超期督促通知"])
 
 
 @app.get(
