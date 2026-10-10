@@ -39,3 +39,13 @@ Thumbs.db
 docs/thesis_materials/
 docs/task_checklist.md
 
+# Portable Packages & Releases (Assets Only, Keep Source Pure)
+02-*/
+03-*/
+04-*/
+Releases_*/
+*.7z
+*.zip
+*.exe
+
+
