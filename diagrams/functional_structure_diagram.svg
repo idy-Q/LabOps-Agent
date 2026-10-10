@@ -1,211 +1,113 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1420" width="900" height="1420" style="background-color: #FFFFFF; font-family: 'SimSun', 'STSong', 'SimHei', 'Microsoft YaHei', sans-serif;">
-
-    <rect x="90" y="700.0" width="140" height="68" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-    <text x="160.0" y="727.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">高校实验室轻量化</text>
-    <text x="160.0" y="749.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">智能自治运维系统</text>
-    
-
-    <!-- 根节点向右水平引线 -->
-    <line x1="230" y1="734.0" x2="305.0" y2="734.0" stroke="#000000" stroke-width="1.2"/>
-    <!-- 垂直分发主干线 (分段连接，绝对零交叉) -->
-    <line x1="305.0" y1="734.0" x2="305.0" y2="266.0" stroke="#000000" stroke-width="1.2"/>
-    <line x1="305.0" y1="734.0" x2="305.0" y2="1142.0" stroke="#000000" stroke-width="1.2"/>
-    <!-- 三条水平线接入角色框 -->
-    <line x1="305.0" y1="266.0" x2="380" y2="266.0" stroke="#000000" stroke-width="1.2"/>
-    <line x1="305.0" y1="734.0" x2="380" y2="734.0" stroke="#000000" stroke-width="1.2"/>
-    <line x1="305.0" y1="1142.0" x2="380" y2="1142.0" stroke="#000000" stroke-width="1.2"/>
-    
-
-    <rect x="380" y="244.0" width="140" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-    <text x="450.0" y="271.0" font-size="14" font-weight="bold" fill="#000000" text-anchor="middle">机房管理员</text>
-
-    <rect x="380" y="712.0" width="140" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-    <text x="450.0" y="739.0" font-size="14" font-weight="bold" fill="#000000" text-anchor="middle">师生用户</text>
-
-    <rect x="380" y="1120.0" width="140" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-    <text x="450.0" y="1147.0" font-size="14" font-weight="bold" fill="#000000" text-anchor="middle">智能自治Agent</text>
-    
-<line x1="520" y1="266.0" x2="570.0" y2="266.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="66.0" x2="570.0" y2="106.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="106.0" x2="570.0" y2="146.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="146.0" x2="570.0" y2="186.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="186.0" x2="570.0" y2="226.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="226.0" x2="570.0" y2="266.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="266.0" x2="570.0" y2="306.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="306.0" x2="570.0" y2="346.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="346.0" x2="570.0" y2="386.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="386.0" x2="570.0" y2="426.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="426.0" x2="570.0" y2="466.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="66.0" x2="620" y2="66.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="50" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="71" font-size="13" fill="#000000" text-anchor="middle">规程源文档维护</text>
-            
-<line x1="570.0" y1="106.0" x2="620" y2="106.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="90" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="111" font-size="13" fill="#000000" text-anchor="middle">知识切块台账管理</text>
-            
-<line x1="570.0" y1="146.0" x2="620" y2="146.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="130" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="151" font-size="13" fill="#000000" text-anchor="middle">Agent工具审计审查</text>
-            
-<line x1="570.0" y1="186.0" x2="620" y2="186.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="170" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="191" font-size="13" fill="#000000" text-anchor="middle">设备借调归还验收</text>
-            
-<line x1="570.0" y1="226.0" x2="620" y2="226.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="210" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="231" font-size="13" fill="#000000" text-anchor="middle">工单流转处置留痕</text>
-            
-<line x1="570.0" y1="266.0" x2="620" y2="266.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="250" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="271" font-size="13" fill="#000000" text-anchor="middle">运维工单全量处置</text>
-            
-<line x1="570.0" y1="306.0" x2="620" y2="306.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="290" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="311" font-size="13" fill="#000000" text-anchor="middle">硬件物理规格维护</text>
-            
-<line x1="570.0" y1="346.0" x2="620" y2="346.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="330" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="351" font-size="13" fill="#000000" text-anchor="middle">实验设备资产管理</text>
-            
-<line x1="570.0" y1="386.0" x2="620" y2="386.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="370" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="391" font-size="13" fill="#000000" text-anchor="middle">机房区域与配电台账</text>
-            
-<line x1="570.0" y1="426.0" x2="620" y2="426.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="410" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="431" font-size="13" fill="#000000" text-anchor="middle">用户角色与权限管理</text>
-            
-<line x1="570.0" y1="466.0" x2="620" y2="466.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="450" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="471" font-size="13" fill="#000000" text-anchor="middle">后台安全认证登录</text>
-            
-<line x1="520" y1="734.0" x2="570.0" y2="734.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="534.0" x2="570.0" y2="574.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="574.0" x2="570.0" y2="614.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="614.0" x2="570.0" y2="654.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="654.0" x2="570.0" y2="694.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="694.0" x2="570.0" y2="734.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="734.0" x2="570.0" y2="774.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="774.0" x2="570.0" y2="814.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="814.0" x2="570.0" y2="854.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="854.0" x2="570.0" y2="894.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="894.0" x2="570.0" y2="934.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="534.0" x2="620" y2="534.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="518" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="539" font-size="13" fill="#000000" text-anchor="middle">知识依据溯源展示</text>
-            
-<line x1="570.0" y1="574.0" x2="620" y2="574.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="558" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="579" font-size="13" fill="#000000" text-anchor="middle">机房安全规程咨询</text>
-            
-<line x1="570.0" y1="614.0" x2="620" y2="614.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="598" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="619" font-size="13" fill="#000000" text-anchor="middle">大盘双向联动看板</text>
-            
-<line x1="570.0" y1="654.0" x2="620" y2="654.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="638" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="659" font-size="13" fill="#000000" text-anchor="middle">个人工单进度跟踪</text>
-            
-<line x1="570.0" y1="694.0" x2="620" y2="694.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="678" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="699" font-size="13" fill="#000000" text-anchor="middle">设备故障在线报修</text>
-            
-<line x1="570.0" y1="734.0" x2="620" y2="734.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="718" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="739" font-size="13" fill="#000000" text-anchor="middle">归还借调设备登记</text>
-            
-<line x1="570.0" y1="774.0" x2="620" y2="774.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="758" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="779" font-size="13" fill="#000000" text-anchor="middle">设备实名借调申请</text>
-            
-<line x1="570.0" y1="814.0" x2="620" y2="814.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="798" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="819" font-size="13" fill="#000000" text-anchor="middle">硬件物理规格查看</text>
-            
-<line x1="570.0" y1="854.0" x2="620" y2="854.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="838" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="859" font-size="13" fill="#000000" text-anchor="middle">实验设备在库查询</text>
-            
-<line x1="570.0" y1="894.0" x2="620" y2="894.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="878" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="899" font-size="13" fill="#000000" text-anchor="middle">新用户注册与登记</text>
-            
-<line x1="570.0" y1="934.0" x2="620" y2="934.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="918" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="939" font-size="13" fill="#000000" text-anchor="middle">前台用户账号登录</text>
-            
-<line x1="520" y1="1142.0" x2="570.0" y2="1142.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="1002.0" x2="570.0" y2="1042.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="1042.0" x2="570.0" y2="1082.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="1082.0" x2="570.0" y2="1122.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="1122.0" x2="570.0" y2="1162.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="1162.0" x2="570.0" y2="1202.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="1202.0" x2="570.0" y2="1242.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="1242.0" x2="570.0" y2="1282.0" stroke="#000000" stroke-width="1.2"/>
-<line x1="570.0" y1="1002.0" x2="620" y2="1002.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="986" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="1007" font-size="13" fill="#000000" text-anchor="middle">宿主机指标自主感知</text>
-            
-<line x1="570.0" y1="1042.0" x2="620" y2="1042.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="1026" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="1047" font-size="13" fill="#000000" text-anchor="middle">超温故障自主研判提单</text>
-            
-<line x1="570.0" y1="1082.0" x2="620" y2="1082.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="1066" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="1087" font-size="13" fill="#000000" text-anchor="middle">手写ReAct状态机调度</text>
-            
-<line x1="570.0" y1="1122.0" x2="620" y2="1122.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="1106" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="1127" font-size="13" fill="#000000" text-anchor="middle">Function Calling工具分发</text>
-            
-<line x1="570.0" y1="1162.0" x2="620" y2="1162.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="1146" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="1167" font-size="13" fill="#000000" text-anchor="middle">ChromaDB向量检索</text>
-            
-<line x1="570.0" y1="1202.0" x2="620" y2="1202.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="1186" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="1207" font-size="13" fill="#000000" text-anchor="middle">规程溯源依据生成</text>
-            
-<line x1="570.0" y1="1242.0" x2="620" y2="1242.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="1226" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="1247" font-size="13" fill="#000000" text-anchor="middle">细粒度SSE流式响应</text>
-            
-<line x1="570.0" y1="1282.0" x2="620" y2="1282.0" stroke="#000000" stroke-width="1.2"/>
-
-            <rect x="620" y="1266" width="200" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-            <text x="720.0" y="1287" font-size="13" fill="#000000" text-anchor="middle">工具行为物理落盘审计</text>
-            
-
-    <text x="450.0" y="1358" font-size="15" font-weight="bold" fill="#000000" text-anchor="middle">图 3-1 系统功能结构图</text>
-    
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 1460" width="940" height="1460" style="background-color: #FFFFFF; font-family: 'SimSun', 'STSong', 'SimHei', 'Microsoft YaHei', sans-serif;">
+  <rect x="70" y="724.0" width="150" height="68" fill="#FFFFFF" stroke="#000000" stroke-width="1.3"/>
+  <text x="145" y="751.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">高校实验室轻量化</text>
+  <text x="145" y="773.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">智能自治运维系统</text>
+  <line x1="220" y1="758.0" x2="295" y2="758.0" stroke="#000000" stroke-width="1.2"/>
+  <line x1="295" y1="270.0" x2="295" y2="1183.0" stroke="#000000" stroke-width="1.2"/>
+  <line x1="295" y1="270.0" x2="365" y2="270.0" stroke="#000000" stroke-width="1.2"/>
+  <rect x="365" y="248.0" width="140" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="435" y="275.0" font-size="14" font-weight="bold" fill="#000000" text-anchor="middle">机房管理员</text>
+  <line x1="505" y1="270.0" x2="555" y2="270.0" stroke="#000000" stroke-width="1.2"/>
+  <line x1="555" y1="60" x2="555" y2="480" stroke="#000000" stroke-width="1.2"/>
+  <line x1="555" y1="60" x2="605" y2="60" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="44" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="65" font-size="13" fill="#000000" text-anchor="middle">规程源文档维护与切块</text>
+  <line x1="555" y1="102" x2="605" y2="102" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="86" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="107" font-size="13" fill="#000000" text-anchor="middle">知识切块台账与向量空间</text>
+  <line x1="555" y1="144" x2="605" y2="144" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="128" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="149" font-size="13" fill="#000000" text-anchor="middle">3柜126U空间与42U机架管理</text>
+  <line x1="555" y1="186" x2="605" y2="186" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="170" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="191" font-size="13" fill="#000000" text-anchor="middle">资产超期催告公文签发</text>
+  <line x1="555" y1="228" x2="605" y2="228" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="212" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="233" font-size="13" fill="#000000" text-anchor="middle">独立沙箱A4巡检研报打印</text>
+  <line x1="555" y1="270" x2="605" y2="270" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="254" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="275" font-size="13" fill="#000000" text-anchor="middle">Agent工具行为审计审查</text>
+  <line x1="555" y1="312" x2="605" y2="312" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="296" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="317" font-size="13" fill="#000000" text-anchor="middle">设备借调归还核验验收</text>
+  <line x1="555" y1="354" x2="605" y2="354" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="338" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="359" font-size="13" fill="#000000" text-anchor="middle">运维工单全量流转与办结</text>
+  <line x1="555" y1="396" x2="605" y2="396" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="380" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="401" font-size="13" fill="#000000" text-anchor="middle">硬件物理规格与设备台账</text>
+  <line x1="555" y1="438" x2="605" y2="438" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="422" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="443" font-size="13" fill="#000000" text-anchor="middle">用户角色与权限口令管理</text>
+  <line x1="555" y1="480" x2="605" y2="480" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="464" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="485" font-size="13" fill="#000000" text-anchor="middle">后台安全认证与提权登录</text>
+  <line x1="295" y1="758.0" x2="365" y2="758.0" stroke="#000000" stroke-width="1.2"/>
+  <rect x="365" y="736.0" width="140" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="435" y="763.0" font-size="14" font-weight="bold" fill="#000000" text-anchor="middle">师生用户</text>
+  <line x1="505" y1="758.0" x2="555" y2="758.0" stroke="#000000" stroke-width="1.2"/>
+  <line x1="555" y1="548" x2="555" y2="968" stroke="#000000" stroke-width="1.2"/>
+  <line x1="555" y1="548" x2="605" y2="548" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="532" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="553" font-size="13" fill="#000000" text-anchor="middle">知识依据溯源与白盒查验</text>
+  <line x1="555" y1="590" x2="605" y2="590" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="574" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="595" font-size="13" fill="#000000" text-anchor="middle">机房安全规程智能咨询</text>
+  <line x1="555" y1="632" x2="605" y2="632" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="616" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="637" font-size="13" fill="#000000" text-anchor="middle">2D机架拓扑大盘双向联动</text>
+  <line x1="555" y1="674" x2="605" y2="674" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="658" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="679" font-size="13" fill="#000000" text-anchor="middle">个人工单进度时序跟踪</text>
+  <line x1="555" y1="716" x2="605" y2="716" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="700" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="721" font-size="13" fill="#000000" text-anchor="middle">设备故障在线报修申报</text>
+  <line x1="555" y1="758" x2="605" y2="758" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="742" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="763" font-size="13" fill="#000000" text-anchor="middle">处置人实名追溯时间轴查看</text>
+  <line x1="555" y1="800" x2="605" y2="800" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="784" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="805" font-size="13" fill="#000000" text-anchor="middle">归还借调设备核验登记</text>
+  <line x1="555" y1="842" x2="605" y2="842" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="826" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="847" font-size="13" fill="#000000" text-anchor="middle">设备实名借调申请流转</text>
+  <line x1="555" y1="884" x2="605" y2="884" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="868" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="889" font-size="13" fill="#000000" text-anchor="middle">RBAC三权防越权安全拦截</text>
+  <line x1="555" y1="926" x2="605" y2="926" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="910" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="931" font-size="13" fill="#000000" text-anchor="middle">实验教学设备在库查询</text>
+  <line x1="555" y1="968" x2="605" y2="968" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="952" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="973" font-size="13" fill="#000000" text-anchor="middle">前台用户账号注册与登录</text>
+  <line x1="295" y1="1183.0" x2="365" y2="1183.0" stroke="#000000" stroke-width="1.2"/>
+  <rect x="365" y="1161.0" width="140" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="435" y="1188.0" font-size="14" font-weight="bold" fill="#000000" text-anchor="middle">智能自治Agent</text>
+  <line x1="505" y1="1183.0" x2="555" y2="1183.0" stroke="#000000" stroke-width="1.2"/>
+  <line x1="555" y1="1036" x2="555" y2="1330" stroke="#000000" stroke-width="1.2"/>
+  <line x1="555" y1="1036" x2="605" y2="1036" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="1020" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="1041" font-size="13" fill="#000000" text-anchor="middle">宿主机指标自主动态感知</text>
+  <line x1="555" y1="1078" x2="605" y2="1078" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="1062" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="1083" font-size="13" fill="#000000" text-anchor="middle">全机房主动探针遍历巡检</text>
+  <line x1="555" y1="1120" x2="605" y2="1120" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="1104" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="1125" font-size="13" fill="#000000" text-anchor="middle">设备超温40℃自主研判提单</text>
+  <line x1="555" y1="1162" x2="605" y2="1162" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="1146" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="1167" font-size="13" fill="#000000" text-anchor="middle">重复未结工单抑制拦截</text>
+  <line x1="555" y1="1204" x2="605" y2="1204" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="1188" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="1209" font-size="13" fill="#000000" text-anchor="middle">手写150行ReAct状态机调度</text>
+  <line x1="555" y1="1246" x2="605" y2="1246" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="1230" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="1251" font-size="13" fill="#000000" text-anchor="middle">白盒规程知识向量检索溯源</text>
+  <line x1="555" y1="1288" x2="605" y2="1288" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="1272" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="1293" font-size="13" fill="#000000" text-anchor="middle">细粒度SSE结构化流式响应</text>
+  <line x1="555" y1="1330" x2="605" y2="1330" stroke="#000000" stroke-width="1.2"/>
+  <rect x="605" y="1314" width="230" height="32" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/>
+  <text x="720" y="1335" font-size="13" fill="#000000" text-anchor="middle">工具行为物理落盘审计追溯</text>
+  <text x="470.0" y="1410" font-size="15" font-weight="bold" fill="#000000" text-anchor="middle">图 3-1 系统功能结构图</text>
 </svg>

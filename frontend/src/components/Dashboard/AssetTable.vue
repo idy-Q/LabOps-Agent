@@ -177,7 +177,7 @@
             <th class="w-[110px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">机房机柜 / IP</th>
             <th class="w-[86px] py-2.5 px-1 text-center border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">健康度调节</th>
             <th class="w-[130px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">借用状态</th>
-            <th class="w-[170px] py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产操作</th>
+            <th class="w-[140px] py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产操作</th>
           </tr>
         </thead>
         <tbody class="font-sans">
@@ -187,7 +187,7 @@
             </td>
           </tr>
           <tr
-            v-for="a in filteredAssets"
+            v-for="(a, idx) in filteredAssets"
             :key="a.id"
             :class="[
               'transition-all duration-200 hover:bg-white/[0.06] text-xs border-b border-white/[0.04]',
@@ -259,6 +259,24 @@
               >
                 {{ a.health_status }}
               </span>
+
+              <!-- 核心遥测温度药丸 (可点击快捷调温校准) -->
+              <div class="mt-0.5 flex items-center justify-center">
+                <span
+                  @click.stop="!isStudent && openEditModal(a)"
+                  :class="[
+                    'px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors inline-flex items-center gap-0.5',
+                    isStudent ? 'cursor-default' : 'cursor-pointer hover:underline',
+                    getAssetTempClass(a)
+                  ]"
+                  :title="isStudent ? `核心遥测温度: ${getAssetTemperature(a)}°C` : `核心遥测温度: ${getAssetTemperature(a)}°C (点击快速校准设定)`"
+                >
+                  <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span>{{ getAssetTemperature(a) }}°C</span>
+                </span>
+              </div>
             </td>
 
             <!-- 借用状态与借用人 -->
@@ -281,26 +299,26 @@
               </div>
             </td>
 
-            <!-- 资产多维操作列 (详情 / 编辑 / 借还 / 催告函 / 删除) -->
+            <!-- 资产多维操作列 (轻量收敛：借还高频主按钮 + 催告函 + 常规详情 + 更多下拉浮层) -->
             <td class="py-2.5 px-3 text-right whitespace-nowrap">
-              <div class="flex items-center justify-end space-x-1">
-                <!-- 催告函快捷入口 (超期借用设备高亮微光图标) -->
+              <div class="flex items-center justify-end space-x-1.5">
+                <!-- 1. 催告函快捷入口 (超期借用设备专属高亮微标) -->
                 <button
                   v-if="a.borrow_status === 'IN_USE' && overdueMap && overdueMap[a.asset_no]"
                   @click="$emit('openOverdueNotice', a.asset_no)"
                   class="p-1 rounded bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 hover:text-rose-200 border border-rose-500/30 transition-all active:scale-95 shadow-sm"
                   title="借用已超期！点击查看并出具《超期归还催告单》"
                 >
-                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg class="w-3.5 h-3.5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </button>
 
-                <!-- 详情按钮 -->
+                <!-- 2. 常规详情入口 (保留微型眼部查看按钮) -->
                 <button
                   @click="openDetailModal(a)"
                   class="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-cyan-300 transition-colors"
-                  title="查看完整硬件参数与详情"
+                  title="查看完整硬件参数与运行详情"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -308,30 +326,7 @@
                   </svg>
                 </button>
 
-                <!-- 履历时间轴按钮 (快捷入口) -->
-                <button
-                  @click="$emit('viewTimeline', a.asset_no)"
-                  class="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-amber-400 transition-colors"
-                  title="查看该资产全生命周期时序履历时间轴"
-                >
-                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </button>
-
-                <!-- 编辑按钮 (非学生可用) -->
-                <button
-                  v-if="!isStudent"
-                  @click="openEditModal(a)"
-                  class="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-indigo-300 transition-colors"
-                  title="编辑此设备与硬件物理参数"
-                >
-                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-
-                <!-- 借用 / 归还快捷动作 -->
+                <!-- 3. 核心业务高频主按钮：【借用】/【归还】 -->
                 <button
                   v-if="a.borrow_status === 'AVAILABLE'"
                   :disabled="isStudent"
@@ -347,7 +342,7 @@
                   借用
                 </button>
                 <button
-                  v-if="a.borrow_status === 'IN_USE'"
+                  v-else-if="a.borrow_status === 'IN_USE'"
                   :disabled="!canReturn(a)"
                   @click="canReturn(a) && $emit('returnAsset', a.asset_no)"
                   :class="[
@@ -361,17 +356,68 @@
                   归还
                 </button>
 
-                <!-- 删除按钮 (仅管理员可用) -->
-                <button
-                  v-if="isAdmin"
-                  @click="openDeleteConfirm(a)"
-                  class="p-1 rounded hover:bg-rose-500/20 text-zinc-500 hover:text-rose-400 transition-colors"
-                  title="删除设备资产记录"
-                >
-                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+                <!-- 4. 低频管理操作收敛：【··· 更多】下拉浮层 -->
+                <div class="relative inline-block text-left">
+                  <button
+                    @click.stop="toggleActionMenu(a.asset_no)"
+                    class="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+                    :class="{ 'bg-zinc-800 text-zinc-100': activeActionMenuAssetNo === a.asset_no }"
+                    title="更多管理操作 (编辑参数 / 时序履历 / 删除)"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                    </svg>
+                  </button>
+
+                  <div
+                    v-if="activeActionMenuAssetNo === a.asset_no"
+                    @click.stop
+                    :class="[
+                      'absolute right-0 w-32 py-1 rounded-xl border shadow-xl z-30 backdrop-blur-xl transition-all text-xs font-sans text-left',
+                      idx >= filteredAssets.length - 2 && filteredAssets.length > 2
+                        ? 'bottom-full mb-1'
+                        : 'top-full mt-1',
+                      'bg-zinc-900/95 border-white/[0.12] text-zinc-200 shadow-2xl ring-1 ring-white/[0.05]'
+                    ]"
+                  >
+                    <!-- 编辑参数 (非学生可用) -->
+                    <button
+                      v-if="!isStudent"
+                      @click="closeActionMenu(); openEditModal(a)"
+                      class="w-full px-3 py-1.5 flex items-center space-x-2 text-zinc-300 hover:text-indigo-300 hover:bg-white/[0.08] transition-colors"
+                    >
+                      <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      <span>编辑参数</span>
+                    </button>
+
+                    <!-- 时序履历 -->
+                    <button
+                      @click="closeActionMenu(); $emit('viewTimeline', a.asset_no)"
+                      class="w-full px-3 py-1.5 flex items-center space-x-2 text-zinc-300 hover:text-amber-300 hover:bg-white/[0.08] transition-colors"
+                    >
+                      <svg class="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>时序履历</span>
+                    </button>
+
+                    <div v-if="isAdmin" class="my-1 border-t border-white/[0.08]"></div>
+
+                    <!-- 删除设备 (仅管理员可用) -->
+                    <button
+                      v-if="isAdmin"
+                      @click="closeActionMenu(); openDeleteConfirm(a)"
+                      class="w-full px-3 py-1.5 flex items-center space-x-2 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
+                    >
+                      <svg class="w-3.5 h-3.5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>删除设备</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </td>
           </tr>
@@ -597,10 +643,51 @@ function returnButtonTitle(asset) {
   return '办理归还'
 }
 
+function getAssetTemperature(a) {
+  if (!a) return 31.5
+  if (a.health_status === 'OFFLINE') return 22.0
+  const t = a.custom_temperature ?? a.telemetry_temperature ?? a.detail?.custom_temperature
+  if (t !== undefined && t !== null) return Number(t)
+  if (a.health_status === 'OVERHEAT') return 43.5
+  if (a.health_status === 'WARNING') return 38.0
+  return 31.5
+}
+
+function getAssetTempClass(a) {
+  if (!a || a.health_status === 'OFFLINE') return 'text-zinc-500 hover:text-zinc-300'
+  const t = getAssetTemperature(a)
+  if (t >= 40.0) return 'text-rose-400 font-bold hover:text-rose-300'
+  if (t >= 38.0) return 'text-amber-400 font-medium hover:text-amber-300'
+  return 'text-emerald-400 hover:text-emerald-300'
+}
+
 const tableContainerRef = ref(null)
 const selectedCategory = ref('ALL')
 const selectedHealth = ref('ALL')
 const keyword = ref('')
+
+// 更多操作浮层状态控制与外部点击自动收起
+const activeActionMenuAssetNo = ref(null)
+
+function toggleActionMenu(assetNo) {
+  if (activeActionMenuAssetNo.value === assetNo) {
+    activeActionMenuAssetNo.value = null
+  } else {
+    activeActionMenuAssetNo.value = assetNo
+  }
+}
+
+function closeActionMenu() {
+  activeActionMenuAssetNo.value = null
+}
+
+onMounted(() => {
+  window.addEventListener('click', closeActionMenu)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('click', closeActionMenu)
+})
 
 // 1. 详情面板状态
 const showDetailModal = ref(false)

@@ -486,7 +486,9 @@
       v-model="showUserProfileModal"
       :identifier="selectedProfileIdentifier"
       :nodeContext="selectedProfileNodeContext"
+      :currentUser="currentUser"
       :theme="effectiveTheme"
+      @userUpdated="handleUserUpdated"
     />
   </Teleport>
 </template>
@@ -520,7 +522,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'ticketUpdated'])
+const emit = defineEmits(['update:modelValue', 'ticketUpdated', 'userUpdated'])
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -557,6 +559,11 @@ function openUserProfile(operatorName, node) {
   selectedProfileIdentifier.value = operatorName || '系统'
   selectedProfileNodeContext.value = node || null
   showUserProfileModal.value = true
+}
+
+function handleUserUpdated(updatedUser) {
+  emit('userUpdated', updatedUser)
+  emit('ticketUpdated')
 }
 
 const userRole = computed(() => (props.currentUser?.role || 'STUDENT').toUpperCase())

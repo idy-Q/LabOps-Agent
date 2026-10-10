@@ -44,6 +44,34 @@ class RegulationDetailResponse(RegulationDocumentItem):
     chunks: List[KnowledgeChunkItem] = Field(default_factory=list, description="全部切块明细列表")
 
 
+class RegulationCreateRequest(BaseModel):
+    """录入新增规章规程请求数据模式"""
+
+    doc_id: Optional[str] = Field(
+        default=None,
+        description="文档唯一编号，若不传则自动按 DOC-RAG-XXX 格式递增生成",
+    )
+    title: str = Field(..., min_length=2, max_length=128, description="规章规程文档标题")
+    category: str = Field(..., min_length=1, max_length=64, description="业务分类：用电规范 / 应急条例 / 维保规程 等")
+    version: str = Field(default="2026版", max_length=32, description="规程版本号")
+    effective_date: str = Field(..., min_length=4, max_length=32, description="规程颁布实施日期，如 2026-09-01")
+    content: str = Field(..., min_length=10, description="规程正文 Markdown 内容")
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+class RegulationUpdateRequest(BaseModel):
+    """规章规程修改请求数据模式 (字段均为可选，若传递 content 则触发重新切块与向量索引更新)"""
+
+    title: Optional[str] = Field(default=None, min_length=2, max_length=128, description="规章规程文档标题")
+    category: Optional[str] = Field(default=None, min_length=1, max_length=64, description="业务分类：用电规范 / 应急条例 / 维保规程 等")
+    version: Optional[str] = Field(default=None, max_length=32, description="规程版本号")
+    effective_date: Optional[str] = Field(default=None, min_length=4, max_length=32, description="规程颁布实施日期，如 2026-09-01")
+    content: Optional[str] = Field(default=None, min_length=10, description="规程正文 Markdown 内容（若修改将自动重新切块与向量更新）")
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
 class RegulationSearchRequest(BaseModel):
     """规程语义检索请求模型"""
 

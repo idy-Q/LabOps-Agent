@@ -140,7 +140,7 @@
             <th class="w-[70px] py-2.5 px-1 text-center border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">等级</th>
             <th class="w-[76px] py-2.5 px-1 text-center border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">流转状态</th>
             <th class="w-[102px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">关联设备</th>
-            <th class="w-[115px] py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">处置操作</th>
+            <th class="w-[190px] py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">处置操作</th>
           </tr>
         </thead>
         <tbody class="font-sans">
@@ -159,27 +159,16 @@
                 : ''
             ]"
           >
-            <!-- 工单编号与流转时间轴入口 -->
+            <!-- 工单编号 (点击在左侧对话中查询此工单进展) -->
             <td class="py-2.5 px-3 font-mono text-[11px] text-zinc-300 whitespace-nowrap truncate">
-              <div class="inline-flex items-center gap-1.5 max-w-full">
-                <span
-                  @click="$emit('inspectTicket', t.ticket_no)"
-                  class="hover:underline hover:text-amber-400 cursor-pointer inline-flex items-center gap-1.5 transition-colors truncate"
-                  title="点击在左侧对话中查询此工单进展"
-                >
-                  <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="t.status === 'RESOLVED' || t.status === 'CLOSED' ? 'bg-zinc-600' : 'bg-amber-400'"></span>
-                  <span class="truncate">{{ t.ticket_no }}</span>
-                </span>
-                <button
-                  @click.stop="$emit('viewTimeline', t.ticket_no)"
-                  class="p-0.5 rounded hover:bg-zinc-800 text-zinc-500 hover:text-amber-400 transition-colors shrink-0"
-                  title="查看该工单流转脉络时间轴"
-                >
-                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </button>
-              </div>
+              <span
+                @click="$emit('inspectTicket', t.ticket_no)"
+                class="hover:underline hover:text-amber-400 cursor-pointer inline-flex items-center gap-1.5 transition-colors truncate max-w-full"
+                title="点击在左侧对话中查询此工单进展"
+              >
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="t.status === 'RESOLVED' || t.status === 'CLOSED' ? 'bg-zinc-600' : 'bg-amber-400'"></span>
+                <span class="truncate">{{ t.ticket_no }}</span>
+              </span>
             </td>
 
             <!-- 标题与排查要求 -->
@@ -207,86 +196,456 @@
               {{ t.device_id || '-' }}
             </td>
 
-            <!-- 快速流转推进与时间轴 (Linear Buttons) -->
+            <!-- 快速流转推进与操作按钮 (固定宽度严整对齐) -->
             <td class="py-2.5 px-3 text-right whitespace-nowrap">
-              <div class="flex items-center justify-end space-x-1.5">
-                <!-- 流转脉络时间轴按钮 (所有角色包括学生均可点击查阅，透明审计) -->
-                <button
-                  @click="$emit('viewTimeline', t.ticket_no)"
-                  class="p-1 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-amber-400 border border-white/[0.08] text-[11px] transition-all active:scale-95 shadow-sm"
-                  title="查看工单流转脉络时间轴"
-                >
-                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </button>
-
-                <!-- 学生角色：显示中性灰微标「学生只读」 -->
-                <span
-                  v-if="isStudent"
-                  class="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800/80 text-zinc-400 border border-white/[0.08] inline-block shadow-sm"
-                  title="学生角色对机房运维工单仅有只读权限"
-                >
-                  学生只读
-                </span>
-
-                <!-- 教师与管理员角色操作列 -->
-                <template v-else>
-                  <!-- 待处理工单：受理 -->
+              <div class="flex items-center justify-end gap-2">
+                <!-- 辅助功能按钮容器 (固定宽度 84px 与左对齐槽位排列，各行垂直严格对齐) -->
+                <div class="w-[84px] flex items-center justify-start gap-1.5 shrink-0">
+                  <!-- 1. 工单流转脉络时间轴按钮 (所有角色包括学生均可查阅) -->
                   <button
-                    v-if="t.status === 'PENDING'"
-                    @click="$emit('updateStatus', t.id, 'PROCESSING')"
-                    class="px-2.5 py-0.5 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 text-[11px] transition-all active:scale-95 shadow-sm font-mono"
-                    title="认领并开始处理工单"
+                    @click="$emit('viewTimeline', t.ticket_no)"
+                    class="w-6 h-6 flex items-center justify-center shrink-0 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-amber-400 border border-white/[0.08] text-[11px] transition-all active:scale-95 shadow-sm"
+                    title="查看工单流转脉络时间轴"
                   >
-                    受理
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                   </button>
 
-                  <!-- 处理中工单：办结 -->
-                  <button
-                    v-if="t.status === 'PROCESSING'"
-                    :disabled="isTeacher"
-                    @click="!isTeacher && $emit('updateStatus', t.id, 'RESOLVED')"
-                    :class="[
-                      'px-2.5 py-0.5 rounded-md text-[11px] transition-all font-mono border',
-                      isTeacher
-                        ? 'bg-zinc-800/50 text-zinc-500 border-white/[0.04] cursor-not-allowed opacity-60'
-                        : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 active:scale-95 shadow-sm'
-                    ]"
-                    :title="isTeacher ? '需主管核验闭环' : '办结此工单'"
-                  >
-                    办结
-                  </button>
+                  <!-- 教师与管理员：编辑与作废删除按钮 -->
+                  <template v-if="!isStudent">
+                    <!-- 2. 编辑工单按钮 (管理员可编辑全部工单；教师仅可编辑本人创建的工单，否则禁用置灰) -->
+                    <button
+                      v-if="canEditTicket(t)"
+                      @click="openEditTicketModal(t)"
+                      class="w-6 h-6 flex items-center justify-center shrink-0 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-indigo-400 border border-white/[0.08] text-[11px] transition-all active:scale-95 shadow-sm"
+                      title="编辑工单要素 (标题、描述、优先级、关联设备)"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      v-else
+                      disabled
+                      class="w-6 h-6 flex items-center justify-center shrink-0 rounded-md bg-zinc-900/40 text-zinc-600 border border-white/[0.04] text-[11px] cursor-not-allowed opacity-40"
+                      :title="isTeacher ? '无权编辑：教师仅可编辑本人创建的工单' : '无权编辑：仅工单创建教师或超级管理员可编辑'"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
 
-                  <!-- 已解决工单：归档 -->
-                  <button
-                    v-if="t.status === 'RESOLVED'"
-                    :disabled="isTeacher"
-                    @click="!isTeacher && $emit('updateStatus', t.id, 'CLOSED')"
-                    :class="[
-                      'px-2.5 py-0.5 rounded-md text-[11px] transition-all font-mono border',
-                      isTeacher
-                        ? 'bg-zinc-800/50 text-zinc-500 border-white/[0.04] cursor-not-allowed opacity-60'
-                        : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-white/[0.08] active:scale-95 shadow-sm'
-                    ]"
-                    :title="isTeacher ? '需主管核验闭环' : '归档此工单'"
-                  >
-                    归档
-                  </button>
+                    <!-- 3. 作废/删除工单按钮 -->
+                    <button
+                      @click="openDeleteTicketModal(t)"
+                      class="w-6 h-6 flex items-center justify-center shrink-0 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-[11px] transition-all active:scale-95 shadow-sm"
+                      title="作废并删除此工单"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </template>
+                </div>
 
-                  <span v-if="t.status === 'CLOSED'" class="text-[11px] text-zinc-500 font-mono">已闭环</span>
-                </template>
+                <!-- 处置主操作区域 (严格定宽 w-16，确保各状态按钮居中且绝不影响左侧三个按钮对齐) -->
+                <div class="w-16 flex items-center justify-center shrink-0">
+                  <!-- 学生角色：显示微标「学生只读」 -->
+                  <span
+                    v-if="isStudent"
+                    class="w-full text-center py-0.5 rounded text-[10px] font-mono bg-zinc-800/80 text-zinc-400 border border-white/[0.08] inline-block shadow-sm"
+                    title="学生角色对机房运维工单仅有只读权限"
+                  >
+                    学生只读
+                  </span>
+
+                  <!-- 教师与管理员：根据工单状态显示对应处置操作 -->
+                  <template v-else>
+                    <!-- 待处理工单：受理 -->
+                    <button
+                      v-if="t.status === 'PENDING'"
+                      @click="openWorkflowModal(t, 'PROCESSING')"
+                      class="w-full text-center py-0.5 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 text-[11px] transition-all active:scale-95 shadow-sm font-mono"
+                      title="认领并开始处理工单，录入处置排查备忘"
+                    >
+                      受理
+                    </button>
+
+                    <!-- 处理中工单：办结 -->
+                    <button
+                      v-else-if="t.status === 'PROCESSING'"
+                      @click="openWorkflowModal(t, 'RESOLVED')"
+                      class="w-full text-center py-0.5 rounded-md text-[11px] transition-all font-mono border bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 active:scale-95 shadow-sm"
+                      title="办结此工单并出具排查处置说明"
+                    >
+                      办结
+                    </button>
+
+                    <!-- 已解决工单：归档 -->
+                    <button
+                      v-else-if="t.status === 'RESOLVED'"
+                      @click="openWorkflowModal(t, 'CLOSED')"
+                      class="w-full text-center py-0.5 rounded-md text-[11px] transition-all font-mono border bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-white/[0.08] active:scale-95 shadow-sm"
+                      title="归档此工单"
+                    >
+                      归档
+                    </button>
+
+                    <!-- 已关闭工单：已闭环 -->
+                    <span
+                      v-else-if="t.status === 'CLOSED'"
+                      class="w-full text-center py-0.5 text-[11px] text-zinc-500 font-mono"
+                    >
+                      已闭环
+                    </span>
+                  </template>
+                </div>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <!-- 运维工单流转处置小结录入独立弹窗 -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div
+          v-if="showWorkflowModal"
+          @keydown.esc.window="showWorkflowModal = false"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md overflow-hidden"
+          @click.self="showWorkflowModal = false"
+        >
+          <div
+            class="w-full max-w-lg rounded-3xl bg-zinc-900/95 border border-white/[0.12] ring-1 ring-white/[0.05] p-5 sm:p-6 space-y-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-zinc-100"
+          >
+            <!-- 头部 -->
+            <div class="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <div class="flex items-center space-x-3">
+                <span
+                  class="p-2.5 rounded-2xl border flex items-center justify-center shrink-0 shadow-sm"
+                  :class="targetWorkflowStatus === 'PROCESSING' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : targetWorkflowStatus === 'RESOLVED' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-zinc-800 border-white/[0.1] text-zinc-300'"
+                >
+                  <svg v-if="targetWorkflowStatus === 'PROCESSING'" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <svg v-else-if="targetWorkflowStatus === 'RESOLVED'" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                  </svg>
+                </span>
+                <div>
+                  <h4 class="text-sm sm:text-base font-semibold tracking-tight">
+                    {{ workflowModalTitle }}
+                  </h4>
+                  <div class="flex items-center space-x-2 mt-0.5 text-xs text-zinc-400">
+                    <span class="font-mono text-cyan-400 font-semibold">{{ targetTicket?.ticket_no }}</span>
+                    <span>·</span>
+                    <span class="truncate max-w-[200px]">{{ targetTicket?.title }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                @click="showWorkflowModal = false"
+                class="text-zinc-400 hover:text-zinc-100 p-1.5 rounded-full hover:bg-white/[0.08] transition-colors"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- 流转状态动向胶囊 -->
+            <div class="p-2.5 rounded-xl bg-zinc-950/60 border border-white/[0.06] flex items-center justify-between text-xs font-mono">
+              <span class="text-zinc-400">流转节点变迁:</span>
+              <div class="flex items-center space-x-2">
+                <span :class="['px-2 py-0.5 rounded text-[10px] font-mono', statusClass(targetTicket?.status)]">
+                  {{ statusLabel(targetTicket?.status) }}
+                </span>
+                <span class="text-zinc-500">➔</span>
+                <span :class="['px-2 py-0.5 rounded text-[10px] font-mono font-semibold', statusClass(targetWorkflowStatus)]">
+                  {{ statusLabel(targetWorkflowStatus) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- 处置人 -->
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-zinc-300 flex items-center justify-between">
+                <span>处置操作人 (Operator)</span>
+                <span class="text-[10px] text-zinc-500">自动带入当前登录身份</span>
+              </label>
+              <input
+                v-model="workflowOperator"
+                type="text"
+                placeholder="请输入处置人姓名或工号..."
+                class="w-full bg-zinc-950/80 border border-white/[0.08] focus:border-cyan-500 rounded-xl px-3.5 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none transition-colors font-mono"
+              />
+            </div>
+
+            <!-- 快捷处理小结选项 -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-medium text-zinc-300 flex items-center justify-between">
+                <span>快捷常用处理小结</span>
+                <span class="text-[10px] text-zinc-500">点击自动填入处置备忘</span>
+              </label>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="(preset, idx) in currentWorkflowPresets"
+                  :key="idx"
+                  type="button"
+                  @click="applyPresetComment(preset)"
+                  class="px-2.5 py-1 rounded-lg text-[11px] bg-zinc-800/80 hover:bg-zinc-700 hover:text-cyan-300 text-zinc-300 border border-white/[0.06] transition-all active:scale-95 text-left"
+                >
+                  + {{ preset }}
+                </button>
+              </div>
+            </div>
+
+            <!-- 自定义处置说明输入框 -->
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-zinc-300 flex items-center justify-between">
+                <span>排查处置说明 (Comment) <span class="text-rose-400">*</span></span>
+                <span class="text-[10px] text-zinc-500">将写入全生命周期工单时序履历</span>
+              </label>
+              <textarea
+                v-model="workflowComment"
+                rows="3"
+                placeholder="请详细记录排障现场检查情况、处置动作与测试结论..."
+                class="w-full bg-zinc-950/80 border border-white/[0.08] focus:border-cyan-500 rounded-xl p-3 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none transition-colors resize-none leading-relaxed"
+              ></textarea>
+            </div>
+
+            <!-- 错误提示 -->
+            <div v-if="workflowError" class="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+              {{ workflowError }}
+            </div>
+
+            <!-- 底部按钮 -->
+            <div class="flex items-center justify-end space-x-2 pt-2 border-t border-white/[0.08]">
+              <button
+                @click="showWorkflowModal = false"
+                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition-colors"
+              >
+                取消
+              </button>
+              <button
+                @click="submitWorkflowUpdate"
+                :disabled="isSubmittingWorkflow || !workflowComment.trim()"
+                class="px-5 py-2 rounded-xl text-white font-medium text-xs shadow-md transition-all active:scale-95 disabled:opacity-40 flex items-center space-x-1.5"
+                :class="targetWorkflowStatus === 'PROCESSING' ? 'bg-blue-600 hover:bg-blue-500' : targetWorkflowStatus === 'RESOLVED' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-zinc-700 hover:bg-zinc-600'"
+              >
+                <span v-if="isSubmittingWorkflow" class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <span>{{ isSubmittingWorkflow ? '提交流转中...' : '确认流转并记录备忘' }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- 运维工单快速编辑模态框 -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div
+          v-if="showEditTicketModal"
+          @keydown.esc.window="showEditTicketModal = false"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md overflow-hidden"
+          @click.self="showEditTicketModal = false"
+        >
+          <div
+            class="w-full max-w-lg rounded-3xl bg-zinc-900/95 border border-white/[0.12] ring-1 ring-white/[0.05] p-5 sm:p-6 space-y-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-zinc-100"
+          >
+            <!-- 头部 -->
+            <div class="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <div class="flex items-center space-x-3">
+                <span class="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0 shadow-sm">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </span>
+                <div>
+                  <h4 class="text-sm sm:text-base font-semibold tracking-tight">
+                    编辑机房运维工单
+                  </h4>
+                  <p class="text-xs text-zinc-400 mt-0.5 font-mono">
+                    工单编号: {{ editTicketData.ticket_no }}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                @click="showEditTicketModal = false"
+                class="text-zinc-400 hover:text-zinc-100 p-1.5 rounded-full hover:bg-white/[0.08] transition-colors"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- 表单内容 -->
+            <form @submit.prevent="submitEditTicket" class="space-y-3.5 text-xs">
+              <div class="space-y-1">
+                <label class="font-medium text-zinc-300">工单标题 <span class="text-rose-400">*</span></label>
+                <input
+                  v-model="editTicketData.title"
+                  type="text"
+                  required
+                  placeholder="请输入工单标题..."
+                  class="w-full bg-zinc-950/80 border border-white/[0.08] focus:border-cyan-500 rounded-xl px-3.5 py-2 text-zinc-200 placeholder-zinc-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <label class="font-medium text-zinc-300">优先级等级</label>
+                  <select
+                    v-model="editTicketData.priority"
+                    class="w-full bg-zinc-950 border border-white/[0.08] focus:border-cyan-500 rounded-xl px-3 py-2 text-zinc-200 focus:outline-none font-mono transition-colors"
+                  >
+                    <option value="LOW">LOW (低)</option>
+                    <option value="MEDIUM">MEDIUM (中)</option>
+                    <option value="HIGH">HIGH (高)</option>
+                    <option value="CRITICAL">CRITICAL (紧急高危)</option>
+                  </select>
+                </div>
+
+                <div class="space-y-1">
+                  <label class="font-medium text-zinc-300">关联设备编号</label>
+                  <input
+                    v-model="editTicketData.device_id"
+                    type="text"
+                    placeholder="例如: DEV-SRV-201"
+                    class="w-full bg-zinc-950/80 border border-white/[0.08] focus:border-cyan-500 rounded-xl px-3.5 py-2 text-zinc-200 placeholder-zinc-500 focus:outline-none font-mono transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <label class="font-medium text-zinc-300">故障排查描述与处置内容 <span class="text-rose-400">*</span></label>
+                <textarea
+                  v-model="editTicketData.description"
+                  rows="3"
+                  required
+                  placeholder="详细记录故障现象、报修原因与排障要求..."
+                  class="w-full bg-zinc-950/80 border border-white/[0.08] focus:border-cyan-500 rounded-xl p-3 text-zinc-200 placeholder-zinc-500 focus:outline-none transition-colors resize-none leading-relaxed"
+                ></textarea>
+              </div>
+
+              <div v-if="editTicketError" class="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
+                {{ editTicketError }}
+              </div>
+
+              <div class="flex items-center justify-end space-x-2 pt-2 border-t border-white/[0.08]">
+                <button
+                  type="button"
+                  @click="showEditTicketModal = false"
+                  class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  :disabled="isSubmittingEdit || !editTicketData.title.trim() || !editTicketData.description.trim()"
+                  class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-md transition-all active:scale-95 disabled:opacity-40 flex items-center space-x-1.5"
+                >
+                  <span v-if="isSubmittingEdit" class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  <span>{{ isSubmittingEdit ? '保存中...' : '保存工单修改' }}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- 运维工单作废/删除二次确认模态框 -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div
+          v-if="showDeleteTicketModal"
+          @keydown.esc.window="showDeleteTicketModal = false"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md overflow-hidden"
+          @click.self="showDeleteTicketModal = false"
+        >
+          <div
+            class="w-full max-w-sm rounded-3xl bg-zinc-900 border border-white/[0.12] p-5 space-y-4 shadow-2xl backdrop-blur-2xl text-zinc-100"
+          >
+            <div class="flex items-center space-x-3">
+              <span class="p-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </span>
+              <div>
+                <h4 class="text-sm font-semibold tracking-tight">作废/删除工单确认</h4>
+                <p class="text-xs text-zinc-400 mt-0.5">此操作将彻底物理删除该工单与所有流转时序记录</p>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-zinc-950/60 border border-white/[0.04] text-xs space-y-1">
+              <div>待作废工单：<span class="font-medium text-rose-400 font-mono">{{ ticketToDelete?.ticket_no }}</span></div>
+              <div class="truncate text-zinc-300">工单标题：{{ ticketToDelete?.title }}</div>
+              <div class="text-[11px] text-zinc-500 pt-1 border-t border-white/[0.04]">状态：{{ statusLabel(ticketToDelete?.status) }} · 优先级：{{ ticketToDelete?.priority }}</div>
+            </div>
+
+            <div v-if="deleteTicketError" class="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+              {{ deleteTicketError }}
+            </div>
+
+            <div class="flex items-center justify-end space-x-2 pt-2 border-t border-white/[0.06]">
+              <button
+                @click="showDeleteTicketModal = false"
+                class="px-3.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-white/[0.06] text-xs transition-colors"
+              >
+                取消
+              </button>
+              <button
+                @click="confirmDeleteTicket"
+                :disabled="isDeletingTicket"
+                class="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center space-x-1.5"
+              >
+                <span v-if="isDeletingTicket" class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <span>{{ isDeletingTicket ? '正在作废删除...' : '确认作废删除' }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { api } from '../../api/client'
 
 const props = defineProps({
   tickets: {
@@ -308,7 +667,203 @@ const isStudent = computed(() => userRole.value === 'STUDENT')
 const isTeacher = computed(() => userRole.value === 'TEACHER')
 const isAdmin = computed(() => userRole.value === 'ADMIN')
 
-defineEmits(['refresh', 'updateStatus', 'inspectTicket', 'viewTimeline'])
+const emit = defineEmits(['refresh', 'updateStatus', 'inspectTicket', 'viewTimeline'])
+
+// 运维工单流转处置备忘弹窗状态与操作
+const showWorkflowModal = ref(false)
+const targetTicket = ref(null)
+const targetWorkflowStatus = ref('PROCESSING')
+const workflowOperator = ref('')
+const workflowComment = ref('')
+const isSubmittingWorkflow = ref(false)
+const workflowError = ref('')
+
+const workflowModalTitle = computed(() => {
+  switch (targetWorkflowStatus.value) {
+    case 'PROCESSING':
+      return '认领并开始处置工单 (流转至处理中)'
+    case 'RESOLVED':
+      return '出具工单排查处置报告 (流转至已解决)'
+    case 'CLOSED':
+      return '核验并正式闭环归档工单'
+    default:
+      return '运维工单流转处置备忘'
+  }
+})
+
+const presetOptions = {
+  PROCESSING: [
+    '现场巡检已启动，正核实告警硬件指标',
+    '已联系责任教师核实验证异常现象',
+    '已根据安全规程启动前置降频保护，展开故障排查',
+  ],
+  RESOLVED: [
+    '现场巡检已完成并更换风扇',
+    '已根据安全条例完成降频降载处置',
+    '动环温湿度探针校准完毕，告警消除',
+    '硬件冷备板卡热插拔替换完毕，性能恢复正常',
+    '高负荷计算作业迁移至从机架，实测功率已回落至安全阈值以下',
+  ],
+  CLOSED: [
+    '连续观察24小时各项遥测参数平稳，确认故障根除',
+    '运维主管现场核验合格，同意归档结案',
+  ],
+}
+
+const currentWorkflowPresets = computed(() => {
+  return presetOptions[targetWorkflowStatus.value] || []
+})
+
+function applyPresetComment(preset) {
+  if (!workflowComment.value.trim()) {
+    workflowComment.value = preset
+  } else {
+    workflowComment.value += `；${preset}`
+  }
+}
+
+function openWorkflowModal(ticket, newStatus) {
+  targetTicket.value = ticket
+  targetWorkflowStatus.value = newStatus
+  workflowOperator.value = props.currentUser?.real_name || props.currentUser?.username || '运维值班员'
+  workflowComment.value = ''
+  workflowError.value = ''
+  showWorkflowModal.value = true
+}
+
+async function submitWorkflowUpdate() {
+  if (!targetTicket.value) return
+  if (!workflowComment.value.trim()) {
+    workflowError.value = '请填写流转处置说明'
+    return
+  }
+  isSubmittingWorkflow.value = true
+  workflowError.value = ''
+
+  const payload = {
+    status: targetWorkflowStatus.value,
+    operator: workflowOperator.value.trim() || '系统管理员',
+    operator_role: props.currentUser?.role || 'ADMIN',
+    comment: workflowComment.value.trim(),
+  }
+
+  try {
+    await api.updateTicket(targetTicket.value.id, payload)
+    showWorkflowModal.value = false
+    emit('refresh')
+    emit('updateStatus', targetTicket.value.id, targetWorkflowStatus.value, payload)
+  } catch (err) {
+    workflowError.value = err.message || '更新工单状态失败，请重试'
+  } finally {
+    isSubmittingWorkflow.value = false
+  }
+}
+
+// -------------------------------------------------------------
+// [EDIT & DELETE] 运维工单快速编辑与作废物理删除闭环
+// -------------------------------------------------------------
+const showEditTicketModal = ref(false)
+const editTicketData = reactive({
+  id: null,
+  ticket_no: '',
+  title: '',
+  description: '',
+  priority: 'MEDIUM',
+  device_id: '',
+})
+const isSubmittingEdit = ref(false)
+const editTicketError = ref('')
+
+function canEditTicket(ticket) {
+  if (!props.currentUser) return false
+  if (isStudent.value) return false
+  if (isAdmin.value) return true
+  if (isTeacher.value) {
+    const creator = (ticket?.creator || '').trim().toLowerCase()
+    const username = (props.currentUser?.username || '').trim().toLowerCase()
+    const realName = (props.currentUser?.real_name || '').trim().toLowerCase()
+    if (!creator) return false
+    return (
+      (username && creator === username) ||
+      (realName && creator === realName) ||
+      (username && creator.includes(username)) ||
+      (realName && creator.includes(realName))
+    )
+  }
+  return false
+}
+
+function openEditTicketModal(ticket) {
+  if (!canEditTicket(ticket)) {
+    return
+  }
+  editTicketData.id = ticket.id
+  editTicketData.ticket_no = ticket.ticket_no
+  editTicketData.title = ticket.title || ''
+  editTicketData.description = ticket.description || ''
+  editTicketData.priority = ticket.priority || 'MEDIUM'
+  editTicketData.device_id = ticket.device_id || ''
+  editTicketError.value = ''
+  showEditTicketModal.value = true
+}
+
+async function submitEditTicket() {
+  if (!editTicketData.id || !editTicketData.title.trim() || !editTicketData.description.trim()) {
+    editTicketError.value = '请完整填写工单标题与处置内容描述'
+    return
+  }
+  const target = props.tickets.find((t) => t.id === editTicketData.id)
+  if (target && !canEditTicket(target)) {
+    editTicketError.value = '您暂无权限修改此工单（教师仅可修改本人创建的工单）'
+    return
+  }
+  isSubmittingEdit.value = true
+  editTicketError.value = ''
+  try {
+    await api.updateTicket(editTicketData.id, {
+      title: editTicketData.title.trim(),
+      description: editTicketData.description.trim(),
+      priority: editTicketData.priority,
+      device_id: editTicketData.device_id.trim() || null,
+      operator: props.currentUser?.real_name || props.currentUser?.username || '管理员',
+      operator_role: props.currentUser?.role || 'ADMIN',
+      comment: '更新了工单基本要素属性',
+    })
+    showEditTicketModal.value = false
+    emit('refresh')
+  } catch (err) {
+    editTicketError.value = err.message || '更新工单失败，请重试'
+  } finally {
+    isSubmittingEdit.value = false
+  }
+}
+
+const showDeleteTicketModal = ref(false)
+const ticketToDelete = ref(null)
+const isDeletingTicket = ref(false)
+const deleteTicketError = ref('')
+
+function openDeleteTicketModal(ticket) {
+  ticketToDelete.value = ticket
+  deleteTicketError.value = ''
+  showDeleteTicketModal.value = true
+}
+
+async function confirmDeleteTicket() {
+  if (!ticketToDelete.value) return
+  isDeletingTicket.value = true
+  deleteTicketError.value = ''
+  try {
+    await api.deleteTicket(ticketToDelete.value.id)
+    showDeleteTicketModal.value = false
+    ticketToDelete.value = null
+    emit('refresh')
+  } catch (err) {
+    deleteTicketError.value = err.message || '作废删除工单失败，请重试'
+  } finally {
+    isDeletingTicket.value = false
+  }
+}
 
 const tableContainerRef = ref(null)
 const selectedStatus = ref('ALL')

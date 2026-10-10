@@ -1,9 +1,9 @@
 <template>
-  <div class="my-2.5 rounded-xl border glass-card overflow-hidden text-xs transition-all duration-200 shadow-sm">
+  <div class="my-1.5 rounded-lg border glass-card overflow-hidden text-[11px] transition-all duration-200 shadow-sm">
     <!-- 头部栏 -->
     <div
       @click="isExpanded = !isExpanded"
-      class="px-3 py-2 flex items-center justify-between cursor-pointer select-none bg-white/[0.03] hover:bg-white/[0.07] border-b border-white/[0.06] text-zinc-300 transition-colors"
+      class="px-3 py-1.5 flex items-center justify-between cursor-pointer select-none bg-white/[0.03] hover:bg-white/[0.07] border-b border-white/[0.06] text-zinc-300 transition-colors"
     >
       <div class="flex items-center space-x-2">
         <!-- 执行中或已完成图标 -->
@@ -21,7 +21,7 @@
 
         <!-- 标准化工具矢量 SVG 徽章 (替代 @tool) -->
         <div class="flex items-center space-x-1.5 font-medium text-zinc-100">
-          <span class="px-1.5 py-0.5 rounded-md bg-zinc-800 border border-white/[0.08] text-[10px] text-indigo-300 flex items-center gap-1 font-mono">
+          <span class="px-1.5 py-0.5 rounded bg-zinc-800/80 border border-white/[0.08] text-[9.5px] text-indigo-300 flex items-center gap-1 font-mono">
             <svg class="w-3 h-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -31,17 +31,17 @@
           <span class="glass-text">{{ toolFriendlyName(toolCall.name) }}</span>
         </div>
 
-        <span class="text-zinc-500 font-mono text-[11px]">({{ toolCall.name }})</span>
+        <span class="text-zinc-500 font-mono text-[10.5px]">({{ toolCall.name }})</span>
 
         <span
           v-if="toolCall.step"
-          class="px-2 py-0.5 rounded-md bg-zinc-900 border border-white/[0.06] text-[10px] text-zinc-400 font-mono"
+          class="px-1.5 py-0.5 rounded bg-zinc-900 border border-white/[0.06] text-[9.5px] text-zinc-400 font-mono"
         >
           Step {{ toolCall.step }}
         </span>
       </div>
 
-      <div class="flex items-center space-x-2 text-zinc-400 text-[11px]">
+      <div class="flex items-center space-x-2 text-zinc-400 text-[10.5px]">
         <span :class="toolCall.result ? 'text-emerald-400 font-mono' : 'text-amber-400 font-mono'">
           {{ toolCall.result ? '调用完毕' : '正在调度...' }}
         </span>

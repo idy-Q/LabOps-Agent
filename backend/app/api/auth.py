@@ -14,11 +14,14 @@ from app.schemas.user import (
     UserResponse,
     DemoUserResponse,
     UserProfileResponse,
+    UserProfileUpdateRequest,
+    ChangePasswordRequest,
 )
 
 router = APIRouter()
 
-# 管理员专属安全激活口令 (严格遵从 2026-09 最新安全要求与用户反馈：admin666)
+# 管理员与教师专属安全激活口令 (高校实验室安全分级防护体系)
+TEACHER_ACTIVATION_CODE = "teacher666"
 ADMIN_ACTIVATION_CODE = "admin666"
 
 # 4 位系统典型预置用户展示卡片清单 (供登录 Tab 快速一键填入凭据或秒级切换)
@@ -67,7 +70,7 @@ DEMO_USERS_LIST = [
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
     summary="新用户注册",
-    description="支持教师、学生和管理员注册。申请 ADMIN 角色必须提供专属安全激活口令 (admin666)。",
+    description="支持学生（免密）、教师（需专属激活口令 teacher666）和管理员（需专属激活口令 admin666）注册。",
 )
 def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
     # 1. 唯一性查重：工号/学号不可重复注册 (大小写不敏感防碰撞)
@@ -82,13 +85,22 @@ def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
             detail=f"工号/学号 [{request.username}] 已经存在，请直接登录或使用其他工号",
         )
 
-    # 2. 权限提权防护：若申请超级管理员角色，必须验证专属口令
+    # 2. 权限提权防护与身份安全激活口令校验
     if request.role == "ADMIN":
-        if not request.admin_code or request.admin_code != ADMIN_ACTIVATION_CODE:
+        code = request.admin_code or request.activation_code
+        if not code or code != ADMIN_ACTIVATION_CODE:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="管理员专属安全激活口令错误或未提供，无法注册超级管理员角色",
             )
+    elif request.role == "TEACHER":
+        code = request.teacher_code or request.activation_code
+        if not code or code != TEACHER_ACTIVATION_CODE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="教师专属安全激活口令错误或未提供，无法注册高校专业教师角色",
+            )
+    # 学生 (STUDENT): 最低权限，免密直接放行
 
     # 3. 生成加盐 SHA-256 哈希并落盘
     pwd_hash = hash_password(request.password)
@@ -312,4 +324,72 @@ def get_user_profile(identifier: str, db: Session = Depends(get_db)):
 
     # 3. 未收录主体优雅降级保底 (确保返回 HTTP 200，绝不崩溃抛出 500)
     return build_fallback_profile(raw_id)
+
+
+@router.put(
+    "/profile/{username}",
+    response_model=UserProfileResponse,
+    summary="更新用户个人资料",
+    description="更新指定工号/学号用户的真实姓名、联系电话与所属部门，并返回最新全景档案。",
+)
+def update_user_profile(
+    username: str,
+    request: UserProfileUpdateRequest,
+    db: Session = Depends(get_db),
+):
+    clean_username = username.strip()
+    user = (
+        db.query(User)
+        .filter(func.lower(User.username) == clean_username.lower())
+        .first()
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"工号/学号 [{clean_username}] 不存在，无法更新个人资料",
+        )
+
+    if request.real_name is not None:
+        user.real_name = request.real_name.strip()
+    if request.phone is not None:
+        user.phone = request.phone.strip() if request.phone.strip() else None
+    if request.department is not None:
+        user.department = request.department.strip()
+
+    db.commit()
+    db.refresh(user)
+    return build_user_profile(user)
+
+
+@router.put(
+    "/change-password",
+    summary="用户自主修改密码",
+    description="校验工号与原密码后，更新密码加盐哈希为新密码。",
+)
+def change_password(
+    request: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+):
+    clean_username = request.username.strip()
+    user = (
+        db.query(User)
+        .filter(func.lower(User.username) == clean_username.lower())
+        .first()
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"工号/学号 [{clean_username}] 不存在",
+        )
+
+    if not verify_password(request.old_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="原密码校验不通过，密码修改失败",
+        )
+
+    user.password_hash = hash_password(request.new_password)
+    db.commit()
+    return {"message": "密码修改成功", "username": user.username}
+
 

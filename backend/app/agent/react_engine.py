@@ -55,6 +55,205 @@ class MockDecisionBrain:
     """
 
     @classmethod
+    def check_rbac_guard(
+        cls,
+        messages: List[Dict[str, Any]],
+        user_role: Optional[str] = None,
+        user_name: Optional[str] = None,
+        user_department: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """系统级 RBAC 前置硬安全网关 (Hard RBAC Interceptor)
+
+        不论系统是接入外部商业 LLM 还是本地离线运行，
+        凡受限角色（如学生 STUDENT 或教师 TEACHER）发起越权敏感指令，
+        均由决策大脑硬性拦截，杜绝概率性 LLM 自由发挥，
+        输出符合规范标准的结构化安全盾牌拦截告警。
+        """
+        system_content = ""
+        user_prompt = ""
+        for m in messages:
+            if m.get("role") == "system":
+                system_content = m.get("content", "")
+            elif m.get("role") == "user":
+                user_prompt = m.get("content", "")
+
+        # 回溯提取身份元数据
+        if not user_role or not user_name:
+            id_match = re.search(r"【当前交互用户身份】：(.*?)\s*\(角色:\s*([A-Za-z_]+)(?:,\s*归属:\s*(.*?))?\)", system_content)
+            if id_match:
+                user_name = user_name or id_match.group(1).strip()
+                user_role = user_role or id_match.group(2).strip()
+                user_department = user_department or (id_match.group(3).strip() if id_match.group(3) else None)
+
+        role = (user_role or "ADMIN").upper()
+        name = user_name or "用户"
+        dept_desc = f" ({user_department})" if user_department else ""
+
+        # 0. 排除正常规章咨询与权限咨询
+        is_query_regulations = (
+            any(kw in user_prompt for kw in ["规章", "制度", "规范", "用电", "应急", "PDU", "功率", "功耗", "审批流程", "上限", "维保", "预案", "滤网", "巡检要求", "巡检时间", "巡检频次", "巡检周期", "空调故障"])
+            or any(kw in user_prompt for kw in ["借用规则", "借调规则", "借用流程", "借调流程", "归还规则", "归还流程", "办结流程", "关闭流程", "流转流程", "维修流程", "报修流程", "借用规程", "借用制度", "借用规定"])
+            or ("巡检" in user_prompt and any(kw in user_prompt for kw in ["规定", "要求", "怎么做", "时间", "周期", "频次", "标准", "指引", "规则"]))
+            or any(kw in user_prompt for kw in ["规则是什么", "规定是什么", "流程是什么", "怎么借", "如何借", "怎么还", "如何还", "可以借吗", "能否借用", "借用要求", "借用标准"])
+        ) and not any(kw in user_prompt for kw in ["查询工单", "创建工单", "新建工单"])
+        if is_query_regulations:
+            return None
+
+        is_permission_inquiry = any(
+            kw in user_prompt for kw in [
+                "我的权限", "我能做什么", "权限是什么", "学生能做什么", "教师能做什么",
+                "管理员能做什么", "角色权限", "操作权限", "身份权限", "我有哪些权限",
+                "如何使用系统", "新手指南", "操作指引", "有什么功能", "我能执行什么"
+            ]
+        )
+        if is_permission_inquiry:
+            return None
+
+        # 1. 底层设备增删改与电源管理越权硬拦截 (非 ADMIN 严禁执行)
+        is_device_admin_action = any(
+            kw in user_prompt for kw in [
+                "添加设备", "新增设备", "创建设备", "录入设备", "新建设备",
+                "删除设备", "移除设备", "销毁设备", "下架设备", "注销设备",
+                "修改设备配置", "更改设备参数", "编辑设备", "更新设备信息",
+                "关机", "重启服务器", "强制断电", "切断电源", "重启设备", "重启节点"
+            ]
+        )
+        if is_device_admin_action and role != "ADMIN":
+            role_label = "学生 STUDENT" if role == "STUDENT" else "教师 TEACHER"
+            return {
+                "thought": f"【RBAC 硬安全网关】检测到当前用户角色为{role_label}（{name}），请求执行底层设备运维/增删改操作，严重超越权限边界，执行硬拦截。",
+                "content": (
+                    f"【权限拦截警报】设备资产管理与底层控制操作已被系统拦截！\n\n"
+                    f"- 尝试操作：设备底层管理与物理状态变更\n"
+                    f"- 当前身份：{name}（角色: {role_label}{dept_desc}）\n"
+                    f"- 拦截原因：机房服务器资产增删改、上架注销及电源控制属于机房专职主管专属权限，非管理员用户禁止擅自改动物理底账与电源状态。\n"
+                    f"- 权限边界：{role_label}仅可执行运行指标感知、状态巡检与报修提单，严禁修改物理资产底账。\n"
+                    f"- 处置指引：如需增添设备、报废下架或申请电源重启，请提交机房工单或联系机房专职主管办理。"
+                ),
+            }
+
+        # 2. 工单状态流转与办结 (update_ticket_status) 拦截
+        is_ticket_inquiry = any(kw in user_prompt for kw in ["查询", "查看", "检索", "详情", "进展", "进度", "情况", "是什么", "看下", "有哪些"])
+        ticket_match = re.search(r"(TK-[0-9]{8}-[A-Za-z0-9]+)", user_prompt, re.IGNORECASE)
+        ticket_no = ticket_match.group(1).upper() if ticket_match else None
+        is_ticket_update = (
+            any(kw in user_prompt for kw in ["更新工单", "修改工单", "办结工单", "关闭工单", "解决工单", "处理工单", "受理工单", "认领工单", "流转工单", "推进工单", "结单"])
+            or (
+                ticket_no
+                and any(kw in user_prompt for kw in ["更新为", "修改为", "改为", "设为", "推进为", "标记为", "变更为", "设成", "改成", "办结", "关闭", "归档", "受理", "认领"])
+            )
+            or (
+                ticket_no
+                and any(kw in user_prompt for kw in ["更新", "推进", "关闭", "办结", "解决"])
+                and not is_ticket_inquiry
+            )
+        )
+        if is_ticket_update:
+            if role == "STUDENT":
+                return {
+                    "thought": f"【RBAC 硬安全网关】检测到当前交互用户角色为学生（{name}），根据机房运维分权管理规程，学生对工单仅具备只读权限，无权更新或办结工单，执行权限硬拦截。",
+                    "content": (
+                        f"【权限拦截警报】工单流转操作已被系统拦截！\n\n"
+                        f"- 尝试操作：工单状态推进 / 办结归档\n"
+                        f"- 当前身份：{name}（角色: 学生 STUDENT{dept_desc}）\n"
+                        f"- 拦截原因：学生角色对机房运维工单仅具备只读查看权限，无权受理、推进、关闭或办结运维工单。\n"
+                        f"- 权限边界：学生身份仅可查验工单进展与待办详情，不可修改工单流转状态。\n"
+                        f"- 处置指引：如需反馈设备故障或跟进维修进度，请联系机房巡视教师或专职管理员跟进处置。"
+                    ),
+                }
+            target_status = "RESOLVED"
+            if any(kw in user_prompt for kw in ["关闭", "办结", "CLOSED", "归档"]):
+                target_status = "CLOSED"
+            elif any(kw in user_prompt for kw in ["解决", "RESOLVED", "已解决"]):
+                target_status = "RESOLVED"
+            elif any(kw in user_prompt for kw in ["处理中", "进行中", "PROCESSING", "受理", "认领"]):
+                target_status = "PROCESSING"
+            elif any(kw in user_prompt for kw in ["待办", "PENDING"]):
+                target_status = "PENDING"
+
+            if role == "TEACHER" and (target_status in ("CLOSED", "RESOLVED") or any(kw in user_prompt for kw in ["办结", "关闭", "归档", "CLOSED", "解决", "RESOLVED", "已解决"])):
+                return {
+                    "thought": f"【RBAC 硬安全网关】检测到当前用户为教师（{name}），请求办结/关闭工单。根据机房闭环验收规范，工单办结需机房专职主管验收核验闭环，执行拦截。",
+                    "content": (
+                        f"【权限拦截警报】工单办结/归档操作已被系统拦截！\n\n"
+                        f"- 尝试操作：工单终审办结 / 归档闭环\n"
+                        f"- 当前身份：{name}（角色: 教师 TEACHER{dept_desc}）\n"
+                        f"- 拦截原因：工单办结需机房专职主管验收核验闭环，教师仅可将工单认领受理推进至处理中（PROCESSING），无权直接办结或归档工单。\n"
+                        f"- 权限边界：教师身份可受理工单推进至处理中，办结与关闭属于专管员权限。\n"
+                        f"- 处置指引：如检修维保已完成，请将工单受理状态标记为处理中，并联系机房专职主管（王主管）进行现场实地验收与终审闭环关单。"
+                    ),
+                }
+
+        # 3. 资产借调操作 (borrow_asset) 拦截
+        is_borrow = (
+            any(kw in user_prompt for kw in ["借用", "借出", "借走", "借调", "借领", "租借"])
+            or ("借" in user_prompt and any(w in user_prompt for w in ["我要", "我想", "申请", "帮", "给", "办理", "借一台", "借个", "借一下", "DEV-", "服务器", "设备"]))
+        ) and not any(kw in user_prompt for kw in ["超期", "逾期", "催", "催告", "督促", "清单", "检查"])
+        if is_borrow and role == "STUDENT":
+            return {
+                "thought": f"【RBAC 硬安全网关】检测到当前交互用户角色为学生（{name}），根据机房资产管理条例，在读学生无权借调机房服务器或固定设备，坚决不调用 borrow_asset 工具，执行权限硬拦截。",
+                "content": (
+                    f"【权限拦截警报】借调申请已被系统拦截！\n\n"
+                    f"- 尝试操作：设备资产借调出库登记\n"
+                    f"- 当前身份：{name}（角色: 学生 STUDENT{dept_desc}）\n"
+                    f"- 拦截原因：根据《高校机房资产安全管理条例》与 RBAC 三权分立安全准则，在读学生无权直接办理机房服务器及固定资产的借调出库手续。\n"
+                    f"- 权限边界：学生身份仅可查验设备台账、运行监控与发起报修，无权借调实体设备。\n"
+                    f"- 处置指引：如需开展课程实验或学术科研，需指导教师办理，请联系您的导师（TEACHER 角色）或机房专管员（ADMIN 角色）登录系统进行设备借调登记。"
+                ),
+            }
+
+        # 4. 资产归还操作 (return_asset) 拦截
+        is_return = any(kw in user_prompt for kw in ["归还", "还设备", "还入库", "归还资产"]) and not any(kw in user_prompt for kw in ["催", "督促", "催告", "催还", "催促", "通知函", "公函", "超期", "逾期"])
+        if is_return and role == "STUDENT":
+            return {
+                "thought": f"【RBAC 硬安全网关】检测到当前交互用户角色为学生（{name}），学生无设备资产借还出入库权限，执行权限硬拦截。",
+                "content": (
+                    f"【权限拦截警报】资产归还登记已被系统拦截！\n\n"
+                    f"- 尝试操作：设备资产归还与出入库登记\n"
+                    f"- 当前身份：{name}（角色: 学生 STUDENT{dept_desc}）\n"
+                    f"- 拦截原因：在读学生无设备台账借还出入库权限。\n"
+                    f"- 权限边界：资产归还交接入库必须由借调教师本人或专职管理员办理。\n"
+                    f"- 处置指引：请由借调教师本人或机房专职管理员统一办理资产归还交接入库手续。"
+                ),
+            }
+
+        # 5. 设备健康状态修改 (update_asset_health) 拦截
+        is_update_health = (
+            any(kw in user_prompt for kw in ["健康度", "健康状态", "修改健康", "变更健康", "标记状态", "标定状态", "恢复健康", "设为健康", "设为预警", "标记超温", "设为正常", "设为离线", "下架报修"])
+            or ("健康" in user_prompt and any(kw in user_prompt for kw in ["更新", "修改", "恢复", "变更", "调整", "标定"]))
+        )
+        if is_update_health and role != "ADMIN":
+            role_label = "学生 STUDENT" if role == "STUDENT" else "教师 TEACHER"
+            return {
+                "thought": f"【RBAC 硬安全网关】检测到当前用户为{role_label}（{name}），请求标定设备健康状态。根据机房安全条例，硬件健康状态标定属于管理员专职权限，执行拦截。",
+                "content": (
+                    f"【权限拦截警报】设备健康状态变更已被系统拦截！\n\n"
+                    f"- 尝试操作：设备健康等级标定与修改\n"
+                    f"- 当前身份：{name}（角色: {role_label}{dept_desc}）\n"
+                    f"- 拦截原因：机房服务器硬件健康度标定与状态变更属于机房专职主管专管权限，非管理员用户禁止擅自篡改硬件健康台账。\n"
+                    f"- 权限边界：{role_label}仅可基于真实指标感知硬件运行状况，无权修改健康基线。\n"
+                    f"- 处置指引：若现场排查确认硬件散热或状态已恢复，请联系机房专职管理员登录系统校准设备健康度。"
+                ),
+            }
+
+        # 6. 超期催办 (urge_teacher_overdue) 拦截
+        is_urge_teacher = any(kw in user_prompt for kw in ["催办", "催还", "催告", "督促", "发函", "通知函", "公函"]) and ("老师" in user_prompt or "教师" in user_prompt or "李老师" in user_prompt or "王老师" in user_prompt or "张老师" in user_prompt)
+        if is_urge_teacher and role == "STUDENT":
+            return {
+                "thought": f"【RBAC 硬安全网关】检测到当前用户为学生（{name}），请求向教师发送催还公函。根据实验室伦理与权限边界，学生无权对教师发起资产催办督导，执行拦截。",
+                "content": (
+                    f"【权限拦截警报】超期催办操作已被系统拦截！\n\n"
+                    f"- 尝试操作：向借调教师发送设备催还督促公函\n"
+                    f"- 当前身份：{name}（角色: 学生 STUDENT{dept_desc}）\n"
+                    f"- 拦截原因：根据《高校机房资产安全管理条例》，设备超期催办与行政督促属于机房专职主管专属职权，在读学生无权对教师发起催办督促。\n"
+                    f"- 权限边界：学生身份仅可查阅超期借用设备台账，无权下发催办指令。\n"
+                    f"- 处置指引：系统已在每日 08:00 定时向机房专职主管呈报超期公函清单，请由机房专管员统一督导教师归还。"
+                ),
+            }
+
+        return None
+
+    @classmethod
     def decide(
         cls,
         messages: List[Dict[str, Any]],
@@ -63,6 +262,15 @@ class MockDecisionBrain:
         user_department: Optional[str] = None,
     ) -> Dict[str, Any]:
         """根据当前对话历史和工具返回结果，决定下一步行为 (思考/调工具/最终回复)"""
+        # 0. 优先执行统一的前置 RBAC 硬拦截
+        guard_result = cls.check_rbac_guard(
+            messages,
+            user_role=user_role,
+            user_name=user_name,
+            user_department=user_department,
+        )
+        if guard_result is not None:
+            return guard_result
         system_content = ""
         user_prompt = ""
         for m in messages:
@@ -976,7 +1184,18 @@ class ReActEngine:
         user_name: str = "管理员",
         user_department: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """统一调用决策大脑（真实 OpenAI 协议 API 或确定性 Mock 大脑）"""
+        """统一调用决策大脑（具备硬性 RBAC 安全网关前置拦截与双模大脑支持）"""
+        # 1. 优先执行系统级 RBAC 前置硬安全网关拦截 (不论是否使用外部大模型，系统级权限均硬性生效)
+        rbac_intercept = MockDecisionBrain.check_rbac_guard(
+            messages,
+            user_role=user_role,
+            user_name=user_name,
+            user_department=user_department,
+        )
+        if rbac_intercept is not None:
+            return rbac_intercept
+
+        # 2. 本地确定性 Mock 大脑分支
         if self._should_use_mock():
             return MockDecisionBrain.decide(
                 messages,

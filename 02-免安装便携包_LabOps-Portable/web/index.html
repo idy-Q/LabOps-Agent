@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('labops_theme_mode');
+          if (t === 'light') {
+            document.documentElement.classList.add('light');
+          } else {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>面向高校实验室的轻量化智能自治运维系统 | LabOps-Agent</title>
+    <script type="module" crossorigin src="/assets/index-jLr945-f.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CdxT2ndG.css">
+  </head>
+  <body class="antialiased overflow-hidden selection:bg-indigo-500/30 selection:text-white">
+    <div id="app"></div>
+  </body>
+</html>

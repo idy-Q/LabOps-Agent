@@ -127,6 +127,7 @@ class TestUserProfileQuery:
             "role": "TEACHER",
             "department": "人工智能教研室",
             "phone": "13511112222",
+            "teacher_code": "teacher666",
         }
         reg_resp = client.post("/api/auth/register", json=new_user_payload)
         assert reg_resp.status_code == 201

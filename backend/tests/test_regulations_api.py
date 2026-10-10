@@ -217,3 +217,285 @@ def test_search_regulations_validation(client: TestClient):
     # 3. 未定义字段拦截 (extra='forbid')
     resp3 = client.post("/api/regulations/search", json={"query": "功耗", "top_k": 3, "unwanted_field": 123})
     assert resp3.status_code == 422
+
+
+def test_create_regulation_auto_doc_id(client: TestClient):
+    """测试录入新规程 (自动生成 DOC-RAG-XXX 编号、自动语义切块与全栈闭环)"""
+    new_reg_payload = {
+        "title": "机房微模块UPS蓄电池组充放电维保规范",
+        "category": "维保规程",
+        "version": "2026版",
+        "effective_date": "2026-10-01",
+        "content": (
+            "# 机房微模块UPS蓄电池组充放电维保规范\n\n"
+            "## 第一条 巡检维护周期与测量指标\n"
+            "1. 每月必须对所有铅酸蓄电池单体电压进行逐一巡检测量，浮充电压偏差不得超过标称值5%。\n\n"
+            "## 第二条 核对性放电安全红线\n"
+            "1. 蓄电池组每年实施一次核对性充放电试验，放电深度严格控制在30%~50%安全范围，严禁深度过放导致断电故障。"
+        ),
+    }
+
+    resp = client.post("/api/regulations", json=new_reg_payload)
+    assert resp.status_code == 201
+    data = resp.json()
+
+    assert data["doc_id"].startswith("DOC-RAG-")
+    assert data["title"] == new_reg_payload["title"]
+    assert data["category"] == "维保规程"
+    assert data["char_count"] > 50
+    assert len(data["chunks"]) >= 2
+
+    # 校验各切块的数据与序号
+    first_chunk = data["chunks"][0]
+    assert first_chunk["document_id"] == data["doc_id"]
+    assert "第一条" in first_chunk["section_title"]
+    assert "浮充电压" in first_chunk["chunk_content"]
+
+    # 通过生成的 doc_id 查询单篇详情
+    detail_resp = client.get(f"/api/regulations/{data['doc_id']}")
+    assert detail_resp.status_code == 200
+    assert detail_resp.json()["doc_id"] == data["doc_id"]
+
+
+def test_create_regulation_custom_doc_id(client: TestClient):
+    """测试指定自定义 doc_id 录入规程"""
+    payload = {
+        "doc_id": "DOC-RAG-099",
+        "title": "机房网络布线与综合走线架管理条例",
+        "category": "用电规范",
+        "version": "2026-V2",
+        "effective_date": "2026-10-15",
+        "content": (
+            "## 第一条 强弱电分离与走线规范\n"
+            "1. 强电线缆与弱电网线、光纤必须在走线架不同层物理隔离，最小间距不得小于300mm。"
+        ),
+    }
+
+    resp = client.post("/api/regulations", json=payload)
+    assert resp.status_code == 201
+    assert resp.json()["doc_id"] == "DOC-RAG-099"
+
+
+def test_create_regulation_duplicate_id_failure(client: TestClient):
+    """测试重复 doc_id 拦截 (HTTP 400)"""
+    payload = {
+        "doc_id": "DOC-RAG-001",
+        "title": "测试重复编号规程",
+        "category": "用电规范",
+        "effective_date": "2026-10-01",
+        "content": "## 第一条 规程内容\n1. 内容测试规范文本",
+    }
+    resp = client.post("/api/regulations", json=payload)
+    assert resp.status_code == 400
+    assert "已存在" in resp.json()["detail"]
+
+
+def test_create_regulation_duplicate_title_failure(client: TestClient):
+    """测试重复标题拦截 (HTTP 400)"""
+    payload = {
+        "title": "用电安全与高功耗设备接入管理规范",
+        "category": "用电规范",
+        "effective_date": "2026-10-01",
+        "content": "## 第一条 规程内容\n1. 内容测试规范文本",
+    }
+    resp = client.post("/api/regulations", json=payload)
+    assert resp.status_code == 400
+    assert "已存在" in resp.json()["detail"]
+
+
+def test_create_regulation_instant_rag_search(client: TestClient):
+    """测试新规程录入后 ChromaDB / 向量引擎即刻生效支持语义检索"""
+    payload = {
+        "title": "数据中心机房液冷冷却液更换操作规程",
+        "category": "维保规程",
+        "effective_date": "2026-11-01",
+        "content": (
+            "## 第一条 浸没式冷却液电导率红线\n"
+            "1. 浸没式氟化液与合成油电导率必须低于10uS/cm，一旦超标必须在24小时内启动在线离子交换树脂净化。"
+        ),
+    }
+    create_resp = client.post("/api/regulations", json=payload)
+    assert create_resp.status_code == 201
+    created_doc = create_resp.json()
+
+    # 立即发起语义检索
+    search_resp = client.post(
+        "/api/regulations/search",
+        json={"query": "浸没式冷却液电导率必须低于多少", "top_k": 3},
+    )
+    assert search_resp.status_code == 200
+    results = search_resp.json()
+    assert len(results) >= 1
+
+    # 验证命中新规程
+    matched = [r for r in results if created_doc["doc_id"] == r.get("doc_id") or "冷却液" in r["content"]]
+    assert len(matched) >= 1
+    assert "浸没式" in matched[0]["content"]
+    assert matched[0]["doc_title"] == payload["title"]
+
+
+def test_update_regulation_metadata_success(client: TestClient):
+    """测试更新规程元数据 (标题、版本、分类、生效日期)"""
+    # 1. 录入一份测试规程
+    create_payload = {
+        "title": "测试可更新元数据的临时规程",
+        "category": "用电规范",
+        "version": "2026-v1.0",
+        "effective_date": "2026-05-01",
+        "content": "## 第一条 临时条款\n1. 本条为用于测试更新元数据的规程正文。",
+    }
+    c_resp = client.post("/api/regulations", json=create_payload)
+    assert c_resp.status_code == 201
+    created = c_resp.json()
+    doc_id = created["doc_id"]
+
+    # 2. 发起 PUT 更新
+    update_payload = {
+        "title": "已更名的测试规程-修订版",
+        "category": "应急条例",
+        "version": "2026-v2.0",
+        "effective_date": "2026-06-01",
+    }
+    u_resp = client.put(f"/api/regulations/{doc_id}", json=update_payload)
+    assert u_resp.status_code == 200
+    updated = u_resp.json()
+
+    assert updated["doc_id"] == doc_id
+    assert updated["title"] == "已更名的测试规程-修订版"
+    assert updated["category"] == "应急条例"
+    assert updated["version"] == "2026-v2.0"
+    assert updated["effective_date"] == "2026-06-01"
+    # 原有切块保持不变
+    assert updated["chunk_count"] == created["chunk_count"]
+
+
+def test_update_regulation_content_and_rechunk(client: TestClient):
+    """测试更新规程正文 content，触发自动重新切块与向量知识库即刻同步"""
+    # 1. 创建待更新正文的规程
+    create_payload = {
+        "title": "测试正文切块更新的规程",
+        "category": "维保规程",
+        "effective_date": "2026-07-01",
+        "content": "## 第一条 初始条款A\n1. 初始条文内容A。\n\n## 第二条 初始条款B\n1. 初始条文内容B。",
+    }
+    c_resp = client.post("/api/regulations", json=create_payload)
+    assert c_resp.status_code == 201
+    doc_id = c_resp.json()["doc_id"]
+
+    # 2. 更新正文为全新内容 (含有专属高辨识度关键词)
+    new_content = (
+        "## 第一条 超导磁悬浮轴承风机极限制动\n"
+        "1. 当超导磁悬浮风机转速超过每分钟12000转且出现偏心谐波时，必须在3秒内实施电磁阻尼制动锁死。"
+    )
+    u_resp = client.put(
+        f"/api/regulations/{doc_id}",
+        json={"content": new_content},
+    )
+    assert u_resp.status_code == 200
+    updated = u_resp.json()
+    assert updated["char_count"] == len(new_content)
+    assert len(updated["chunks"]) >= 1
+    assert "超导磁悬浮" in updated["chunks"][0]["section_title"]
+
+    # 3. 验证即刻支持 RAG 语义检索
+    s_resp = client.post(
+        "/api/regulations/search",
+        json={"query": "超导磁悬浮风机电磁阻尼制动", "top_k": 3},
+    )
+    assert s_resp.status_code == 200
+    s_results = s_resp.json()
+    assert any("超导磁悬浮" in r["content"] for r in s_results)
+
+
+def test_update_regulation_errors(client: TestClient):
+    """测试更新规程的 404 与标题冲突 400 校验"""
+    # 404 不存在
+    resp_404 = client.put(
+        "/api/regulations/DOC-RAG-9999",
+        json={"title": "不存在的规程"},
+    )
+    assert resp_404.status_code == 404
+
+    # 400 标题与已有规程冲突
+    resp_400 = client.put(
+        "/api/regulations/DOC-RAG-001",
+        json={"title": "空调故障与超温应急预案"}, # DOC-RAG-002 的标题
+    )
+    assert resp_400.status_code == 400
+    assert "已被其他文档使用" in resp_400.json()["detail"]
+
+
+def test_delete_regulation_cascade_and_vector_cleanup(client: TestClient):
+    """测试下线废止规程：级联删除数据库切块并从向量库中完全移除"""
+    # 1. 录入一份专门用于测试删除的规程
+    create_payload = {
+        "title": "待废止下线的机房微模块旧制度",
+        "category": "用电规范",
+        "effective_date": "2026-08-01",
+        "content": (
+            "## 第一条 微模块旧电缆排布规范\n"
+            "1. 历史专用电缆架设废止条款微模块专用测试标志X99。"
+        ),
+    }
+    c_resp = client.post("/api/regulations", json=create_payload)
+    assert c_resp.status_code == 201
+    doc_id = c_resp.json()["doc_id"]
+
+    # 验证此时可检索到
+    s_before = client.post(
+        "/api/regulations/search",
+        json={"query": "废止条款微模块专用测试标志X99", "top_k": 5},
+    )
+    assert s_before.status_code == 200
+    assert any("X99" in r["content"] for r in s_before.json())
+
+    # 2. 执行 DELETE
+    d_resp = client.delete(f"/api/regulations/{doc_id}")
+    assert d_resp.status_code == 200
+    del_data = d_resp.json()
+    assert del_data["doc_id"] == doc_id
+    assert "已成功废止" in del_data["message"]
+
+    # 3. 再次获取详情应返回 404
+    get_resp = client.get(f"/api/regulations/{doc_id}")
+    assert get_resp.status_code == 404
+
+    # 4. 检索应不再包含该废止规程切块
+    s_after = client.post(
+        "/api/regulations/search",
+        json={"query": "废止条款微模块专用测试标志X99", "top_k": 5},
+    )
+    assert s_after.status_code == 200
+    assert not any("X99" in r["content"] for r in s_after.json())
+
+    # 5. 重复删除同一 doc_id 返回 404
+    d_again = client.delete(f"/api/regulations/{doc_id}")
+    assert d_again.status_code == 404
+
+
+def test_update_regulation_same_title_allowed(client: TestClient):
+    """测试更新规程时若传递自身当前标题不应误报标题冲突"""
+    resp = client.put(
+        "/api/regulations/DOC-RAG-001",
+        json={"title": "用电安全与高功耗设备接入管理规范", "version": "2026-V3"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["version"] == "2026-V3"
+
+
+def test_update_regulation_validation_edges(client: TestClient):
+    """测试更新规程入参校验边界 (extra='forbid', content 长度过短等)"""
+    # 1. content 小于 10 字符拦截
+    resp_short = client.put(
+        "/api/regulations/DOC-RAG-001",
+        json={"content": "短文本"},
+    )
+    assert resp_short.status_code == 422
+
+    # 2. extra 字段拦截
+    resp_extra = client.put(
+        "/api/regulations/DOC-RAG-001",
+        json={"unknown_field": "val"},
+    )
+    assert resp_extra.status_code == 422
+

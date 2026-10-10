@@ -31,7 +31,7 @@ async function request(path, options = {}) {
       }
     } catch {
       if (response.status === 500) {
-        errorDetail = '后端服务连接失败 (HTTP 500)。请确认后端 FastAPI 服务已在 8000 端口启动'
+        errorDetail = '机房运维后台服务未连接 (HTTP 500)。请确认机房运维后台服务已正常启动'
       }
     }
     throw new Error(errorDetail)
@@ -130,6 +130,16 @@ export const api = {
     }),
   getDemoUsers: () => request('/auth/demo-users'),
   getUserProfile: (identifier) => request(`/auth/profile/${encodeURIComponent(identifier)}`),
+  updateUserProfile: (username, data) =>
+    request(`/auth/profile/${encodeURIComponent(username)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  changePassword: (data) =>
+    request('/auth/change-password', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 
   // 6. 规章规程知识中心与 RAG 检索
   getRegulations: (params = {}) => {
@@ -143,6 +153,20 @@ export const api = {
     return request(`/regulations${qs ? `?${qs}` : ''}`)
   },
   getRegulationDetail: (docId) => request(`/regulations/${encodeURIComponent(docId)}`),
+  createRegulation: (payload) =>
+    request('/regulations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateRegulation: (docId, payload) =>
+    request(`/regulations/${encodeURIComponent(docId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteRegulation: (docId) =>
+    request(`/regulations/${encodeURIComponent(docId)}`, {
+      method: 'DELETE',
+    }),
   searchRegulations: (payload) =>
     request('/regulations/search', {
       method: 'POST',
@@ -163,6 +187,44 @@ export const api = {
     request('/notifications/urge', {
       method: 'POST',
       body: JSON.stringify({ asset_no: assetNo, remark }),
+    }),
+
+  // 8. 机房与机柜全生命周期动态管理
+  getRooms: () => request('/rooms'),
+  getRoom: (roomCode) => request(`/rooms/${encodeURIComponent(roomCode)}`),
+  createRoom: (payload) =>
+    request('/rooms', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateRoom: (roomCode, payload) =>
+    request(`/rooms/${encodeURIComponent(roomCode)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteRoom: (roomCode) =>
+    request(`/rooms/${encodeURIComponent(roomCode)}`, {
+      method: 'DELETE',
+    }),
+
+  getRacks: (roomCode) => {
+    const qs = roomCode ? `?room_code=${encodeURIComponent(roomCode)}` : ''
+    return request(`/racks${qs}`)
+  },
+  getRack: (rackId) => request(`/racks/${encodeURIComponent(rackId)}`),
+  createRack: (payload) =>
+    request('/racks', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateRack: (rackId, payload) =>
+    request(`/racks/${encodeURIComponent(rackId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteRack: (rackId) =>
+    request(`/racks/${encodeURIComponent(rackId)}`, {
+      method: 'DELETE',
     }),
 }
 

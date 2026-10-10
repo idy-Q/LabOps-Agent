@@ -19,6 +19,7 @@ from app.db.models import (
     ChatHistory,
     User,
     ServerRoom,
+    ServerRack,
     AssetBorrowLog,
     TicketWorkflow,
     KnowledgeDocument,
@@ -58,6 +59,7 @@ SEED_ASSETS = [
             "purchase_date": "2024-03-15",
             "warranty_period": "2027-03-14 (原厂 3年 7x24金牌服务)",
             "supplier": "戴尔科技集团企业客户部 (客服: 400-881-1852)",
+            "custom_temperature": 43.5,
             "extra_params": '{"rack_units": "4U", "start_u": 28, "u_height": 4, "cooling": "前冷后热加压风道", "cuda_version": "12.4"}',
         },
     },
@@ -611,7 +613,7 @@ SEED_SERVER_ROOMS = [
     {
         "room_code": "ROOM-201",
         "room_name": "实训楼201 人工智能与高密算力实训机房",
-        "total_racks": 1,
+        "total_racks": 2,
         "power_capacity_kw": 80.0,
         "manager_teacher": "王主管",
         "location": "实训楼2层东侧201室",
@@ -631,6 +633,31 @@ SEED_SERVER_ROOMS = [
         "power_capacity_kw": 20.0,
         "manager_teacher": "赵实验员",
         "location": "实训楼3层西侧301室",
+    },
+]
+
+# 预置 3 个典型机房基础机柜种子数据 (ROOM-201: A01, A02; ROOM-101: B01; ROOM-301: 空)
+SEED_SERVER_RACKS = [
+    {
+        "rack_id": "机柜A01",
+        "rack_name": "A01 综合算力与网络核心柜",
+        "room_code": "ROOM-201",
+        "total_u": 42,
+        "power_rating_w": 4500,
+    },
+    {
+        "rack_id": "机柜A02",
+        "rack_name": "A02 备用算力扩展机柜",
+        "room_code": "ROOM-201",
+        "total_u": 42,
+        "power_rating_w": 4500,
+    },
+    {
+        "rack_id": "机柜B01",
+        "rack_name": "B01 教学虚拟化与网络汇聚柜",
+        "room_code": "ROOM-101",
+        "total_u": 42,
+        "power_rating_w": 4500,
     },
 ]
 
@@ -655,7 +682,7 @@ SEED_BORROW_LOGS = [
         "borrower_name": "王主管",
         "purpose": "分布式存储性能基准调优与容灾备份演练",
         "borrow_time": datetime(2026, 9, 19, 10, 0, 0),
-        "expected_return_time": datetime(2026, 10, 3, 18, 0, 0),
+        "expected_return_time": datetime(2026, 12, 31, 18, 0, 0),
         "actual_return_time": None,
         "return_status": "BORROWING",
         "approver": "李老师",
@@ -770,6 +797,21 @@ def init_db(
     logger.info("开始初始化数据库结构...")
     Base.metadata.create_all(bind=target_engine)
     logger.info("数据库表结构校验/创建完成 (tickets, assets, asset_details, audit_logs, chat_history, users, server_rooms, asset_borrow_logs, ticket_workflows, knowledge_documents, knowledge_chunks, user_notifications)")
+
+    # 自动探测并补充 asset_details 表的 custom_temperature 字段 (平滑兼容老旧数据库文件)
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(target_engine)
+        if "asset_details" in inspector.get_table_names():
+            columns = [c["name"] for c in inspector.get_columns("asset_details")]
+            if "custom_temperature" not in columns:
+                logger.info("检测到已有 asset_details 表缺少 custom_temperature 字段，正在自动执行增量迁移...")
+                with target_engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE asset_details ADD COLUMN custom_temperature FLOAT;"))
+                    conn.commit()
+                logger.info("asset_details 表 custom_temperature 字段迁移完成。")
+    except Exception as mig_err:
+        logger.warning("校验/迁移 asset_details 表字段时提示: %s", str(mig_err))
 
     if not seed:
         return
@@ -889,6 +931,22 @@ def init_db(
                 updated_rooms += 1
         db.commit()
         logger.info("机房区域种子数据处理完成: 新增 %d 间，同步更新 %d 间 (当前共 %d 间)。", added_rooms, updated_rooms, len(SEED_SERVER_ROOMS))
+
+        # 5.1 机房工业级标准机柜种子数据幂等填充 (按唯一 rack_id 判定)
+        added_racks = 0
+        updated_racks = 0
+        for rack_data in SEED_SERVER_RACKS:
+            exists = db.query(ServerRack).filter(ServerRack.rack_id == rack_data["rack_id"]).first()
+            if not exists:
+                rack = ServerRack(**rack_data)
+                db.add(rack)
+                added_racks += 1
+            else:
+                for k, v in rack_data.items():
+                    setattr(exists, k, v)
+                updated_racks += 1
+        db.commit()
+        logger.info("工业机柜种子数据处理完成: 新增 %d 架，同步更新 %d 架 (当前共 %d 架)。", added_racks, updated_racks, len(SEED_SERVER_RACKS))
 
         # 6. 设备借调流转历史记录种子数据幂等填充 (按唯一 log_no 判定)
         added_borrow_logs = 0

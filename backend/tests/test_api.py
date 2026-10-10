@@ -27,6 +27,7 @@ from app.db.models import (
     ChatHistory,
     User,
     ServerRoom,
+    ServerRack,
     AssetBorrowLog,
     TicketWorkflow,
     KnowledgeDocument,
@@ -461,6 +462,7 @@ def test_init_db_idempotency(test_db_env):
         assert session.query(ChatHistory).count() == 4
         assert session.query(User).count() == 4
         assert session.query(ServerRoom).count() == 3
+        assert session.query(ServerRack).count() == 3
         assert session.query(AssetBorrowLog).count() == 3
         assert session.query(TicketWorkflow).count() == 4
         assert session.query(KnowledgeDocument).count() == 3
@@ -662,5 +664,143 @@ def test_asset_tools_detail_and_add():
             db.commit()
     finally:
         db.close()
+
+
+def test_asset_temperature_setting_and_health_linkage_api(client):
+    """测试通过 REST API 录入与修改设定核心温度，验证动环探针遥测注入与健康状态智能联动"""
+    # 1. 录入新设备并设定温度为 42.5℃ -> 自动联动判定为 OVERHEAT 状态
+    create_payload = {
+        "asset_no": "DEV-TEST-TEMP-88",
+        "name": "高热AI训练卡集群88",
+        "category": "服务器",
+        "location": "实训楼201-机柜A01",
+        "health_status": "HEALTHY",  # 即使初始选择 HEALTHY，设定 42.5℃ 亦自动联动修正为 OVERHEAT
+        "custom_temperature": 42.5,
+        "detail": {
+            "model_name": "DGX-A100-Test",
+            "custom_temperature": 42.5,
+        },
+    }
+    create_res = client.post("/api/assets/", json=create_payload)
+    assert create_res.status_code == 201
+    created_data = create_res.json()
+    asset_id = created_data["id"]
+    assert created_data["health_status"] == "OVERHEAT"
+    assert created_data["custom_temperature"] == 42.5
+    assert created_data["telemetry_temperature"] == 42.5
+    assert created_data["detail"]["custom_temperature"] == 42.5
+
+    # 2. 修改设定温度至 38.6℃ -> 自动联动为 WARNING 状态
+    patch_warn = client.patch(
+        f"/api/assets/{asset_id}",
+        json={"custom_temperature": 38.6},
+    )
+    assert patch_warn.status_code == 200
+    warn_data = patch_warn.json()
+    assert warn_data["health_status"] == "WARNING"
+    assert warn_data["custom_temperature"] == 38.6
+    assert warn_data["telemetry_temperature"] == 38.6
+
+    # 3. 修改设定温度至 32.0℃ -> 自动联动为 HEALTHY 状态
+    patch_healthy = client.patch(
+        f"/api/assets/{asset_id}",
+        json={"custom_temperature": 32.0},
+    )
+    assert patch_healthy.status_code == 200
+    healthy_data = patch_healthy.json()
+    assert healthy_data["health_status"] == "HEALTHY"
+    assert healthy_data["custom_temperature"] == 32.0
+    assert healthy_data["telemetry_temperature"] == 32.0
+
+    # 4. 显式修改健康状态为 OFFLINE，温度保持环境室温且离线状态不被温度冲刷
+    patch_offline = client.patch(
+        f"/api/assets/{asset_id}",
+        json={"health_status": "OFFLINE", "custom_temperature": 45.0},
+    )
+    assert patch_offline.status_code == 200
+    offline_data = patch_offline.json()
+    assert offline_data["health_status"] == "OFFLINE"
+    assert offline_data["telemetry_temperature"] == 22.0
+
+    # 5. 测试通过顶层 custom_temperature: None 显式清除自定义注入温度
+    patch_clear = client.patch(
+        f"/api/assets/{asset_id}",
+        json={"custom_temperature": None, "health_status": "HEALTHY"},
+    )
+    assert patch_clear.status_code == 200
+    cleared_data = patch_clear.json()
+    assert cleared_data["custom_temperature"] is None
+    assert cleared_data["health_status"] == "HEALTHY"
+    assert cleared_data["telemetry_temperature"] == 31.5
+
+    # 6. 测试使用 temperature 别名提交更新并自动联动 OVERHEAT
+    patch_alias = client.patch(
+        f"/api/assets/{asset_id}",
+        json={"temperature": 41.8},
+    )
+    assert patch_alias.status_code == 200
+    alias_data = patch_alias.json()
+    assert alias_data["health_status"] == "OVERHEAT"
+    assert alias_data["custom_temperature"] == 41.8
+    assert alias_data["temperature"] == 41.8
+
+    # 7. 测试直接更新 health_status 为 HEALTHY，验证设定温度与遥测自洽回落至 31.5℃
+    patch_rollback = client.patch(
+        f"/api/assets/{asset_id}",
+        json={"health_status": "HEALTHY"},
+    )
+    assert patch_rollback.status_code == 200
+    rollback_data = patch_rollback.json()
+    assert rollback_data["health_status"] == "HEALTHY"
+    assert rollback_data["custom_temperature"] == 31.5
+    assert rollback_data["telemetry_temperature"] == 31.5
+
+    # 8. 核验拓扑大盘接口数据准确映射
+    topo_res = client.get("/api/assets/topology?room_code=ROOM-201")
+    assert topo_res.status_code == 200
+    topo_body = topo_res.json()
+    # 验证大盘能正常聚合
+    assert "summary" in topo_body
+
+    # 9. 清理测试资源
+    del_res = client.delete(f"/api/assets/{asset_id}")
+    assert del_res.status_code == 204
+
+
+def test_asset_temperature_boundaries_and_alias_api(client):
+    """测试边界温度跃迁精度 (37.99/38.00/39.99/40.00) 与 temperature 别名创建"""
+    # 1. 使用 temperature 别名字段在创建时指定边界温度 37.99℃ -> 判定为 HEALTHY
+    create_payload = {
+        "asset_no": "DEV-TEST-BOUND-99",
+        "name": "边界温度测试节点99",
+        "category": "服务器",
+        "location": "实训楼201-机柜A01",
+        "temperature": 37.99,
+    }
+    res1 = client.post("/api/assets/", json=create_payload)
+    assert res1.status_code == 201
+    d1 = res1.json()
+    asset_id = d1["id"]
+    assert d1["health_status"] == "HEALTHY"
+    assert d1["custom_temperature"] == 38.0 or d1["custom_temperature"] == 37.99
+
+    # 2. 调至临界点 38.00℃ -> 判定为 WARNING
+    res2 = client.patch(f"/api/assets/{asset_id}", json={"custom_temperature": 38.00})
+    assert res2.status_code == 200
+    assert res2.json()["health_status"] == "WARNING"
+
+    # 3. 调至临界点 39.99℃ -> 判定为 WARNING
+    res3 = client.patch(f"/api/assets/{asset_id}", json={"custom_temperature": 39.99})
+    assert res3.status_code == 200
+    assert res3.json()["health_status"] == "WARNING"
+
+    # 4. 调至超温红线 40.00℃ -> 判定为 OVERHEAT
+    res4 = client.patch(f"/api/assets/{asset_id}", json={"custom_temperature": 40.00})
+    assert res4.status_code == 200
+    assert res4.json()["health_status"] == "OVERHEAT"
+
+    # 5. 清理测试资源
+    client.delete(f"/api/assets/{asset_id}")
+
 
 

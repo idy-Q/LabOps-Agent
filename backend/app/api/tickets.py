@@ -5,11 +5,11 @@ from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, or_
+from sqlalchemy import desc, or_, func
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import get_db
-from app.db.models import Ticket, TicketWorkflow, AuditLog
+from app.db.models import Ticket, TicketWorkflow, AuditLog, User
 from app.schemas.ticket import (
     TicketCreate,
     TicketUpdate,
@@ -321,6 +321,7 @@ def update_ticket(
     ticket_id: int,
     ticket_update: TicketUpdate,
     operator: Optional[str] = Query(default=None, description="流转处置操作人（可选查询参数）"),
+    operator_role: Optional[str] = Query(default=None, description="操作人角色（可选查询参数）"),
     comment: Optional[str] = Query(default=None, description="流转处置说明（可选查询参数）"),
     db: Session = Depends(get_db),
 ):
@@ -333,11 +334,74 @@ def update_ticket(
 
     update_data = ticket_update.model_dump(exclude_unset=True)
     body_operator = update_data.pop("operator", None)
+    body_operator_role = update_data.pop("operator_role", None)
     body_comment = update_data.pop("comment", None)
 
-    # 优先取请求体中的 operator/comment，未提供时取 Query 参数，最后使用缺省值
+    # 优先取请求体中的 operator/comment/operator_role，未提供时取 Query 参数，最后使用缺省值
     effective_operator = (body_operator or operator or "").strip() or "系统管理员"
+    effective_role = (body_operator_role or operator_role or "").strip().upper()
     effective_comment = (body_comment or comment or "").strip()
+
+    # 解析角色与鉴权
+    user = (
+        db.query(User)
+        .filter(
+            or_(
+                func.lower(User.username) == effective_operator.lower(),
+                User.real_name == effective_operator,
+                func.lower(User.real_name) == effective_operator.lower(),
+            )
+        )
+        .first()
+    )
+    if not effective_role:
+        if user:
+            effective_role = (user.role or "TEACHER").upper()
+        elif effective_operator in ("系统管理员", "管理员", "admin", "王主管", "LabOps-Agent", "系统监控"):
+            effective_role = "ADMIN"
+        elif "老师" in effective_operator or "teacher" in effective_operator.lower():
+            effective_role = "TEACHER"
+        elif "同学" in effective_operator or "学生" in effective_operator.lower() or "student" in effective_operator.lower():
+            effective_role = "STUDENT"
+        else:
+            effective_role = "ADMIN"
+
+    # 1. 学生角色严正拦截
+    if effective_role == "STUDENT":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足：学生角色对运维工单仅有只读权限，禁止修改或流转工单",
+        )
+
+    # 2. 检查是否包含基本要素修改 (title, description, priority, device_id, creator)
+    content_fields = {"title", "description", "priority", "device_id", "creator"}
+    is_content_edit = any(f in update_data for f in content_fields)
+
+    # 3. 教师角色权限细化：仅可编辑自己创建的工单；超级管理员可编辑所有工单
+    if effective_role == "TEACHER":
+        if is_content_edit:
+            creator_str = (ticket.creator or "").strip().lower()
+            if not creator_str:
+                is_creator = False
+            else:
+                candidates = [
+                    c.lower()
+                    for c in [
+                        effective_operator,
+                        getattr(user, "username", None),
+                        getattr(user, "real_name", None),
+                    ]
+                    if c and c.strip()
+                ]
+                is_creator = any(
+                    c == creator_str or c in creator_str
+                    for c in candidates
+                )
+            if not is_creator:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"权限不足：教师 [{effective_operator}] 仅可编辑本人创建的工单，无法修改由 [{ticket.creator}] 创建的工单",
+                )
 
     # 检测工单状态变迁并自动记录 TicketWorkflow
     new_status = update_data.get("status")

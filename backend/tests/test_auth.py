@@ -149,6 +149,7 @@ class TestAuthAPI:
             "role": "TEACHER",
             "department": "软件工程教研室",
             "phone": "13912345678",
+            "teacher_code": "teacher666",
         }
         resp = client.post("/api/auth/register", json=payload)
         assert resp.status_code == 201
@@ -168,6 +169,57 @@ class TestAuthAPI:
         )
         assert login_resp.status_code == 200
         assert login_resp.json()["username"] == "teacher_wang"
+
+    def test_register_teacher_without_code_failure(self, client):
+        payload = {
+            "username": "fake_teacher",
+            "password": "password123",
+            "real_name": "假教师",
+            "role": "TEACHER",
+            "department": "物联网教研室",
+        }
+        resp = client.post("/api/auth/register", json=payload)
+        assert resp.status_code == 400
+        assert "教师专属安全激活口令" in resp.json()["detail"]
+
+    def test_register_teacher_with_wrong_code_failure(self, client):
+        payload = {
+            "username": "fake_teacher_2",
+            "password": "password123",
+            "real_name": "假教师2",
+            "role": "TEACHER",
+            "department": "物联网教研室",
+            "teacher_code": "wrong_code",
+        }
+        resp = client.post("/api/auth/register", json=payload)
+        assert resp.status_code == 400
+        assert "教师专属安全激活口令" in resp.json()["detail"]
+
+    def test_register_teacher_with_activation_code_alias_success(self, client):
+        payload = {
+            "username": "teacher_sun",
+            "password": "password123",
+            "real_name": "孙老师",
+            "role": "TEACHER",
+            "department": "网络工程教研室",
+            "activation_code": "teacher666",
+        }
+        resp = client.post("/api/auth/register", json=payload)
+        assert resp.status_code == 201
+        assert resp.json()["role"] == "TEACHER"
+
+    def test_register_admin_with_activation_code_alias_success(self, client):
+        payload = {
+            "username": "admin_zhao",
+            "password": "password123",
+            "real_name": "赵主管",
+            "role": "ADMIN",
+            "department": "实验中心主任室",
+            "activation_code": "admin666",
+        }
+        resp = client.post("/api/auth/register", json=payload)
+        assert resp.status_code == 201
+        assert resp.json()["role"] == "ADMIN"
 
     def test_register_student_success(self, client):
         payload = {
@@ -190,6 +242,7 @@ class TestAuthAPI:
             "real_name": "李老师二号",
             "role": "TEACHER",
             "department": "物联网工程教研室",
+            "teacher_code": "teacher666",
         }
         resp = client.post("/api/auth/register", json=payload)
         assert resp.status_code == 400
@@ -345,9 +398,182 @@ class TestAuthAPI:
             "role": "TEACHER",
             "department": "计算机系",
             "phone": "   ",
+            "teacher_code": "teacher666",
         }
         resp = client.post("/api/auth/register", json=payload)
         assert resp.status_code == 201
         data = resp.json()
         assert data["phone"] is None
+
+
+class TestUserProfileAndChangePassword:
+    """用户资料更新与自主修改密码自动化测试"""
+
+    def test_update_user_profile_success(self, client):
+        """测试更新用户真实姓名、联系电话与所属部门"""
+        payload = {
+            "real_name": "陈志远同学",
+            "phone": "13799998888",
+            "department": "计科2201卓越工程师班",
+        }
+        resp = client.put("/api/auth/profile/student_chen", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["username"] == "student_chen"
+        assert data["real_name"] == "陈志远同学"
+        assert data["phone"] == "13799998888"
+        assert data["department"] == "计科2201卓越工程师班"
+
+        # 查验 GET profile 端点同步反映最新档案
+        get_resp = client.get("/api/auth/profile/student_chen")
+        assert get_resp.status_code == 200
+        get_data = get_resp.json()
+        assert get_data["real_name"] == "陈志远同学"
+        assert get_data["department"] == "计科2201卓越工程师班"
+
+    def test_update_user_profile_not_found(self, client):
+        """测试更新不存在的用户返回 HTTP 404"""
+        resp = client.put(
+            "/api/auth/profile/non_existent_user_404",
+            json={"real_name": "虚构人物"},
+        )
+        assert resp.status_code == 404
+        assert "不存在" in resp.json()["detail"]
+
+    def test_change_password_lifecycle(self, client):
+        """测试修改密码端点生命周期：验证旧密、更新新密、旧密失效、新密登录成功"""
+        # 1. 注册测试用户
+        reg_payload = {
+            "username": "pwd_user_01",
+            "password": "init_pwd_123",
+            "real_name": "密码测试员",
+            "role": "STUDENT",
+            "department": "实训测试班",
+        }
+        reg_resp = client.post("/api/auth/register", json=reg_payload)
+        assert reg_resp.status_code == 201
+
+        # 2. 尝试使用错误旧密码修改 -> HTTP 400
+        fail_resp = client.put(
+            "/api/auth/change-password",
+            json={
+                "username": "pwd_user_01",
+                "old_password": "wrong_old_pwd",
+                "new_password": "brand_new_pwd_456",
+            },
+        )
+        assert fail_resp.status_code == 400
+        assert "原密码" in fail_resp.json()["detail"]
+
+        # 3. 尝试新密码少于6位 -> HTTP 422
+        short_resp = client.put(
+            "/api/auth/change-password",
+            json={
+                "username": "pwd_user_01",
+                "old_password": "init_pwd_123",
+                "new_password": "123",
+            },
+        )
+        assert short_resp.status_code == 422
+
+        # 4. 正确修改密码 -> HTTP 200
+        ok_resp = client.put(
+            "/api/auth/change-password",
+            json={
+                "username": "pwd_user_01",
+                "old_password": "init_pwd_123",
+                "new_password": "brand_new_pwd_456",
+            },
+        )
+        assert ok_resp.status_code == 200
+        assert "成功" in ok_resp.json()["message"]
+
+        # 5. 旧密码登录被拒 -> HTTP 401
+        old_login = client.post(
+            "/api/auth/login",
+            json={"username": "pwd_user_01", "password": "init_pwd_123"},
+        )
+        assert old_login.status_code == 401
+
+        # 6. 新密码登录成功 -> HTTP 200
+        new_login = client.post(
+            "/api/auth/login",
+            json={"username": "pwd_user_01", "password": "brand_new_pwd_456"},
+        )
+        assert new_login.status_code == 200
+        assert new_login.json()["username"] == "pwd_user_01"
+
+    def test_change_password_not_found(self, client):
+        """测试对不存在用户修改密码返回 HTTP 404"""
+        resp = client.put(
+            "/api/auth/change-password",
+            json={
+                "username": "non_existent_999",
+                "old_password": "old_pass_123",
+                "new_password": "new_pass_123",
+            },
+        )
+        assert resp.status_code == 404
+
+    def test_update_user_profile_case_insensitive_and_clear_phone(self, client):
+        """测试大小写不敏感工号更新以及将电话置为空白字符串时自动清洗为 None"""
+        resp = client.put(
+            "/api/auth/profile/STUDENT_CHEN",
+            json={
+                "real_name": "陈志远(已更名)",
+                "phone": "   ",
+                "department": "计算机科学与技术系",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["username"] == "student_chen"
+        assert data["real_name"] == "陈志远(已更名)"
+        assert data["phone"] == "暂未登记"
+
+    def test_change_password_case_insensitive_username(self, client):
+        """测试修改密码支持工号大小写不敏感容错"""
+        # 使用大写工号 PWD_USER_01 再次修改密码
+        resp = client.put(
+            "/api/auth/change-password",
+            json={
+                "username": "PWD_USER_01",
+                "old_password": "brand_new_pwd_456",
+                "new_password": "another_new_pwd_789",
+            },
+        )
+        assert resp.status_code == 200
+        assert "成功" in resp.json()["message"]
+
+        # 验证新密码登录成功
+        login_resp = client.post(
+            "/api/auth/login",
+            json={"username": "pwd_user_01", "password": "another_new_pwd_789"},
+        )
+        assert login_resp.status_code == 200
+
+    def test_update_user_profile_forbid_extra_fields(self, client):
+        """测试更新用户资料接口禁止传递非定义字段 (防篡改注入)"""
+        resp = client.put(
+            "/api/auth/profile/student_chen",
+            json={
+                "real_name": "陈同学",
+                "role": "ADMIN",  # 禁止越权提升角色
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_change_password_forbid_extra_fields(self, client):
+        """测试修改密码接口禁止传递非定义字段"""
+        resp = client.put(
+            "/api/auth/change-password",
+            json={
+                "username": "student_chen",
+                "old_password": "any",
+                "new_password": "anypassword123",
+                "is_admin": True,
+            },
+        )
+        assert resp.status_code == 422
+
 

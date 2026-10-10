@@ -66,7 +66,7 @@ export async function fetchSSE({
         }
       } catch {
         if (response.status === 500) {
-          errText = '后端服务未连接 (HTTP 500)。请在另一终端窗口启动后端 FastAPI 服务 (端口 8000)'
+          errText = '机房运维后台服务未连接 (HTTP 500)。请确认机房运维后台服务已正常启动'
         }
       }
       throw new Error(errText)

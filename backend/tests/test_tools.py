@@ -556,4 +556,131 @@ def test_get_server_metrics_all_seeded_standalone():
             assert res["alert_level"] == "WARNING"
 
 
+# ---------------------------------------------------------
+# 7. 方案A：动环探针遥测注入与温度设定联动测试
+# ---------------------------------------------------------
+def test_get_server_metrics_custom_temperature_overheat(test_db):
+    """验证自定义设定核心温度 >=40℃ 时探针注入并联动 OVERHEAT 高温告警"""
+    from app.db.models import Asset, AssetDetail
+
+    asset = Asset(
+        asset_no="DEV-TEMP-TEST-01",
+        name="温度遥测注入测试节点01",
+        category="服务器",
+        location="实训楼201-机柜A01",
+        health_status="OVERHEAT",
+        borrow_status="AVAILABLE",
+    )
+    test_db.add(asset)
+    test_db.flush()
+    detail = AssetDetail(
+        asset_id=asset.id,
+        custom_temperature=42.5,
+    )
+    test_db.add(detail)
+    test_db.commit()
+
+    res = get_server_metrics("DEV-TEMP-TEST-01", db=test_db)
+    assert res["status"] == "success"
+    assert res["temperature"] == 42.5
+    assert res["health_status"] == "OVERHEAT"
+    assert res["alert"] is True
+    assert res["alert_level"] == "CRITICAL"
+    assert "42.5℃" in res["alert_message"]
+    assert res["fan_speed_rpm"] >= 4500
+    assert res["power_watts"] >= 400
+
+
+def test_get_server_metrics_custom_temperature_warning(test_db):
+    """验证自定义设定核心温度在 [38.0, 40.0) 区间时探针注入并联动 WARNING 预警"""
+    from app.db.models import Asset, AssetDetail
+
+    asset = Asset(
+        asset_no="DEV-TEMP-TEST-02",
+        name="温度遥测注入测试节点02",
+        category="服务器",
+        location="实训楼201-机柜A01",
+        health_status="WARNING",
+        borrow_status="AVAILABLE",
+    )
+    test_db.add(asset)
+    test_db.flush()
+    detail = AssetDetail(
+        asset_id=asset.id,
+        custom_temperature=38.8,
+    )
+    test_db.add(detail)
+    test_db.commit()
+
+    res = get_server_metrics("DEV-TEMP-TEST-02", db=test_db)
+    assert res["status"] == "success"
+    assert res["temperature"] == 38.8
+    assert res["health_status"] == "WARNING"
+    assert res["alert"] is True
+    assert res["alert_level"] == "WARNING"
+    assert "38.8℃" in res["alert_message"]
+    assert 3000 <= res["fan_speed_rpm"] < 4000
+
+
+def test_get_server_metrics_custom_temperature_healthy(test_db):
+    """验证自定义设定核心温度 <38℃ 时探针注入并联动 HEALTHY 良好状态"""
+    from app.db.models import Asset, AssetDetail
+
+    asset = Asset(
+        asset_no="DEV-TEMP-TEST-03",
+        name="温度遥测注入测试节点03",
+        category="服务器",
+        location="实训楼201-机柜A01",
+        health_status="HEALTHY",
+        borrow_status="AVAILABLE",
+    )
+    test_db.add(asset)
+    test_db.flush()
+    detail = AssetDetail(
+        asset_id=asset.id,
+        custom_temperature=32.0,
+    )
+    test_db.add(detail)
+    test_db.commit()
+
+    res = get_server_metrics("DEV-TEMP-TEST-03", db=test_db)
+    assert res["status"] == "success"
+    assert res["temperature"] == 32.0
+    assert res["health_status"] == "HEALTHY"
+    assert res["alert"] is False
+    assert res["alert_level"] == "NORMAL"
+    assert res["fan_speed_rpm"] < 3000
+
+
+def test_get_server_metrics_custom_temperature_offline_keeps_offline(test_db):
+    """验证处于 OFFLINE 状态的设备即使设定了温度也维持环境室温与离线脱网指标"""
+    from app.db.models import Asset, AssetDetail
+
+    asset = Asset(
+        asset_no="DEV-TEMP-TEST-04",
+        name="离线温度测试节点04",
+        category="服务器",
+        location="实训楼301-备用区",
+        health_status="OFFLINE",
+        borrow_status="AVAILABLE",
+    )
+    test_db.add(asset)
+    test_db.flush()
+    detail = AssetDetail(
+        asset_id=asset.id,
+        custom_temperature=44.0,
+    )
+    test_db.add(detail)
+    test_db.commit()
+
+    res = get_server_metrics("DEV-TEMP-TEST-04", db=test_db)
+    assert res["status"] == "success"
+    assert res["health_status"] == "OFFLINE"
+    assert res["temperature"] == 22.0
+    assert res["power_watts"] == 0
+    assert res["fan_speed_rpm"] == 0
+    assert res["alert"] is True
+
+
+
 

@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-4">
-    <!-- 顶部状态栏与刷新控制 -->
-    <div class="flex items-center justify-between">
+    <!-- 顶部状态栏与操作控制 -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div class="flex items-center space-x-2">
         <span
           class="p-1.5 rounded-lg border shadow-sm flex items-center justify-center"
@@ -19,13 +19,31 @@
               class="text-[10px] px-2 py-0.5 rounded-full font-mono font-medium border"
               :class="theme === 'light' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'"
             >
-              RAG 知识底座
+              安全规约库
             </span>
           </h3>
         </div>
       </div>
 
-      <div class="flex items-center space-x-2">
+      <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+        <!-- 【+ 录入新规程】按钮（教师与管理员可见） -->
+        <button
+          v-if="canAddRegulation"
+          @click="openCreateModal"
+          class="text-xs flex items-center space-x-1.5 transition-all px-3 py-1.5 rounded-lg border font-medium active:scale-95 shadow-sm select-none"
+          :class="[
+            theme === 'light'
+              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300 shadow-emerald-100'
+              : 'bg-emerald-600/90 hover:bg-emerald-500 text-white border-emerald-400/40 shadow-emerald-500/20'
+          ]"
+          title="录入新机房安全规程，自动完成语义切块并同步至向量知识库"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          <span>录入新规程</span>
+        </button>
+
         <!-- 快速向 AI 咨询机房安全总则 -->
         <button
           @click="askAIGeneral"
@@ -53,7 +71,7 @@
               ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
               : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-white/[0.08]'
           ]"
-          title="刷新知识库台账与切块"
+          title="刷新安全规约库与规约细则"
         >
           <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': loading }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -63,121 +81,24 @@
       </div>
     </div>
 
-    <!-- 1. 顶部宏观 KPI 磁贴 (Bento Metrics) -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <!-- 磁贴 1: 在册规程篇数 -->
-      <div
-        class="p-3.5 rounded-xl border transition-all shadow-sm flex flex-col justify-between"
-        :class="theme === 'light' ? 'bg-white/80 border-slate-200/80 shadow-slate-100' : 'bg-zinc-900/60 border-white/[0.08]'"
-      >
-        <div class="flex items-center justify-between text-xs text-zinc-400 mb-1">
-          <span :class="theme === 'light' ? 'text-slate-500 font-medium' : 'text-zinc-400'">在册安全规程</span>
-          <span class="p-1 rounded-md" :class="theme === 'light' ? 'bg-indigo-50 text-indigo-600' : 'bg-indigo-500/10 text-indigo-400'">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </span>
-        </div>
-        <div class="flex items-baseline space-x-1.5">
-          <span class="text-2xl font-bold font-mono" :class="theme === 'light' ? 'text-slate-900' : 'text-zinc-100'">
-            {{ summary.total_documents || documents.length || 0 }}
-          </span>
-          <span class="text-xs" :class="theme === 'light' ? 'text-slate-500' : 'text-zinc-400'">篇源文档</span>
-        </div>
-        <div class="text-[11px] mt-2 flex items-center gap-1.5" :class="theme === 'light' ? 'text-emerald-700' : 'text-emerald-400'">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-          <span>100% 覆盖机房核心安全域</span>
-        </div>
-      </div>
 
-      <!-- 磁贴 2: 核心切块数量 -->
-      <div
-        class="p-3.5 rounded-xl border transition-all shadow-sm flex flex-col justify-between"
-        :class="theme === 'light' ? 'bg-white/80 border-slate-200/80 shadow-slate-100' : 'bg-zinc-900/60 border-white/[0.08]'"
-      >
-        <div class="flex items-center justify-between text-xs text-zinc-400 mb-1">
-          <span :class="theme === 'light' ? 'text-slate-500 font-medium' : 'text-zinc-400'">语义切块台账</span>
-          <span class="p-1 rounded-md" :class="theme === 'light' ? 'bg-cyan-50 text-cyan-600' : 'bg-cyan-500/10 text-cyan-400'">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-          </span>
-        </div>
-        <div class="flex items-baseline space-x-1.5">
-          <span class="text-2xl font-bold font-mono" :class="theme === 'light' ? 'text-cyan-700' : 'text-cyan-400'">
-            {{ summary.total_chunks || totalChunksCount || 0 }}
-          </span>
-          <span class="text-xs" :class="theme === 'light' ? 'text-slate-500' : 'text-zinc-400'">个 Chunks</span>
-        </div>
-        <div class="text-[11px] mt-2 flex items-center gap-1.5" :class="theme === 'light' ? 'text-slate-500' : 'text-zinc-400'">
-          <span>总计 {{ summary.total_chars || totalCharsCount || 0 }} 字符精细分块</span>
-        </div>
-      </div>
-
-      <!-- 磁贴 3: 业务覆盖分类 -->
-      <div
-        class="p-3.5 rounded-xl border transition-all shadow-sm flex flex-col justify-between"
-        :class="theme === 'light' ? 'bg-white/80 border-slate-200/80 shadow-slate-100' : 'bg-zinc-900/60 border-white/[0.08]'"
-      >
-        <div class="flex items-center justify-between text-xs text-zinc-400 mb-1">
-          <span :class="theme === 'light' ? 'text-slate-500 font-medium' : 'text-zinc-400'">规程管理域</span>
-          <span class="p-1 rounded-md" :class="theme === 'light' ? 'bg-amber-50 text-amber-600' : 'bg-amber-500/10 text-amber-400'">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-          </span>
-        </div>
-        <div class="flex items-baseline space-x-1.5">
-          <span class="text-2xl font-bold font-mono" :class="theme === 'light' ? 'text-amber-700' : 'text-amber-400'">
-            {{ Object.keys(summary.categories || {}).length || 3 }}
-          </span>
-          <span class="text-xs" :class="theme === 'light' ? 'text-slate-500' : 'text-zinc-400'">大核心业务分类</span>
-        </div>
-        <div class="text-[11px] mt-2 truncate" :class="theme === 'light' ? 'text-slate-600' : 'text-zinc-400'">
-          用电规范 · 应急条例 · 维保规程
-        </div>
-      </div>
-
-      <!-- 磁贴 4: 向量引擎状态 -->
-      <div
-        class="p-3.5 rounded-xl border transition-all shadow-sm flex flex-col justify-between"
-        :class="theme === 'light' ? 'bg-white/80 border-slate-200/80 shadow-slate-100' : 'bg-zinc-900/60 border-white/[0.08]'"
-      >
-        <div class="flex items-center justify-between text-xs text-zinc-400 mb-1">
-          <span :class="theme === 'light' ? 'text-slate-500 font-medium' : 'text-zinc-400'">向量索引引擎</span>
-          <span class="p-1 rounded-md" :class="theme === 'light' ? 'bg-emerald-50 text-emerald-600' : 'bg-emerald-500/10 text-emerald-400'">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </span>
-        </div>
-        <div class="flex items-baseline space-x-2">
-          <span class="text-sm font-semibold truncate" :class="theme === 'light' ? 'text-slate-900' : 'text-zinc-100'">
-            {{ summary.vector_engine?.engine || 'ChromaDB / 余弦双模' }}
-          </span>
-        </div>
-        <div class="text-[11px] mt-2 flex items-center justify-between">
-          <span class="flex items-center gap-1.5" :class="theme === 'light' ? 'text-emerald-700' : 'text-emerald-400'">
-            <span class="relative flex h-2 w-2">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span>引擎就绪 · 双模高可用</span>
-          </span>
-          <span class="font-mono text-[10px]" :class="theme === 'light' ? 'text-slate-400' : 'text-zinc-500'">Top-K=5</span>
-        </div>
-      </div>
-    </div>
+    <!-- 规程录入与修改独立弹窗组件 (带 Teleport 顶层挂载、两段式防误触与明暗双模态深度优化) -->
+    <RegulationFormModal
+      v-model="showCreateModal"
+      :theme="theme"
+      :editDoc="editingDoc"
+      @saved="handleRegulationSaved"
+    />
 
     <!-- 2. 搜索栏与分类过滤 Controls -->
     <div
-      class="p-4 rounded-xl border transition-all shadow-sm space-y-3"
-      :class="theme === 'light' ? 'bg-white/80 border-slate-200/80 shadow-slate-100' : 'bg-zinc-900/60 border-white/[0.08]'"
+      class="p-3.5 sm:p-4 rounded-xl border glass-panel transition-all shadow-sm"
+      :class="theme === 'light' ? 'border-slate-200/80 shadow-slate-100' : ''"
     >
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <!-- 分类选择 Tabs -->
-        <div class="flex items-center space-x-1 p-1 rounded-xl border text-xs overflow-x-auto select-none"
-          :class="theme === 'light' ? 'bg-slate-100/90 border-slate-200' : 'bg-zinc-950/60 border-white/[0.06]'"
+        <div class="flex items-center space-x-1 p-1 rounded-xl border glass-card-sub text-xs overflow-x-auto select-none"
+          :class="theme === 'light' ? 'border-slate-200' : ''"
         >
           <button
             v-for="cat in categoryOptions"
@@ -206,7 +127,7 @@
             v-model="searchQuery"
             @keydown.enter="handleSearch"
             type="text"
-            placeholder="语义/关键词检索（如：4.5kW功耗、超温40℃、防重复借出）..."
+            placeholder="搜索规程编号、规程标题、条例细则或安全规范..."
             class="w-full pl-9 pr-20 py-2 rounded-xl text-xs border outline-none transition-all placeholder:text-zinc-500"
             :class="[
               theme === 'light'
@@ -237,26 +158,6 @@
           </div>
         </div>
       </div>
-
-      <!-- 快速检索热词胶囊 (Hot Queries) -->
-      <div class="flex items-center gap-1.5 flex-wrap pt-1 text-xs">
-        <span class="text-[11px] font-medium" :class="theme === 'light' ? 'text-slate-400' : 'text-zinc-500'">
-          常见咨询热词：
-        </span>
-        <button
-          v-for="hot in hotChips"
-          :key="hot.query"
-          @click="applyHotChip(hot.query)"
-          class="px-2.5 py-1 rounded-lg text-[11px] border transition-all active:scale-95 flex items-center space-x-1 shadow-sm"
-          :class="[
-            theme === 'light'
-              ? 'bg-slate-50 hover:bg-indigo-50 border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-700'
-              : 'bg-white/[0.03] hover:bg-indigo-500/10 border-white/[0.06] hover:border-indigo-500/30 text-zinc-300 hover:text-indigo-300'
-          ]"
-        >
-          <span>{{ hot.label }}</span>
-        </button>
-      </div>
     </div>
 
     <!-- 3. 语义检索匹配结果卡片流 (当处于检索模式时渲染) -->
@@ -270,7 +171,7 @@
             class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium border"
             :class="theme === 'light' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300'"
           >
-            关键词：“{{ lastSearchedQuery }}” · 共 {{ searchResults.length }} 条语义切块
+            关键词：“{{ lastSearchedQuery }}” · 共 {{ searchResults.length }} 条规约细则
           </span>
         </div>
         <button
@@ -298,7 +199,7 @@
 
       <!-- 空检索结果 -->
       <div v-else-if="searchResults.length === 0" class="p-8 text-center rounded-xl border" :class="theme === 'light' ? 'bg-white border-slate-200' : 'bg-zinc-900/40 border-white/[0.08]'">
-        <div class="text-zinc-400 text-xs">未找到与“{{ lastSearchedQuery }}”相符的规程切块，建议更换关键词重试。</div>
+        <div class="text-zinc-400 text-xs">未找到与“{{ lastSearchedQuery }}”相符的规约细则，建议更换关键词重试。</div>
       </div>
 
       <!-- 结果卡片列表 -->
@@ -306,8 +207,8 @@
         <div
           v-for="(item, idx) in searchResults"
           :key="idx"
-          class="p-4 rounded-xl border transition-all shadow-sm space-y-2.5 relative overflow-hidden group"
-          :class="theme === 'light' ? 'bg-white/90 border-slate-200/90 shadow-slate-100 hover:border-indigo-400/50' : 'bg-zinc-900/80 border-white/[0.08] hover:border-indigo-500/40'"
+          class="p-4 rounded-xl border glass-card transition-all shadow-sm space-y-2.5 relative overflow-hidden group hover:border-indigo-400/50"
+          :class="theme === 'light' ? 'border-slate-200/90 shadow-slate-100' : ''"
         >
           <div class="flex items-center justify-between flex-wrap gap-2">
             <div class="flex items-center space-x-2">
@@ -315,7 +216,7 @@
                 class="px-2 py-0.5 rounded text-[10px] font-mono font-medium border"
                 :class="getScoreBadgeClass(item.score)"
               >
-                相似度: {{ item.score_percent }}
+                匹配度: {{ (item.score * 100).toFixed(0) }}%
               </span>
               <span class="text-xs font-semibold" :class="theme === 'light' ? 'text-slate-900' : 'text-zinc-100'">
                 {{ item.doc_title }}
@@ -365,7 +266,7 @@
 
           <div class="text-[11px] font-mono text-zinc-500 pt-1 border-t border-white/[0.04] flex items-center justify-between">
             <span>{{ item.source }}</span>
-            <span class="text-[10px] text-zinc-400">RAG Cosine: {{ item.score }}</span>
+            <span class="text-[10px] text-zinc-400">匹配度: {{ (item.score * 100).toFixed(0) }}%</span>
           </div>
         </div>
       </div>
@@ -381,7 +282,7 @@
           </svg>
         </div>
         <div class="text-xs" :class="theme === 'light' ? 'text-slate-600' : 'text-zinc-400'">
-          正在加载机房规程知识库与切块详情...
+          正在加载机房安全规约库与规约细则...
         </div>
       </div>
 
@@ -389,13 +290,12 @@
       <div
         v-for="doc in filteredDocuments"
         :key="doc.doc_id"
-        class="rounded-xl border transition-all shadow-sm overflow-hidden"
-        :class="theme === 'light' ? 'bg-white/90 border-slate-200/90 shadow-slate-100' : 'bg-zinc-900/70 border-white/[0.08]'"
+        class="rounded-xl border glass-card transition-all shadow-sm overflow-hidden"
+        :class="theme === 'light' ? 'border-slate-200/90 shadow-slate-100' : ''"
       >
         <!-- 规程卡片顶栏 Header -->
         <div
-          class="p-4 border-b flex flex-col md:flex-row md:items-center justify-between gap-3"
-          :class="theme === 'light' ? 'bg-slate-50/80 border-slate-200' : 'bg-white/[0.02] border-white/[0.06]'"
+          class="p-4 border-b glass-card-sub flex flex-col md:flex-row md:items-center justify-between gap-3"
         >
           <div class="space-y-1.5">
             <div class="flex items-center space-x-2 flex-wrap gap-y-1">
@@ -422,48 +322,22 @@
             </div>
 
             <!-- 元数据行 -->
-            <div class="flex items-center space-x-3 text-[11px] text-zinc-400">
-              <span class="font-mono">{{ doc.doc_id }}</span>
+            <div class="flex items-center space-x-3 text-[11px] text-zinc-400 flex-wrap gap-y-1">
+              <span class="font-mono font-medium whitespace-nowrap">{{ doc.doc_id }}</span>
               <span>·</span>
-              <span>生效日期: {{ doc.effective_date }}</span>
+              <span class="whitespace-nowrap">生效日期: {{ doc.effective_date }}</span>
               <span>·</span>
-              <span>总字数: {{ doc.char_count }} 字</span>
+              <span class="whitespace-nowrap">总字数: {{ doc.char_count }} 字</span>
               <span>·</span>
-              <span :class="theme === 'light' ? 'text-indigo-600 font-medium' : 'text-indigo-400 font-medium'">
-                {{ doc.chunk_count }} 个 RAG 切块
+              <span class="whitespace-nowrap" :class="theme === 'light' ? 'text-indigo-600 font-medium' : 'text-indigo-400 font-medium'">
+                {{ doc.chunk_count }} 条规约细则
               </span>
             </div>
           </div>
 
-          <!-- 右侧操作栏 -->
+          <!-- 右侧操作栏 (收敛为主按钮【向 AI 咨询此规程】与【更多】下拉菜单) -->
           <div class="flex items-center space-x-2 shrink-0">
-            <!-- 切换底层切块展开/收起 (答辩亮点探针) -->
-            <button
-              @click="toggleDocChunks(doc.doc_id)"
-              class="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all flex items-center space-x-1.5 active:scale-95 shadow-sm"
-              :class="[
-                expandedDocs[doc.doc_id]
-                  ? (theme === 'light' ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300')
-                  : (theme === 'light' ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700' : 'bg-zinc-800/80 hover:bg-zinc-700 border-white/[0.08] text-zinc-300')
-              ]"
-              title="透明查验该规程的底层 RAG 语义切块与向量 ID 映射"
-            >
-              <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-              </svg>
-              <span>{{ expandedDocs[doc.doc_id] ? '收起向量切块' : '查验 RAG 切块' }}</span>
-              <svg
-                class="w-3 h-3 transition-transform duration-200"
-                :class="{ 'rotate-180': expandedDocs[doc.doc_id] }"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            <!-- 向 AI 咨询此规程 -->
+            <!-- 向 AI 咨询此规程 (高频主操作) -->
             <button
               @click="askAIAboutDoc(doc)"
               class="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-1.5 border active:scale-95 shadow-sm"
@@ -479,55 +353,130 @@
               </svg>
               <span>向 AI 咨询此规程</span>
             </button>
+
+            <!-- 【更多】下拉操作菜单 (收敛：查验规约条目细目 / 编辑规程 / 废止规程) -->
+            <div class="relative inline-block text-left">
+              <button
+                @click.stop="toggleMoreMenu(doc.doc_id)"
+                class="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all flex items-center space-x-1 active:scale-95 shadow-sm"
+                :class="[
+                  activeMoreMenuDocId === doc.doc_id
+                    ? (theme === 'light' ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300')
+                    : (theme === 'light' ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700' : 'bg-zinc-800/80 hover:bg-zinc-700 border-white/[0.08] text-zinc-300')
+                ]"
+                title="更多操作 (查验细目 / 编辑 / 废止)"
+              >
+                <span>更多</span>
+                <svg
+                  class="w-3 h-3 transition-transform duration-200"
+                  :class="{ 'rotate-180': activeMoreMenuDocId === doc.doc_id }"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              <div
+                v-if="activeMoreMenuDocId === doc.doc_id"
+                @click.stop
+                class="glass-acrylic-popover absolute right-0 w-44 py-1 rounded-xl border z-30 text-xs font-sans text-left mt-1.5 select-none"
+              >
+                <!-- 1. 查验规约条目细目 (保留原功能，点击展开/收起) -->
+                <button
+                  @click="toggleDocChunks(doc.doc_id); closeMoreMenu()"
+                  class="w-full px-3 py-2 flex items-center space-x-2 transition-colors text-left"
+                  :class="theme === 'light' ? 'hover:bg-slate-100 text-slate-700 hover:text-indigo-600' : 'hover:bg-white/[0.08] text-zinc-300 hover:text-indigo-300'"
+                >
+                  <svg class="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
+                  <span>{{ expandedDocs[doc.doc_id] ? '收起规约细目' : '查验规约条目细目' }}</span>
+                </button>
+
+                <!-- 教师与管理员专属操作：编辑与废止 -->
+                <template v-if="canAddRegulation">
+                  <div class="my-1 border-t" :class="theme === 'light' ? 'border-slate-100' : 'border-white/[0.08]'"></div>
+
+                  <!-- 2. 编辑规程 -->
+                  <button
+                    @click="openEditRegulation(doc); closeMoreMenu()"
+                    class="w-full px-3 py-2 flex items-center space-x-2 transition-colors text-left"
+                    :class="theme === 'light' ? 'hover:bg-slate-100 text-slate-700 hover:text-indigo-600' : 'hover:bg-white/[0.08] text-zinc-300 hover:text-indigo-300'"
+                  >
+                    <svg class="w-3.5 h-3.5 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    <span>编辑规程</span>
+                  </button>
+
+                  <!-- 3. 废止规程 -->
+                  <button
+                    @click="openDeleteRegulation(doc); closeMoreMenu()"
+                    class="w-full px-3 py-2 flex items-center space-x-2 transition-colors text-left text-rose-400 hover:text-rose-300"
+                    :class="theme === 'light' ? 'hover:bg-rose-50 text-rose-600' : 'hover:bg-rose-500/10'"
+                  >
+                    <svg class="w-3.5 h-3.5 text-rose-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>废止此规程</span>
+                  </button>
+                </template>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- 规程条款沉浸式预览 (逐条渲染与红线高亮) -->
+        <!-- 规程条款沉浸式预览 (按章节语义聚合，结构化展现，杜绝碎片化拆分与标题正文重复) -->
         <div class="p-4 space-y-3">
           <div
             v-if="!docDetailMap[doc.doc_id]"
             class="py-4 text-center text-xs text-zinc-400 animate-pulse"
           >
-            正在加载《{{ doc.title }}》条款切块详情...
+            正在加载《{{ doc.title }}》条款详情...
           </div>
           <div
-            v-else-if="getPreviewChunks(doc.doc_id).length === 0"
+            v-else-if="getAggregatedSections(doc.doc_id).length === 0"
             class="py-4 text-center text-xs text-zinc-400"
           >
-            该规程暂未切块或无可用条款内容
+            该规程暂无可用条款内容
           </div>
           <div
             v-else
-            v-for="chunk in getPreviewChunks(doc.doc_id)"
-            :key="chunk.id || chunk.chunk_id"
-            class="p-3 rounded-lg border transition-all"
-            :class="theme === 'light' ? 'bg-slate-50/50 border-slate-200/70 hover:border-indigo-300' : 'bg-zinc-950/40 border-white/[0.04] hover:border-white/[0.1]'"
+            v-for="sec in getAggregatedSections(doc.doc_id)"
+            :key="sec.key"
+            class="p-3.5 rounded-xl border glass-card-sub transition-all space-y-2.5"
+            :class="theme === 'light' ? 'hover:border-indigo-300 shadow-xs' : 'hover:border-white/[0.12]'"
           >
-            <div class="flex items-start justify-between gap-3">
-              <!-- 左侧内容区：标题与正文垂直对齐，不挤占右侧操作区 -->
-              <div class="min-w-0 flex-1 space-y-1.5">
-                <div class="text-xs font-semibold flex items-start gap-1.5" :class="theme === 'light' ? 'text-indigo-800' : 'text-indigo-300'">
-                  <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 shrink-0"></span>
-                  <span class="break-words leading-relaxed">{{ chunk.section_title }}</span>
-                </div>
-                <div
-                  class="text-xs leading-relaxed font-sans pl-3"
-                  :class="theme === 'light' ? 'text-slate-700' : 'text-zinc-300'"
-                  v-html="renderHighlightedText(chunk.chunk_content)"
-                ></div>
+            <!-- 章节标题栏与整条问询入口 -->
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-xs font-bold flex items-center gap-2 min-w-0" :class="theme === 'light' ? 'text-indigo-900' : 'text-indigo-300'">
+                <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                <span class="truncate tracking-wide">{{ sec.section_title }}</span>
               </div>
 
-              <!-- 右侧操作区：独立咨询此条按钮 -->
               <button
-                @click="askAIAboutClause(doc, chunk)"
-                class="shrink-0 text-[11px] text-zinc-400 hover:text-indigo-400 flex items-center space-x-1 transition-colors whitespace-nowrap pt-0.5 select-none"
-                title="针对此章节条款专项发问"
+                @click="askAIAboutSection(doc, sec)"
+                class="shrink-0 text-[11px] text-zinc-400 hover:text-indigo-400 flex items-center space-x-1 transition-colors whitespace-nowrap select-none"
+                title="针对此章节条款专项解读"
               >
                 <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span class="whitespace-nowrap">咨询此条</span>
               </button>
+            </div>
+
+            <!-- 下属条款列表 -->
+            <div class="space-y-2 pl-3.5 border-l-2 border-indigo-500/25">
+              <div
+                v-for="clause in sec.clauses"
+                :key="clause.id"
+                class="text-xs leading-relaxed font-sans"
+                :class="theme === 'light' ? 'text-slate-700' : 'text-zinc-300'"
+                v-html="renderHighlightedText(clause.content)"
+              ></div>
             </div>
           </div>
         </div>
@@ -544,12 +493,12 @@
                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
                 </svg>
-                <span>RAG 向量台账透明查验探针</span>
+                <span>查验规约条目细目</span>
               </span>
-              <span class="text-zinc-400">（毕业设计 RAG 检索增强向量化切块展示）</span>
+              <span class="text-zinc-400">（底层规约条款细目与向量标识查验）</span>
             </div>
             <span class="text-[11px] font-mono text-zinc-500">
-              Chroma Collection: regulations
+              安全规约库集合: regulations
             </span>
           </div>
 
@@ -558,8 +507,8 @@
             <div
               v-for="chunk in docDetailMap[doc.doc_id]?.chunks || []"
               :key="chunk.chunk_id"
-              class="p-3 rounded-lg border font-mono text-xs space-y-1.5"
-              :class="theme === 'light' ? 'bg-white border-slate-200/90 shadow-sm' : 'bg-zinc-900/90 border-white/[0.06]'"
+              class="p-3 rounded-lg border glass-card-sub font-mono text-xs space-y-1.5"
+              :class="theme === 'light' ? 'border-slate-200/90 shadow-xs' : ''"
             >
               <div class="flex items-center justify-between">
                 <span class="font-semibold text-[11px] text-cyan-400">
@@ -585,21 +534,169 @@
         </div>
       </div>
     </div>
+
+    <!-- 规程废止删除二次确认弹窗 -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div
+          v-if="showDeleteConfirmModal"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md overflow-hidden"
+          :class="theme === 'light' ? 'bg-slate-900/40' : 'bg-black/75'"
+          @click.self="showDeleteConfirmModal = false"
+        >
+          <div
+            class="w-full max-w-sm rounded-3xl border p-5 space-y-4 shadow-2xl backdrop-blur-2xl transition-all"
+            :class="theme === 'light' ? 'bg-white border-slate-200 text-slate-800' : 'bg-zinc-900 border-white/[0.12] text-zinc-100'"
+          >
+            <div class="flex items-center space-x-3">
+              <span class="p-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </span>
+              <div>
+                <h4 class="text-sm font-semibold tracking-tight">废止规章规程确认</h4>
+                <p class="text-xs text-zinc-400 mt-0.5">此操作将级联清理所有底层语义切块与向量索引</p>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-2xl border text-xs space-y-1" :class="theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-zinc-950/60 border-white/[0.04]'">
+              <div>待废止规程：<span class="font-medium text-rose-400 font-mono">《{{ docToDelete?.title }}》</span></div>
+              <div>文档编号：<span class="font-mono text-zinc-400">{{ docToDelete?.doc_id }}</span></div>
+              <div class="text-[11px] text-zinc-500 pt-1 border-t border-white/[0.04]">下属 {{ docToDelete?.chunk_count || 0 }} 条规约细则将从安全规约库中同步移除。</div>
+            </div>
+
+            <div v-if="deleteDocError" class="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+              {{ deleteDocError }}
+            </div>
+
+            <div class="flex items-center justify-end space-x-2 pt-2 border-t" :class="theme === 'light' ? 'border-slate-200' : 'border-white/[0.06]'">
+              <button
+                @click="showDeleteConfirmModal = false"
+                class="px-3.5 py-1.5 rounded-xl border text-xs transition-colors"
+                :class="theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-white/[0.06]'"
+              >
+                取消
+              </button>
+              <button
+                @click="confirmDeleteRegulation"
+                :disabled="isDeletingDoc"
+                class="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center space-x-1.5"
+              >
+                <span v-if="isDeletingDoc" class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <span>{{ isDeletingDoc ? '正在下线废止...' : '确认废止并删除' }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { api } from '../../api/client'
+import RegulationFormModal from './RegulationFormModal.vue'
 
 const props = defineProps({
   theme: {
     type: String,
     default: 'dark',
   },
+  currentUser: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['askAI', 'refresh'])
+
+// 更多操作下拉菜单控制
+const activeMoreMenuDocId = ref(null)
+
+function toggleMoreMenu(docId) {
+  if (activeMoreMenuDocId.value === docId) {
+    activeMoreMenuDocId.value = null
+  } else {
+    activeMoreMenuDocId.value = docId
+  }
+}
+
+function closeMoreMenu() {
+  activeMoreMenuDocId.value = null
+}
+
+// 权限控制：仅高校专业教师与系统超级管理员可见【录入新规程】
+const canAddRegulation = computed(() => {
+  if (!props.currentUser) return true
+  return ['TEACHER', 'ADMIN'].includes(props.currentUser?.role)
+})
+
+// 规程录入与编辑模态框控制
+const showCreateModal = ref(false)
+const editingDoc = ref(null)
+
+function openCreateModal() {
+  editingDoc.value = null
+  showCreateModal.value = true
+}
+
+async function openEditRegulation(doc) {
+  let detail = docDetailMap.value[doc.doc_id]
+  if (!detail || !detail.chunks || detail.chunks.length === 0) {
+    try {
+      detail = await api.getRegulationDetail(doc.doc_id)
+      docDetailMap.value[doc.doc_id] = detail
+    } catch {
+      detail = doc
+    }
+  }
+  editingDoc.value = detail
+  showCreateModal.value = true
+}
+
+// 废止删除确认模态框状态与处理
+const showDeleteConfirmModal = ref(false)
+const docToDelete = ref(null)
+const isDeletingDoc = ref(false)
+const deleteDocError = ref('')
+
+function openDeleteRegulation(doc) {
+  docToDelete.value = doc
+  deleteDocError.value = ''
+  showDeleteConfirmModal.value = true
+}
+
+async function confirmDeleteRegulation() {
+  if (!docToDelete.value) return
+  isDeletingDoc.value = true
+  deleteDocError.value = ''
+  try {
+    await api.deleteRegulation(docToDelete.value.doc_id)
+    showDeleteConfirmModal.value = false
+    docToDelete.value = null
+    await loadAll()
+    emit('refresh')
+  } catch (err) {
+    deleteDocError.value = err.message || '废止删除规程失败，请重试'
+  } finally {
+    isDeletingDoc.value = false
+  }
+}
+
+async function handleRegulationSaved() {
+  await loadAll()
+  emit('refresh')
+}
+
 
 // 数据状态
 const loading = ref(false)
@@ -616,26 +713,22 @@ const isSearchMode = ref(false)
 const isSearching = ref(false)
 const searchResults = ref([])
 
-// 预设常见咨询热词胶囊
-const hotChips = [
-  { label: '4.5kW 单机架功耗上限', query: '机房单机架功耗上限是多少，能否超限？' },
-  { label: '空调故障超温 40℃ 应急预案', query: '机房空调故障温度超过40度时怎么应急响应？' },
-  { label: '15分钟现场干预要求', query: 'OVERHEAT 状态下运维人员须多长时间内到达现场？' },
-  { label: '不良设备借用拦截机制', query: '已借出或标注不良的设备系统如何拦截借用？' },
-  { label: '每日 09:00 与 16:00 巡检', query: '机房日常人工巡检时间及要求是什么？' },
-  { label: 'GPU 卡加装审批流程', query: '服务器加装高功耗 GPU 需提前几天申请与审批？' },
-]
-
-// 分类选项及各分类计数
+// 分类选项及各分类计数 (支持新增分类动态扩展)
 const categoryOptions = computed(() => {
   const cats = summary.value.categories || {}
   const total = documents.value.length || summary.value.total_documents || 0
-  return [
+  const base = [
     { label: '全部规程', value: 'ALL', count: total },
     { label: '用电规范', value: '用电规范', count: cats['用电规范'] || 0 },
     { label: '应急条例', value: '应急条例', count: cats['应急条例'] || 0 },
     { label: '维保规程', value: '维保规程', count: cats['维保规程'] || 0 },
   ]
+  Object.keys(cats).forEach((k) => {
+    if (!['用电规范', '应急条例', '维保规程'].includes(k)) {
+      base.push({ label: k, value: k, count: cats[k] || 0 })
+    }
+  })
+  return base
 })
 
 // 按分类过滤的文档列表
@@ -669,6 +762,10 @@ function getCategoryBadgeClass(category) {
       return props.theme === 'light'
         ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
         : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+    case '安全制度':
+      return props.theme === 'light'
+        ? 'bg-cyan-50 border-cyan-300 text-cyan-800'
+        : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
     default:
       return props.theme === 'light'
         ? 'bg-slate-100 border-slate-300 text-slate-700'
@@ -726,6 +823,59 @@ function renderHighlightedText(text) {
   })
 }
 
+// 获取规程按章节语义聚合后的条款列表 (避免切块导致同一规则分裂为多条卡片和标题正文重复)
+function getAggregatedSections(docId) {
+  const detail = docDetailMap.value[docId]
+  if (!detail || !detail.chunks || detail.chunks.length === 0) {
+    return []
+  }
+
+  const sections = []
+  let currentSec = null
+  let currentObj = null
+
+  for (let i = 0; i < detail.chunks.length; i++) {
+    const ck = detail.chunks[i]
+    const rawTitle = (ck.section_title || '').trim()
+    // 匹配章节名，剥离附带在 section_title 后面的条款序号与内容（如 "第二条 功耗上限 1. 单机架..." -> "第二条 功耗上限"）
+    const match = rawTitle.match(/^(.*?)\s+\d+\..*$/)
+    const cleanSec = match ? match[1].trim() : (rawTitle || '条款正文')
+
+    if (cleanSec !== currentSec) {
+      if (currentObj) {
+        sections.push(currentObj)
+      }
+      currentSec = cleanSec
+      currentObj = {
+        key: `${docId}-${cleanSec}-${i}`,
+        section_title: cleanSec,
+        clauses: [],
+      }
+    }
+
+    const content = (ck.chunk_content || '').trim()
+    if (content) {
+      currentObj.clauses.push({
+        id: ck.id || ck.chunk_id || `${currentObj.key}-${i}`,
+        content: content,
+        rawChunk: ck,
+      })
+    }
+  }
+
+  if (currentObj) {
+    sections.push(currentObj)
+  }
+
+  return sections
+}
+
+function askAIAboutSection(doc, sec) {
+  const clausesText = sec.clauses.map((c) => c.content).join('\n')
+  const prompt = `在《${doc.title}》中关于“${sec.section_title}”有如下规定：\n“${clausesText}”\n请结合高校实验室机房日常运维实践，详细说明运维人员在此规程下应当如何合规执行？`
+  emit('askAI', prompt)
+}
+
 // 获取规程在主卡片中沉浸式预览的切块列表
 function getPreviewChunks(docId) {
   const detail = docDetailMap.value[docId]
@@ -763,12 +913,6 @@ function selectCategory(cat) {
   if (isSearchMode.value) {
     clearSearch()
   }
-}
-
-// 热词胶囊触发
-function applyHotChip(query) {
-  searchQuery.value = query
-  handleSearch()
 }
 
 // 执行语义检索
@@ -844,5 +988,10 @@ async function loadAll() {
 
 onMounted(() => {
   loadAll()
+  window.addEventListener('click', closeMoreMenu)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('click', closeMoreMenu)
 })
 </script>

@@ -39,6 +39,10 @@ class AssetDetailBase(BaseModel):
     # 扩展定制参数
     extra_params: Optional[str] = Field(default=None, description="各类设备定制参数(JSON格式)")
 
+    # 动环探针遥测注入参数
+    custom_temperature: Optional[float] = Field(default=None, description="自定义设定核心运行温度(°C)，用于动环探针遥测注入")
+    temperature: Optional[float] = Field(default=None, description="自定义设定核心运行温度(°C)，同 custom_temperature 兼容")
+
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
@@ -83,8 +87,10 @@ class AssetBase(BaseModel):
 
 
 class AssetCreate(AssetBase):
-    """资产创建请求模型 (支持同步附带硬件物理参数)"""
+    """资产创建请求模型 (支持同步附带硬件物理参数与核心设定温度)"""
 
+    custom_temperature: Optional[float] = Field(default=None, description="快捷设定设备核心运行温度(°C)")
+    temperature: Optional[float] = Field(default=None, description="快捷设定设备核心运行温度(°C)，同 custom_temperature 兼容")
     detail: Optional[AssetDetailCreate] = Field(default=None, description="设备硬件详细参数")
 
 
@@ -98,17 +104,22 @@ class AssetUpdate(BaseModel):
     borrow_status: Optional[BorrowStatusType] = Field(default=None)
     borrower: Optional[str] = Field(default=None)
     specs: Optional[str] = Field(default=None)
+    custom_temperature: Optional[float] = Field(default=None, description="快捷设定设备核心运行温度(°C)")
+    temperature: Optional[float] = Field(default=None, description="快捷设定设备核心运行温度(°C)，同 custom_temperature 兼容")
     detail: Optional[AssetDetailUpdate] = Field(default=None, description="设备硬件详细参数")
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
 class AssetResponse(AssetBase):
-    """资产详情响应模型 (包含级联加载的硬件详细参数)"""
+    """资产详情响应模型 (包含级联加载的硬件详细参数与实时遥测探针数据)"""
 
     id: int
     created_at: datetime
     updated_at: datetime
+    custom_temperature: Optional[float] = Field(default=None, description="用户自定义设定核心运行温度(°C)")
+    telemetry_temperature: Optional[float] = Field(default=None, description="设备实时动环探针遥测温度(°C)")
+    temperature: Optional[float] = Field(default=None, description="设备实时动环探针遥测温度(°C)，同 telemetry_temperature 别名兼容")
     detail: Optional[AssetDetailResponse] = Field(default=None, description="设备硬件详细参数")
 
     model_config = ConfigDict(from_attributes=True)

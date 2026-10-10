@@ -141,6 +141,52 @@ class KnowledgeBase:
                     "embedding": self._mock_embedding(chunk['content'])
                 })
 
+    def delete_documents(self, doc_name: str, ids: Optional[List[str]] = None):
+        """
+        从向量库中同步删除指定文档对应的向量索引切块
+        支持按 doc_name 元数据删除及指定具体向量 ID 清理，适配 ChromaDB 与内存引擎
+        """
+        if self.use_chroma:
+            try:
+                # 1. 优先尝试直接按 where 过滤删除
+                try:
+                    self.collection.delete(where={"doc_name": doc_name})
+                except Exception:
+                    pass
+
+                # 2. 若传入了具体的 chroma_id 列表，批量删除
+                if ids:
+                    try:
+                        self.collection.delete(ids=ids)
+                    except Exception:
+                        pass
+
+                # 3. 双重保险：检查集合中所有 ID，移除以 doc_name 开头的条目
+                try:
+                    existing = self.collection.get()
+                    if existing and "ids" in existing:
+                        matching_ids = []
+                        metas = existing.get("metadatas") or []
+                        for i, cid in enumerate(existing["ids"]):
+                            m = metas[i] if i < len(metas) else None
+                            if (m and m.get("doc_name") == doc_name) or cid.startswith(f"{doc_name}_"):
+                                matching_ids.append(cid)
+                        if matching_ids:
+                            self.collection.delete(ids=matching_ids)
+                except Exception:
+                    pass
+            except Exception as e:
+                print(f"Error deleting documents from ChromaDB: {e}")
+
+        # 同步清理内存备用引擎
+        target_ids_set = set(ids or [])
+        self.memory_store = [
+            doc for doc in self.memory_store
+            if doc.get("metadata", {}).get("doc_name") != doc_name
+            and not doc.get("id", "").startswith(f"{doc_name}_")
+            and doc.get("id") not in target_ids_set
+        ]
+
     def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         """Top-K 检索过滤 (按相关度评分降序排列，仅返回分值 > 0 的有效匹配切块)"""
         query_emb = self._mock_embedding(query)

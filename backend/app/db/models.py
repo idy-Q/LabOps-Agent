@@ -1,17 +1,18 @@
 """SQLAlchemy 2.0 数据底座模型定义
 
-包含十一张核心业务、运维流转与知识资产表：
+包含十二张核心业务、运维流转与知识资产表：
 1. Ticket: 运维工单表
 2. Asset: 机房资产设备表
 3. AuditLog: Agent 行为与工具调用审计日志表
 4. ChatHistory: 对话与推理链条持久化表
 5. User: 系统用户与角色权限表
 6. ServerRoom: 机房区域与机柜台账表
-7. AssetBorrowLog: 设备借调流转历史记录表
-8. TicketWorkflow: 工单流转处置记录表
-9. KnowledgeDocument: 知识库规程源文档表
-10. KnowledgeChunk: 知识切块索引台账表
-11. UserNotification: 用户站内待办与超期督促通知表
+7. ServerRack: 机房工业级标准机柜台账表
+8. AssetBorrowLog: 设备借调流转历史记录表
+9. TicketWorkflow: 工单流转处置记录表
+10. KnowledgeDocument: 知识库规程源文档表
+11. KnowledgeChunk: 知识切块索引台账表
+12. UserNotification: 用户站内待办与超期督促通知表
 """
 
 import hashlib
@@ -109,6 +110,44 @@ class Asset(Base):
         "AssetDetail", back_populates="asset", uselist=False, cascade="all, delete-orphan"
     )
 
+    @property
+    def custom_temperature(self) -> Optional[float]:
+        """获取设备设定的核心遥测温度 (优先从 AssetDetail 读取，亦兼容 extra_params)"""
+        if self.detail and self.detail.custom_temperature is not None:
+            return round(float(self.detail.custom_temperature), 1)
+        if self.detail and self.detail.extra_params:
+            try:
+                import json
+                ep = json.loads(self.detail.extra_params)
+                if "custom_temperature" in ep and ep["custom_temperature"] is not None:
+                    return round(float(ep["custom_temperature"]), 1)
+                if "temperature" in ep and ep["temperature"] is not None:
+                    return round(float(ep["temperature"]), 1)
+            except Exception:
+                pass
+        return None
+
+    @property
+    def telemetry_temperature(self) -> float:
+        """设备实时动环遥测温度 (若设置自定义温度则优先注入，否则依健康状态派生基准探针温度)"""
+        ct = self.custom_temperature
+        if ct is not None:
+            if self.health_status == "OFFLINE":
+                return 22.0
+            return ct
+        if self.health_status == "OVERHEAT":
+            return 43.5
+        elif self.health_status == "WARNING":
+            return 38.0
+        elif self.health_status == "OFFLINE":
+            return 22.0
+        return 31.5
+
+    @property
+    def temperature(self) -> float:
+        """设备实时动环遥测温度 (telemetry_temperature 别名)"""
+        return self.telemetry_temperature
+
     def __repr__(self) -> str:
         return f"<Asset {self.asset_no} - {self.name} [{self.health_status}]>"
 
@@ -176,6 +215,16 @@ class AssetDetail(Base):
     extra_params: Mapped[Optional[str]] = mapped_column(
         Text, nullable=True, comment="各类设备定制参数(JSON格式)"
     )
+
+    # 动环探针遥测注入设定参数
+    custom_temperature: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, comment="用户自定义设定核心运行温度(°C)，用于动环探针遥测注入"
+    )
+
+    @property
+    def temperature(self) -> Optional[float]:
+        """自定义设定核心运行温度(°C)，同 custom_temperature 别名"""
+        return self.custom_temperature
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False, comment="录入时间"
@@ -310,6 +359,38 @@ class ServerRoom(Base):
 
     def __repr__(self) -> str:
         return f"<ServerRoom {self.room_code} - {self.room_name}>"
+
+
+class ServerRack(Base):
+    """机房工业级标准机柜台账表"""
+
+    __tablename__ = "server_racks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rack_id: Mapped[str] = mapped_column(
+        String(64), unique=True, index=True, nullable=False, comment="机柜唯一编号，如 机柜A01, 机柜A03"
+    )
+    rack_name: Mapped[str] = mapped_column(
+        String(128), nullable=False, comment="机柜显示名称，如 A03 智算高通量扩展柜"
+    )
+    room_code: Mapped[str] = mapped_column(
+        String(64), index=True, nullable=False, comment="关联机房编号，如 ROOM-201, ROOM-101"
+    )
+    total_u: Mapped[int] = mapped_column(
+        Integer, default=42, nullable=False, comment="总可用槽位空间(U)，默认 42"
+    )
+    power_rating_w: Mapped[int] = mapped_column(
+        Integer, default=4500, nullable=False, comment="额定功耗(W)，默认 4500"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False, comment="立柜投产时间"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False, comment="更新时间"
+    )
+
+    def __repr__(self) -> str:
+        return f"<ServerRack {self.rack_id} - {self.rack_name} @ {self.room_code}>"
 
 
 class AssetBorrowLog(Base):

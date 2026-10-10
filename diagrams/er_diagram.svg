@@ -1,225 +1,154 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1350 780" width="1350" height="780" style="background-color: #FFFFFF; font-family: 'SimSun', 'STSong', 'SimHei', 'Microsoft YaHei', sans-serif;">
-
-    <rect x="545.0" y="41.0" width="260" height="38" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
-    <text x="675.0" y="65" font-size="14" font-weight="bold" fill="#000000" text-anchor="middle">管理员</text>
-    
-
-    <rect x="80.0" y="622.0" width="100" height="36" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
-    <text x="130" y="645" font-size="14" font-weight="bold" fill="#000000" text-anchor="middle">用户</text>
-    
-
-        <rect x="90.0" y="332.0" width="100" height="36" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
-        <text x="140.0" y="355" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">机房台账</text>
-        
-
-        <polygon points="140.0,187.0 174.0,200 140.0,213.0 106.0,200" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="140.0" y="204" font-size="12" fill="#000000" text-anchor="middle">管理</text>
-        
-<line x1="565.0" y1="79.0" x2="140.0" y2="187.0" stroke="#000000" stroke-width="1.0"/>
-<text x="373.75" y="122.6" font-size="10" fill="#000000" text-anchor="middle">1</text>
-<line x1="140.0" y1="213.0" x2="140.0" y2="332.0" stroke="#000000" stroke-width="1.0"/>
-<text x="132.0" y="276.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-
-        <polygon points="140.0,477.0 174.0,490 140.0,503.0 106.0,490" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="140.0" y="494" font-size="12" fill="#000000" text-anchor="middle">查看</text>
-        
-<line x1="140.0" y1="368.0" x2="140.0" y2="477.0" stroke="#000000" stroke-width="1.0"/>
-<text x="132.0" y="426.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-<line x1="140.0" y1="503.0" x2="140.0" y2="622.0" stroke="#000000" stroke-width="1.0"/>
-<text x="132.0" y="566.5" font-size="10" fill="#000000" text-anchor="end">1</text>
-
-        <rect x="242.8571428571429" y="332.0" width="100" height="36" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
-        <text x="292.8571428571429" y="355" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">设备资产</text>
-        
-
-        <polygon points="292.8571428571429,187.0 326.8571428571429,200 292.8571428571429,213.0 258.8571428571429,200" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="292.8571428571429" y="204" font-size="12" fill="#000000" text-anchor="middle">管理</text>
-        
-<line x1="596.4285714285714" y1="79.0" x2="292.8571428571429" y2="187.0" stroke="#000000" stroke-width="1.0"/>
-<text x="459.82142857142856" y="122.6" font-size="10" fill="#000000" text-anchor="middle">1</text>
-<line x1="292.8571428571429" y1="213.0" x2="292.8571428571429" y2="332.0" stroke="#000000" stroke-width="1.0"/>
-<text x="284.8571428571429" y="276.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-
-        <polygon points="292.8571428571429,477.0 326.8571428571429,490 292.8571428571429,503.0 258.8571428571429,490" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="292.8571428571429" y="494" font-size="12" fill="#000000" text-anchor="middle">查询</text>
-        
-<line x1="292.8571428571429" y1="368.0" x2="292.8571428571429" y2="477.0" stroke="#000000" stroke-width="1.0"/>
-<text x="284.8571428571429" y="426.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-<line x1="292.8571428571429" y1="503.0" x2="180.0" y2="622.0" stroke="#000000" stroke-width="1.0"/>
-<text x="208.21428571428572" y="587.25" font-size="10" fill="#000000" text-anchor="middle">1</text>
-
-        <rect x="395.7142857142857" y="332.0" width="100" height="36" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
-        <text x="445.7142857142857" y="355" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">硬件规格</text>
-        
-
-        <polygon points="445.7142857142857,187.0 479.7142857142857,200 445.7142857142857,213.0 411.7142857142857,200" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="445.7142857142857" y="204" font-size="12" fill="#000000" text-anchor="middle">管理</text>
-        
-<line x1="627.8571428571429" y1="79.0" x2="445.7142857142857" y2="187.0" stroke="#000000" stroke-width="1.0"/>
-<text x="545.8928571428571" y="122.6" font-size="10" fill="#000000" text-anchor="middle">1</text>
-<line x1="445.7142857142857" y1="213.0" x2="445.7142857142857" y2="332.0" stroke="#000000" stroke-width="1.0"/>
-<text x="437.7142857142857" y="276.5" font-size="10" fill="#000000" text-anchor="end">1</text>
-
-        <polygon points="445.7142857142857,477.0 479.7142857142857,490 445.7142857142857,503.0 411.7142857142857,490" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="445.7142857142857" y="494" font-size="12" fill="#000000" text-anchor="middle">查看</text>
-        
-<line x1="445.7142857142857" y1="368.0" x2="445.7142857142857" y2="477.0" stroke="#000000" stroke-width="1.0"/>
-<text x="437.7142857142857" y="426.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-<line x1="445.7142857142857" y1="503.0" x2="180.0" y2="625.5" stroke="#000000" stroke-width="1.0"/>
-<text x="246.42857142857144" y="589.875" font-size="10" fill="#000000" text-anchor="middle">1</text>
-
-        <rect x="548.5714285714286" y="332.0" width="100" height="36" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
-        <text x="598.5714285714286" y="355" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">借调记录</text>
-        
-
-        <polygon points="598.5714285714286,187.0 632.5714285714286,200 598.5714285714286,213.0 564.5714285714286,200" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="598.5714285714286" y="204" font-size="12" fill="#000000" text-anchor="middle">管理</text>
-        
-<line x1="659.2857142857142" y1="79.0" x2="598.5714285714286" y2="187.0" stroke="#000000" stroke-width="1.0"/>
-<text x="631.9642857142857" y="122.6" font-size="10" fill="#000000" text-anchor="middle">1</text>
-<line x1="598.5714285714286" y1="213.0" x2="598.5714285714286" y2="332.0" stroke="#000000" stroke-width="1.0"/>
-<text x="590.5714285714286" y="276.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-
-        <polygon points="598.5714285714286,477.0 632.5714285714286,490 598.5714285714286,503.0 564.5714285714286,490" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="598.5714285714286" y="494" font-size="12" fill="#000000" text-anchor="middle">借调</text>
-        
-<line x1="598.5714285714286" y1="368.0" x2="598.5714285714286" y2="477.0" stroke="#000000" stroke-width="1.0"/>
-<text x="590.5714285714286" y="426.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-<line x1="598.5714285714286" y1="503.0" x2="180.0" y2="629.0" stroke="#000000" stroke-width="1.0"/>
-<text x="284.6428571428571" y="592.5" font-size="10" fill="#000000" text-anchor="middle">1</text>
-
-        <rect x="701.4285714285714" y="332.0" width="100" height="36" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
-        <text x="751.4285714285714" y="355" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">运维工单</text>
-        
-
-        <polygon points="751.4285714285714,187.0 785.4285714285714,200 751.4285714285714,213.0 717.4285714285714,200" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="751.4285714285714" y="204" font-size="12" fill="#000000" text-anchor="middle">管理</text>
-        
-<line x1="690.7142857142857" y1="79.0" x2="751.4285714285714" y2="187.0" stroke="#000000" stroke-width="1.0"/>
-<text x="718.0357142857142" y="122.6" font-size="10" fill="#000000" text-anchor="middle">1</text>
-<line x1="751.4285714285714" y1="213.0" x2="751.4285714285714" y2="332.0" stroke="#000000" stroke-width="1.0"/>
-<text x="743.4285714285714" y="276.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-
-        <polygon points="751.4285714285714,477.0 785.4285714285714,490 751.4285714285714,503.0 717.4285714285714,490" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="751.4285714285714" y="494" font-size="12" fill="#000000" text-anchor="middle">报修</text>
-        
-<line x1="751.4285714285714" y1="368.0" x2="751.4285714285714" y2="477.0" stroke="#000000" stroke-width="1.0"/>
-<text x="743.4285714285714" y="426.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-<line x1="751.4285714285714" y1="503.0" x2="180.0" y2="632.5" stroke="#000000" stroke-width="1.0"/>
-<text x="322.8571428571429" y="595.125" font-size="10" fill="#000000" text-anchor="middle">1</text>
-
-        <rect x="854.2857142857143" y="332.0" width="100" height="36" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
-        <text x="904.2857142857143" y="355" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">工单流转</text>
-        
-
-        <polygon points="904.2857142857143,187.0 938.2857142857143,200 904.2857142857143,213.0 870.2857142857143,200" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="904.2857142857143" y="204" font-size="12" fill="#000000" text-anchor="middle">管理</text>
-        
-<line x1="722.1428571428571" y1="79.0" x2="904.2857142857143" y2="187.0" stroke="#000000" stroke-width="1.0"/>
-<text x="804.1071428571429" y="122.6" font-size="10" fill="#000000" text-anchor="middle">1</text>
-<line x1="904.2857142857143" y1="213.0" x2="904.2857142857143" y2="332.0" stroke="#000000" stroke-width="1.0"/>
-<text x="896.2857142857143" y="276.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-
-        <polygon points="904.2857142857143,477.0 938.2857142857143,490 904.2857142857143,503.0 870.2857142857143,490" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="904.2857142857143" y="494" font-size="12" fill="#000000" text-anchor="middle">跟踪</text>
-        
-<line x1="904.2857142857143" y1="368.0" x2="904.2857142857143" y2="477.0" stroke="#000000" stroke-width="1.0"/>
-<text x="896.2857142857143" y="426.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-<line x1="904.2857142857143" y1="503.0" x2="180.0" y2="636.0" stroke="#000000" stroke-width="1.0"/>
-<text x="361.07142857142856" y="597.75" font-size="10" fill="#000000" text-anchor="middle">1</text>
-
-        <rect x="1007.1428571428571" y="332.0" width="100" height="36" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
-        <text x="1057.142857142857" y="355" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">规程文档</text>
-        
-
-        <polygon points="1057.142857142857,187.0 1091.142857142857,200 1057.142857142857,213.0 1023.1428571428571,200" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="1057.142857142857" y="204" font-size="12" fill="#000000" text-anchor="middle">管理</text>
-        
-<line x1="753.5714285714286" y1="79.0" x2="1057.142857142857" y2="187.0" stroke="#000000" stroke-width="1.0"/>
-<text x="890.1785714285714" y="122.6" font-size="10" fill="#000000" text-anchor="middle">1</text>
-<line x1="1057.142857142857" y1="213.0" x2="1057.142857142857" y2="332.0" stroke="#000000" stroke-width="1.0"/>
-<text x="1049.142857142857" y="276.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-
-        <polygon points="1057.142857142857,477.0 1091.142857142857,490 1057.142857142857,503.0 1023.1428571428571,490" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="1057.142857142857" y="494" font-size="12" fill="#000000" text-anchor="middle">咨询</text>
-        
-<line x1="1057.142857142857" y1="368.0" x2="1057.142857142857" y2="477.0" stroke="#000000" stroke-width="1.0"/>
-<text x="1049.142857142857" y="426.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-<line x1="1057.142857142857" y1="503.0" x2="180.0" y2="639.5" stroke="#000000" stroke-width="1.0"/>
-<text x="399.2857142857143" y="600.375" font-size="10" fill="#000000" text-anchor="middle">1</text>
-
-        <rect x="1160.0" y="332.0" width="100" height="36" fill="#FFFFFF" stroke="#000000" stroke-width="1.5"/>
-        <text x="1210.0" y="355" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">知识切块</text>
-        
-
-        <polygon points="1210.0,187.0 1244.0,200 1210.0,213.0 1176.0,200" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="1210.0" y="204" font-size="12" fill="#000000" text-anchor="middle">管理</text>
-        
-<line x1="785.0" y1="79.0" x2="1210.0" y2="187.0" stroke="#000000" stroke-width="1.0"/>
-<text x="976.25" y="122.6" font-size="10" fill="#000000" text-anchor="middle">1</text>
-<line x1="1210.0" y1="213.0" x2="1210.0" y2="332.0" stroke="#000000" stroke-width="1.0"/>
-<text x="1202.0" y="276.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-
-        <polygon points="1210.0,477.0 1244.0,490 1210.0,503.0 1176.0,490" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="1210.0" y="494" font-size="12" fill="#000000" text-anchor="middle">检索</text>
-        
-<line x1="1210.0" y1="368.0" x2="1210.0" y2="477.0" stroke="#000000" stroke-width="1.0"/>
-<text x="1202.0" y="426.5" font-size="10" fill="#000000" text-anchor="end">n</text>
-<line x1="1210.0" y1="503.0" x2="180.0" y2="643.0" stroke="#000000" stroke-width="1.0"/>
-<text x="437.5" y="603.0" font-size="10" fill="#000000" text-anchor="middle">1</text>
-
-        <polygon points="216.42857142857144,267.0 250.42857142857144,280 216.42857142857144,293.0 182.42857142857144,280" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="216.42857142857144" y="284" font-size="12" fill="#000000" text-anchor="middle">部署</text>
-        
-
-    <line x1="180.0" y1="332.0" x2="180.0" y2="280" stroke="#000000" stroke-width="1.0"/>
-    <line x1="180.0" y1="280" x2="182.42857142857144" y2="280" stroke="#000000" stroke-width="1.0"/>
-    <text x="186.0" y="294" font-size="10" fill="#000000">1</text>
-    
-    <line x1="250.42857142857144" y1="280" x2="252.8571428571429" y2="280" stroke="#000000" stroke-width="1.0"/>
-    <line x1="252.8571428571429" y1="280" x2="252.8571428571429" y2="332.0" stroke="#000000" stroke-width="1.0"/>
-    <text x="238.8571428571429" y="294" font-size="10" fill="#000000">n</text>
-    
-
-        <polygon points="369.28571428571433,267.0 403.28571428571433,280 369.28571428571433,293.0 335.28571428571433,280" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="369.28571428571433" y="284" font-size="12" fill="#000000" text-anchor="middle">拥有</text>
-        
-
-    <line x1="332.8571428571429" y1="332.0" x2="332.8571428571429" y2="280" stroke="#000000" stroke-width="1.0"/>
-    <line x1="332.8571428571429" y1="280" x2="335.28571428571433" y2="280" stroke="#000000" stroke-width="1.0"/>
-    <text x="338.8571428571429" y="294" font-size="10" fill="#000000">1</text>
-    
-    <line x1="403.28571428571433" y1="280" x2="405.7142857142857" y2="280" stroke="#000000" stroke-width="1.0"/>
-    <line x1="405.7142857142857" y1="280" x2="405.7142857142857" y2="332.0" stroke="#000000" stroke-width="1.0"/>
-    <text x="391.7142857142857" y="294" font-size="10" fill="#000000">1</text>
-    
-
-        <polygon points="827.8571428571429,267.0 861.8571428571429,280 827.8571428571429,293.0 793.8571428571429,280" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="827.8571428571429" y="284" font-size="12" fill="#000000" text-anchor="middle">流转</text>
-        
-
-    <line x1="791.4285714285714" y1="332.0" x2="791.4285714285714" y2="280" stroke="#000000" stroke-width="1.0"/>
-    <line x1="791.4285714285714" y1="280" x2="793.8571428571429" y2="280" stroke="#000000" stroke-width="1.0"/>
-    <text x="797.4285714285714" y="294" font-size="10" fill="#000000">1</text>
-    
-    <line x1="861.8571428571429" y1="280" x2="864.2857142857143" y2="280" stroke="#000000" stroke-width="1.0"/>
-    <line x1="864.2857142857143" y1="280" x2="864.2857142857143" y2="332.0" stroke="#000000" stroke-width="1.0"/>
-    <text x="850.2857142857143" y="294" font-size="10" fill="#000000">n</text>
-    
-
-        <polygon points="1133.5714285714284,267.0 1167.5714285714284,280 1133.5714285714284,293.0 1099.5714285714284,280" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
-        <text x="1133.5714285714284" y="284" font-size="12" fill="#000000" text-anchor="middle">切分</text>
-        
-
-    <line x1="1097.142857142857" y1="332.0" x2="1097.142857142857" y2="280" stroke="#000000" stroke-width="1.0"/>
-    <line x1="1097.142857142857" y1="280" x2="1099.5714285714284" y2="280" stroke="#000000" stroke-width="1.0"/>
-    <text x="1103.142857142857" y="294" font-size="10" fill="#000000">1</text>
-    
-    <line x1="1167.5714285714284" y1="280" x2="1170.0" y2="280" stroke="#000000" stroke-width="1.0"/>
-    <line x1="1170.0" y1="280" x2="1170.0" y2="332.0" stroke="#000000" stroke-width="1.0"/>
-    <text x="1156.0" y="294" font-size="10" fill="#000000">n</text>
-    
-
-    <text x="675.0" y="730" font-size="15" font-weight="bold" fill="#000000" text-anchor="middle">图 3-4 整体 E-R 图</text>
-    
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1420 920" width="1420" height="920" style="background-color: #FFFFFF; font-family: 'SimSun', 'STSong', 'SimHei', 'Microsoft YaHei', sans-serif;">
+  <rect x="280" y="32" width="180" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+  <text x="370.0" y="52.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">管理员</text>
+  <text x="370.0" y="67.0" font-size="10" fill="#444444" text-anchor="middle">(ADMIN)</text>
+  <rect x="960" y="32" width="210" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+  <text x="1065.0" y="52.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">智能巡检Agent</text>
+  <text x="1065.0" y="67.0" font-size="10" fill="#444444" text-anchor="middle">(AI ACTOR)</text>
+  <rect x="47.0" y="390" width="126" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+  <text x="110.0" y="410.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">机柜空间</text>
+  <text x="110.0" y="425.0" font-size="10" fill="#444444" text-anchor="middle">(racks)</text>
+  <polygon points="110,204 146,220 110,236 74,220" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="110" y="224" font-size="11" fill="#000000" text-anchor="middle">空间划分</text>
+  <line x1="370.0" y1="76" x2="110" y2="204" stroke="#000000" stroke-width="1.0"/>
+  <text x="240.0" y="135.0" font-size="11" fill="#000000" text-anchor="middle">1</text>
+  <line x1="110" y1="236" x2="110" y2="390" stroke="#000000" stroke-width="1.0"/>
+  <text x="120" y="317.0" font-size="11" fill="#000000">n</text>
+  <polygon points="110,554 146,570 110,586 74,570" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="110" y="574" font-size="11" fill="#000000" text-anchor="middle">责任机房</text>
+  <line x1="110" y1="434" x2="110" y2="554" stroke="#000000" stroke-width="1.0"/>
+  <text x="120" y="498.0" font-size="11" fill="#000000">n</text>
+  <rect x="237.0" y="390" width="126" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+  <text x="300.0" y="410.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">设备资产</text>
+  <text x="300.0" y="425.0" font-size="10" fill="#444444" text-anchor="middle">(assets)</text>
+  <polygon points="300,204 336,220 300,236 264,220" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="300" y="224" font-size="11" fill="#000000" text-anchor="middle">资产调配</text>
+  <line x1="370.0" y1="76" x2="300" y2="204" stroke="#000000" stroke-width="1.0"/>
+  <text x="335.0" y="135.0" font-size="11" fill="#000000" text-anchor="middle">1</text>
+  <line x1="300" y1="236" x2="300" y2="390" stroke="#000000" stroke-width="1.0"/>
+  <text x="310" y="317.0" font-size="11" fill="#000000">n</text>
+  <polygon points="300,554 336,570 300,586 264,570" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="300" y="574" font-size="11" fill="#000000" text-anchor="middle">实名借调</text>
+  <line x1="300" y1="434" x2="300" y2="554" stroke="#000000" stroke-width="1.0"/>
+  <text x="310" y="498.0" font-size="11" fill="#000000">n</text>
+  <rect x="427.0" y="390" width="126" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+  <text x="490.0" y="410.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">借还履历</text>
+  <text x="490.0" y="425.0" font-size="10" fill="#444444" text-anchor="middle">(borrow_logs)</text>
+  <polygon points="490,204 526,220 490,236 454,220" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="490" y="224" font-size="11" fill="#000000" text-anchor="middle">审计监察</text>
+  <line x1="370.0" y1="76" x2="490" y2="204" stroke="#000000" stroke-width="1.0"/>
+  <text x="430.0" y="135.0" font-size="11" fill="#000000" text-anchor="middle">1</text>
+  <line x1="490" y1="236" x2="490" y2="390" stroke="#000000" stroke-width="1.0"/>
+  <text x="500" y="317.0" font-size="11" fill="#000000">n</text>
+  <polygon points="490,554 526,570 490,586 454,570" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="490" y="574" font-size="11" fill="#000000" text-anchor="middle">时序追溯</text>
+  <line x1="490" y1="434" x2="490" y2="554" stroke="#000000" stroke-width="1.0"/>
+  <text x="500" y="498.0" font-size="11" fill="#000000">n</text>
+  <rect x="617.0" y="390" width="126" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+  <text x="680.0" y="410.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">催告公文</text>
+  <text x="680.0" y="425.0" font-size="10" fill="#444444" text-anchor="middle">(notices)</text>
+  <polygon points="680,204 716,220 680,236 644,220" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="680" y="224" font-size="11" fill="#000000" text-anchor="middle">公文签发</text>
+  <line x1="370.0" y1="76" x2="680" y2="204" stroke="#000000" stroke-width="1.0"/>
+  <text x="525.0" y="135.0" font-size="11" fill="#000000" text-anchor="middle">1</text>
+  <line x1="680" y1="236" x2="680" y2="390" stroke="#000000" stroke-width="1.0"/>
+  <text x="690" y="317.0" font-size="11" fill="#000000">n</text>
+  <polygon points="680,554 716,570 680,586 644,570" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="680" y="574" font-size="11" fill="#000000" text-anchor="middle">待办接收</text>
+  <line x1="680" y1="434" x2="680" y2="554" stroke="#000000" stroke-width="1.0"/>
+  <text x="690" y="498.0" font-size="11" fill="#000000">n</text>
+  <rect x="807.0" y="390" width="126" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+  <text x="870.0" y="410.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">运维工单</text>
+  <text x="870.0" y="425.0" font-size="10" fill="#444444" text-anchor="middle">(tickets)</text>
+  <polygon points="870,204 906,220 870,236 834,220" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="870" y="224" font-size="11" fill="#000000" text-anchor="middle">办结归档</text>
+  <line x1="370.0" y1="76" x2="870" y2="204" stroke="#000000" stroke-width="1.0"/>
+  <text x="620.0" y="135.0" font-size="11" fill="#000000" text-anchor="middle">1</text>
+  <line x1="1065.0" y1="76" x2="870" y2="204" stroke="#000000" stroke-width="1.0"/>
+  <text x="967.5" y="135.0" font-size="11" fill="#000000" text-anchor="middle">1</text>
+  <line x1="870" y1="236" x2="870" y2="390" stroke="#000000" stroke-width="1.0"/>
+  <text x="880" y="317.0" font-size="11" fill="#000000">n</text>
+  <polygon points="870,554 906,570 870,586 834,570" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="870" y="574" font-size="11" fill="#000000" text-anchor="middle">故障报修</text>
+  <line x1="870" y1="434" x2="870" y2="554" stroke="#000000" stroke-width="1.0"/>
+  <text x="880" y="498.0" font-size="11" fill="#000000">n</text>
+  <rect x="997.0" y="390" width="126" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+  <text x="1060.0" y="410.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">巡检研报</text>
+  <text x="1060.0" y="425.0" font-size="10" fill="#444444" text-anchor="middle">(reports)</text>
+  <polygon points="1060,204 1096,220 1060,236 1024,220" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="1060" y="224" font-size="11" fill="#000000" text-anchor="middle">自主研报</text>
+  <line x1="1065.0" y1="76" x2="1060" y2="204" stroke="#000000" stroke-width="1.0"/>
+  <text x="1062.5" y="135.0" font-size="11" fill="#000000" text-anchor="middle">1</text>
+  <line x1="1060" y1="236" x2="1060" y2="390" stroke="#000000" stroke-width="1.0"/>
+  <text x="1070" y="317.0" font-size="11" fill="#000000">n</text>
+  <polygon points="1060,554 1096,570 1060,586 1024,570" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="1060" y="574" font-size="11" fill="#000000" text-anchor="middle">设备查阅</text>
+  <line x1="1060" y1="434" x2="1060" y2="554" stroke="#000000" stroke-width="1.0"/>
+  <text x="1070" y="498.0" font-size="11" fill="#000000">n</text>
+  <rect x="1187.0" y="390" width="126" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+  <text x="1250.0" y="410.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">规程知识</text>
+  <text x="1250.0" y="425.0" font-size="10" fill="#444444" text-anchor="middle">(knowledge)</text>
+  <polygon points="1250,204 1286,220 1250,236 1214,220" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="1250" y="224" font-size="11" fill="#000000" text-anchor="middle">规程切块</text>
+  <line x1="1065.0" y1="76" x2="1250" y2="204" stroke="#000000" stroke-width="1.0"/>
+  <text x="1157.5" y="135.0" font-size="11" fill="#000000" text-anchor="middle">1</text>
+  <line x1="1250" y1="236" x2="1250" y2="390" stroke="#000000" stroke-width="1.0"/>
+  <text x="1260" y="317.0" font-size="11" fill="#000000">n</text>
+  <polygon points="1250,554 1286,570 1250,586 1214,570" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="1250" y="574" font-size="11" fill="#000000" text-anchor="middle">知识咨询</text>
+  <line x1="1250" y1="434" x2="1250" y2="554" stroke="#000000" stroke-width="1.0"/>
+  <text x="1260" y="498.0" font-size="11" fill="#000000">n</text>
+  <polygon points="205.0,291 237.0,305 205.0,319 173.0,305" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="205.0" y="309" font-size="11" fill="#000000" text-anchor="middle">槽位容纳</text>
+  <line x1="145" y1="390" x2="173.0" y2="305" stroke="#000000" stroke-width="1.0"/>
+  <text x="151.0" y="349.5" font-size="11" fill="#000000">1</text>
+  <line x1="237.0" y1="305" x2="265" y2="390" stroke="#000000" stroke-width="1.0"/>
+  <text x="257.0" y="349.5" font-size="11" fill="#000000">n</text>
+  <polygon points="395.0,291 427.0,305 395.0,319 363.0,305" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="395.0" y="309" font-size="11" fill="#000000" text-anchor="middle">产生履历</text>
+  <line x1="335" y1="390" x2="363.0" y2="305" stroke="#000000" stroke-width="1.0"/>
+  <text x="341.0" y="349.5" font-size="11" fill="#000000">1</text>
+  <line x1="427.0" y1="305" x2="455" y2="390" stroke="#000000" stroke-width="1.0"/>
+  <text x="447.0" y="349.5" font-size="11" fill="#000000">n</text>
+  <polygon points="585.0,291 617.0,305 585.0,319 553.0,305" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="585.0" y="309" font-size="11" fill="#000000" text-anchor="middle">超期催办</text>
+  <line x1="525" y1="390" x2="553.0" y2="305" stroke="#000000" stroke-width="1.0"/>
+  <text x="531.0" y="349.5" font-size="11" fill="#000000">1</text>
+  <line x1="617.0" y1="305" x2="645" y2="390" stroke="#000000" stroke-width="1.0"/>
+  <text x="637.0" y="349.5" font-size="11" fill="#000000">n</text>
+  <polygon points="965.0,291 997.0,305 965.0,319 933.0,305" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="965.0" y="309" font-size="11" fill="#000000" text-anchor="middle">超温建单</text>
+  <line x1="905" y1="390" x2="933.0" y2="305" stroke="#000000" stroke-width="1.0"/>
+  <text x="911.0" y="349.5" font-size="11" fill="#000000">n</text>
+  <line x1="997.0" y1="305" x2="1025" y2="390" stroke="#000000" stroke-width="1.0"/>
+  <text x="1017.0" y="349.5" font-size="11" fill="#000000">1</text>
+  <polygon points="1155.0,291 1187.0,305 1155.0,319 1123.0,305" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+  <text x="1155.0" y="309" font-size="11" fill="#000000" text-anchor="middle">规程核验</text>
+  <line x1="1095" y1="390" x2="1123.0" y2="305" stroke="#000000" stroke-width="1.0"/>
+  <text x="1101.0" y="349.5" font-size="11" fill="#000000">1</text>
+  <line x1="1187.0" y1="305" x2="1215" y2="390" stroke="#000000" stroke-width="1.0"/>
+  <text x="1207.0" y="349.5" font-size="11" fill="#000000">n</text>
+  <rect x="240" y="750" width="180" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+  <text x="330.0" y="770.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">教师用户</text>
+  <text x="330.0" y="785.0" font-size="10" fill="#444444" text-anchor="middle">(TEACHER)</text>
+  <rect x="950" y="750" width="180" height="44" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+  <text x="1040.0" y="770.0" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">学生用户</text>
+  <text x="1040.0" y="785.0" font-size="10" fill="#444444" text-anchor="middle">(STUDENT)</text>
+  <line x1="330.0" y1="750" x2="110" y2="586" stroke="#000000" stroke-width="1.0"/>
+  <text x="214.0" y="668.0" font-size="11" fill="#000000">1</text>
+  <line x1="330.0" y1="750" x2="300" y2="586" stroke="#000000" stroke-width="1.0"/>
+  <text x="309.0" y="668.0" font-size="11" fill="#000000">1</text>
+  <line x1="330.0" y1="750" x2="490" y2="586" stroke="#000000" stroke-width="1.0"/>
+  <text x="404.0" y="668.0" font-size="11" fill="#000000">1</text>
+  <line x1="330.0" y1="750" x2="680" y2="586" stroke="#000000" stroke-width="1.0"/>
+  <text x="499.0" y="668.0" font-size="11" fill="#000000">1</text>
+  <line x1="330.0" y1="750" x2="870" y2="586" stroke="#000000" stroke-width="1.0"/>
+  <text x="594.0" y="668.0" font-size="11" fill="#000000">1</text>
+  <line x1="1040.0" y1="750" x2="870" y2="586" stroke="#000000" stroke-width="1.0"/>
+  <text x="961.0" y="668.0" font-size="11" fill="#000000">1</text>
+  <line x1="1040.0" y1="750" x2="1060" y2="586" stroke="#000000" stroke-width="1.0"/>
+  <text x="1056.0" y="668.0" font-size="11" fill="#000000">1</text>
+  <line x1="1040.0" y1="750" x2="1250" y2="586" stroke="#000000" stroke-width="1.0"/>
+  <text x="1151.0" y="668.0" font-size="11" fill="#000000">1</text>
+  <text x="710.0" y="865" font-size="15" font-weight="bold" fill="#000000" text-anchor="middle">图 3-2 数据库概念模型整体 E-R 图</text>
 </svg>

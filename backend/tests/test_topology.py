@@ -206,3 +206,81 @@ def test_room_filter_case_insensitivity_and_shorthand(client):
     assert data_301["selected_room"]["stats"]["total_u"] == 0
 
 
+def test_drag_and_drop_rack_allocation_and_dispatch(client):
+    """测试设备录入/拖拽调拨机位在拓扑图中的动态上架、跨柜迁移与周边配套区双向流转"""
+    import json
+
+    # 1. 录入一台新服务器，预设放置于 机柜A02 的 U18~U21 (4U)
+    create_payload = {
+        "asset_no": "DEV-TEST-DND-99",
+        "name": "自动化测试调拨GPU服务器",
+        "category": "服务器",
+        "location": "实训楼201-机柜A02-U18(4U)",
+        "health_status": "HEALTHY",
+        "borrow_status": "AVAILABLE",
+        "detail": {
+            "extra_params": json.dumps({"start_u": 18, "u_height": 4, "rack_units": "4U"}),
+        },
+    }
+    resp = client.post("/api/assets/", json=create_payload)
+    assert resp.status_code == 201
+    asset_id = resp.json()["id"]
+
+    try:
+        # 2. 检查拓扑接口：该设备应准确上架至 ROOM-201 机柜A02
+        topo_resp = client.get("/api/assets/topology")
+        assert topo_resp.status_code == 200
+        rooms = topo_resp.json()["rooms"]
+        room_201 = next(r for r in rooms if r["room_code"] == "ROOM-201")
+        rack_a02 = next(rk for rk in room_201["racks"] if rk["rack_id"] == "机柜A02")
+        a02_assets = {a["asset_no"]: a for a in rack_a02["assets"]}
+        assert "DEV-TEST-DND-99" in a02_assets
+        assert a02_assets["DEV-TEST-DND-99"]["start_u"] == 18
+        assert a02_assets["DEV-TEST-DND-99"]["u_height"] == 4
+
+        # 3. 模拟跨柜拖拽迁移：从 机柜A02 拖至 101 机房 机柜B01 U1~U4
+        update_payload = {
+            "location": "实训楼101-机柜B01-U1(4U)",
+            "detail": {
+                "extra_params": json.dumps({"start_u": 1, "u_height": 4, "rack_units": "4U"}),
+            },
+        }
+        patch_resp = client.patch(f"/api/assets/{asset_id}", json=update_payload)
+        assert patch_resp.status_code == 200
+
+        # 验证拓扑：A02 已无该设备，B01 成功接收
+        topo_resp2 = client.get("/api/assets/topology")
+        rooms2 = topo_resp2.json()["rooms"]
+        room_201_new = next(r for r in rooms2 if r["room_code"] == "ROOM-201")
+        rack_a02_new = next(rk for rk in room_201_new["racks"] if rk["rack_id"] == "机柜A02")
+        assert "DEV-TEST-DND-99" not in [a["asset_no"] for a in rack_a02_new["assets"]]
+
+        room_101_new = next(r for r in rooms2 if r["room_code"] == "ROOM-101")
+        rack_b01_new = next(rk for rk in room_101_new["racks"] if rk["rack_id"] == "机柜B01")
+        b01_assets = {a["asset_no"]: a for a in rack_b01_new["assets"]}
+        assert "DEV-TEST-DND-99" in b01_assets
+        assert b01_assets["DEV-TEST-DND-99"]["start_u"] == 1
+
+        # 4. 模拟下架流转至周边配套区（修改类别为配电温控，清空 start_u）
+        unrack_payload = {
+            "category": "配电温控",
+            "location": "实训楼101-动力配电区",
+            "detail": {
+                "extra_params": json.dumps({"cooling": "列间风道"}),
+            },
+        }
+        patch_resp2 = client.patch(f"/api/assets/{asset_id}", json=unrack_payload)
+        assert patch_resp2.status_code == 200
+
+        # 验证拓扑：B01 机柜已移除，全量 unracked_assets 正确收纳
+        topo_resp3 = client.get("/api/assets/topology")
+        unracked = topo_resp3.json()["unracked_assets"]
+        unracked_nos = [a["asset_no"] for a in unracked]
+        assert "DEV-TEST-DND-99" in unracked_nos
+    finally:
+        # 清理测试数据，保持数据库状态无污染
+        del_resp = client.delete(f"/api/assets/{asset_id}")
+        assert del_resp.status_code in [200, 204]
+
+
+

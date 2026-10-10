@@ -17,27 +17,37 @@
             </svg>
           </span>
           <div>
-            <h3 class="font-medium text-zinc-100 text-sm sm:text-base glass-text flex items-center gap-2">
-              身份鉴权与权限切换中心
-              <span
-                class="text-[10px] px-2 py-0.5 rounded-full font-mono border"
-                :class="rolePillClass(currentUser?.role)"
-              >
-                当前: {{ currentUser?.real_name || '未登录' }} [{{ currentUser?.role || '游客' }}]
-              </span>
+            <h3 class="font-medium text-zinc-100 text-sm sm:text-base glass-text">
+              权限切换
             </h3>
           </div>
         </div>
 
-        <button
-          @click="closeModal"
-          class="text-zinc-500 hover:text-zinc-300 p-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
-          title="关闭"
-        >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div class="flex items-center space-x-2">
+          <!-- 退出登录按钮 (仅在已登录且非访客时呈现) -->
+          <button
+            v-if="currentUser && currentUser.username !== 'guest'"
+            @click="handleLogout"
+            type="button"
+            class="px-2.5 py-1 rounded-lg text-xs font-medium text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 transition-all flex items-center space-x-1 active:scale-95 shadow-sm"
+            title="退出当前登录身份，切换为访客受限状态"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>退出登录</span>
+          </button>
+
+          <button
+            @click="closeModal"
+            class="text-zinc-500 hover:text-zinc-300 p-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+            title="关闭"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Tab 切换按钮栏 -->
@@ -291,26 +301,13 @@
             </div>
           </div>
 
-          <!-- 申请角色选择 -->
+          <!-- 申请角色选择 (按权限从小到大顺序排列: 学生 ➔ 教师 ➔ 管理员) -->
           <div>
             <label class="block text-[11px] text-zinc-400 mb-1.5">
               申请身份角色 <span class="text-rose-400">*</span>
             </label>
             <div class="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                @click="registerForm.role = 'TEACHER'"
-                :class="[
-                  'py-2 px-3 rounded-lg border text-xs font-medium flex flex-col items-center gap-1 transition-all',
-                  registerForm.role === 'TEACHER'
-                    ? 'bg-indigo-950/60 border-indigo-500/60 text-indigo-200 shadow-sm ring-1 ring-indigo-500/30'
-                    : 'bg-black/20 hover:bg-white/[0.05] border-white/[0.06] text-zinc-400'
-                ]"
-              >
-                <span>高校专业教师</span>
-                <span class="text-[10px] text-zinc-500 font-mono">TEACHER</span>
-              </button>
-
+              <!-- 1. 实训在读学生 (最低权限，免口令) -->
               <button
                 type="button"
                 @click="registerForm.role = 'STUDENT'"
@@ -325,6 +322,22 @@
                 <span class="text-[10px] text-zinc-500 font-mono">STUDENT</span>
               </button>
 
+              <!-- 2. 高校专业教师 (中等权限，需要专属口令) -->
+              <button
+                type="button"
+                @click="registerForm.role = 'TEACHER'"
+                :class="[
+                  'py-2 px-3 rounded-lg border text-xs font-medium flex flex-col items-center gap-1 transition-all',
+                  registerForm.role === 'TEACHER'
+                    ? 'bg-cyan-950/60 border-cyan-500/60 text-cyan-200 shadow-sm ring-1 ring-cyan-500/30'
+                    : 'bg-black/20 hover:bg-white/[0.05] border-white/[0.06] text-zinc-400'
+                ]"
+              >
+                <span>高校专业教师</span>
+                <span class="text-[10px] text-zinc-500 font-mono">TEACHER</span>
+              </button>
+
+              <!-- 3. 系统超级管理员 (最高权限，需要专属口令) -->
               <button
                 type="button"
                 @click="registerForm.role = 'ADMIN'"
@@ -341,7 +354,33 @@
             </div>
           </div>
 
-          <!-- 选管理员时动态弹出激活码输入框 -->
+          <!-- 选教师时动态弹出专属安全激活码输入框 (青蓝色系) -->
+          <div
+            v-if="registerForm.role === 'TEACHER'"
+            class="p-3 rounded-xl bg-cyan-950/30 border border-cyan-500/30 space-y-1.5 animate-fade-in"
+          >
+            <div class="flex items-center justify-between">
+              <label class="block text-[11px] font-medium text-cyan-300 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                教师专属安全激活口令 <span class="text-cyan-400">*</span>
+              </label>
+              <span class="text-[10px] text-cyan-400/80 font-mono">教研认证</span>
+            </div>
+            <input
+              v-model="registerForm.teacher_code"
+              type="password"
+              placeholder="请输入教师专属安全激活口令 (初始为 teacher666)"
+              class="w-full bg-black/40 border border-cyan-500/40 focus:border-cyan-400 rounded-lg px-3 py-1.5 text-xs text-cyan-100 placeholder-cyan-300/40 focus:outline-none transition-colors"
+              required
+            />
+            <p class="text-[10px] text-cyan-300/70">
+              高校专业教师拥有设备借用申请、实验指导与规程增补权限，申请必须输入教研室激活口令 <code class="px-1 py-0.5 rounded bg-black/50 text-cyan-300 font-mono">teacher666</code>。
+            </p>
+          </div>
+
+          <!-- 选管理员时动态弹出激活码输入框 (玫瑰红色系) -->
           <div
             v-if="registerForm.role === 'ADMIN'"
             class="p-3 rounded-xl bg-rose-950/30 border border-rose-500/30 space-y-1.5 animate-fade-in"
@@ -398,7 +437,12 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'loginSuccess'])
+const emit = defineEmits(['update:modelValue', 'loginSuccess', 'logout', 'openProfile'])
+
+function handleOpenProfile() {
+  emit('openProfile', props.currentUser?.username)
+  closeModal()
+}
 
 const activeTab = ref('login')
 const isLoading = ref(false)
@@ -427,9 +471,10 @@ const registerForm = reactive({
   username: '',
   password: '',
   real_name: '',
-  role: 'TEACHER',
+  role: 'STUDENT',
   department: '',
   phone: '',
+  teacher_code: '',
   admin_code: '',
 })
 
@@ -497,6 +542,14 @@ function closeModal() {
   emit('update:modelValue', false)
 }
 
+function handleLogout() {
+  emit('logout')
+  successMessage.value = '已退出登录，当前已切换为访客受限身份'
+  setTimeout(() => {
+    closeModal()
+  }, 600)
+}
+
 function rolePillClass(role) {
   switch (role) {
     case 'ADMIN':
@@ -556,6 +609,8 @@ async function handleRegister() {
 
   if (registerForm.role === 'ADMIN') {
     payload.admin_code = registerForm.admin_code?.trim() || ''
+  } else if (registerForm.role === 'TEACHER') {
+    payload.teacher_code = registerForm.teacher_code?.trim() || ''
   }
 
   try {
@@ -566,8 +621,9 @@ async function handleRegister() {
     registerForm.real_name = ''
     registerForm.department = ''
     registerForm.phone = ''
+    registerForm.teacher_code = ''
     registerForm.admin_code = ''
-    registerForm.role = 'TEACHER'
+    registerForm.role = 'STUDENT'
     emit('loginSuccess', registeredUser)
     setTimeout(() => {
       closeModal()
@@ -745,6 +801,18 @@ html.light .auth-modal-glass-card .bg-rose-950\/60 {
 html.light .auth-modal-glass-card .bg-rose-950\/30 {
   background-color: rgba(255, 241, 242, 0.95) !important;
   border-color: rgba(244, 63, 94, 0.4) !important;
+}
+html.light .auth-modal-glass-card .bg-cyan-950\/60 {
+  background-color: rgba(236, 254, 255, 0.95) !important;
+  border-color: rgba(6, 182, 212, 0.6) !important;
+  color: #0e7490 !important;
+}
+html.light .auth-modal-glass-card .bg-cyan-950\/30 {
+  background-color: rgba(236, 254, 255, 0.95) !important;
+  border-color: rgba(6, 182, 212, 0.4) !important;
+}
+html.light .auth-modal-glass-card .text-cyan-300 {
+  color: #0e7490 !important;
 }
 html.light .auth-modal-glass-card .text-rose-300 {
   color: #be123c !important;

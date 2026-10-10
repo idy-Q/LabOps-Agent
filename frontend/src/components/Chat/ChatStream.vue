@@ -217,9 +217,17 @@ import CitationBadge from './CitationBadge.vue'
 import PermissionAlertCard from './PermissionAlertCard.vue'
 
 function isPermissionAlert(content) {
-  return typeof content === 'string' && (
+  if (typeof content !== 'string') return false
+  return (
     content.includes('【权限拦截警报】') ||
-    content.includes('已被系统拦截')
+    content.includes('【权限拦截告知】') ||
+    content.includes('已被系统拦截') ||
+    content.includes('权限拦截') ||
+    content.includes('越权拦截') ||
+    content.includes('越权敏感操作') ||
+    content.includes('PERMISSION DENIED') ||
+    content.includes('403 越权') ||
+    (content.includes('学生') && (content.includes('无权办理') || content.includes('无权借调') || content.includes('严禁调用')))
   )
 }
 
@@ -310,8 +318,17 @@ function formatInline(str) {
     return placeholder
   })
 
-  // 加粗 **bold**
+  // 1. 粗斜体 ***bold-italic***
+  s = s.replace(/\*\*\*(.*?)\*\*\*/g, '<strong class="font-semibold text-slate-900 dark:text-zinc-100"><em>$1</em></strong>')
+
+  // 2. 加粗 **bold**
   s = s.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-slate-900 dark:text-zinc-100">$1</strong>')
+
+  // 3. 斜体 *italic* (识别非空白包裹的单星号强调)
+  s = s.replace(/(^|[^\*])\*([^\*\s\n][^\*\n]*?)\*(?!\*)/g, '$1<em class="text-inherit">$2</em>')
+
+  // 4. 清理残留的孤立星号与截断标记 (杜绝大模型输出中断或 Markdown 格式残留导致的裸露 **)
+  s = s.replace(/(?:^|\s)\*\*+(?:\s|$)/g, ' ')
 
   // 安全还原行内代码 (使用回调函数防止 $ 字符被错误解释)
   inlineCodes.forEach((codeHtml, idx) => {

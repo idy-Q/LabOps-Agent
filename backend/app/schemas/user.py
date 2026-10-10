@@ -13,10 +13,12 @@ class UserRegisterRequest(BaseModel):
     username: str = Field(..., min_length=2, max_length=64, description="登录工号/学号")
     password: str = Field(..., min_length=6, max_length=64, description="登录密码 (至少6位)")
     real_name: str = Field(..., min_length=1, max_length=64, description="真实姓名，如 王主管/李老师")
-    role: UserRoleType = Field(default="TEACHER", description="申请角色: ADMIN, TEACHER, STUDENT")
+    role: UserRoleType = Field(default="STUDENT", description="申请角色: STUDENT (学生), TEACHER (教师), ADMIN (管理员)")
     department: str = Field(..., min_length=1, max_length=128, description="所属教研室/班级/部门")
     phone: Optional[str] = Field(default=None, max_length=32, description="联系电话")
+    teacher_code: Optional[str] = Field(default=None, description="教师专属安全激活口令 (申请 TEACHER 角色时必填)")
     admin_code: Optional[str] = Field(default=None, description="管理员专属安全激活口令 (申请 ADMIN 角色时必填)")
+    activation_code: Optional[str] = Field(default=None, description="通用安全激活口令 (兼容传递)")
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -73,4 +75,25 @@ class UserProfileResponse(BaseModel):
     created_at: Optional[str] = Field(default=None, description="注册或上线时间")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserProfileUpdateRequest(BaseModel):
+    """用户个人资料更新请求数据模式"""
+
+    real_name: Optional[str] = Field(default=None, min_length=1, max_length=64, description="真实姓名")
+    phone: Optional[str] = Field(default=None, max_length=32, description="联系电话")
+    department: Optional[str] = Field(default=None, min_length=1, max_length=128, description="所属教研室/班级/部门")
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+class ChangePasswordRequest(BaseModel):
+    """用户修改密码请求数据模式"""
+
+    username: str = Field(..., min_length=1, max_length=64, description="登录工号/学号")
+    old_password: str = Field(..., min_length=1, max_length=64, description="原密码")
+    new_password: str = Field(..., min_length=6, max_length=64, description="新密码 (至少6位)")
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
 

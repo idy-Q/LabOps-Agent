@@ -54,31 +54,81 @@
 
       <!-- 右侧全局控制与状态 -->
       <div class="flex items-center space-x-2 text-xs">
-        <!-- 当前登录用户身份状态胶囊 (更清晰地展示“真实姓名 [角色名]”与工号，点击弹出切换/登录弹窗) -->
-        <button
-          @click="showAuthModal = true"
-          class="px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs flex items-center space-x-1.5 sm:space-x-2 transition-all shadow-sm active:scale-95 select-none group"
-          :class="[
-            currentTheme === 'light'
-              ? 'bg-white/90 hover:bg-indigo-50/80 text-slate-800 border-slate-200 hover:border-indigo-400/60 shadow-slate-200/50'
-              : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-200 border-white/[0.08] hover:border-indigo-500/40 shadow-black/40'
-          ]"
-          :title="`当前登录: ${currentUser.real_name} [${userRoleLabel(currentUser.role)}] (${currentUser.username} · ${currentUser.department})，点击切换身份`"
-        >
-          <div class="flex items-center space-x-1 min-w-0">
-            <span class="font-medium max-w-[80px] sm:max-w-[110px] truncate">{{ currentUser.real_name }}</span>
-            <span class="hidden sm:inline-block font-mono text-[10px] text-zinc-400">({{ currentUser.username }})</span>
-          </div>
-          <span
-            class="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border whitespace-nowrap shrink-0"
-            :class="userRoleClass(currentUser.role)"
+        <!-- 用户身份与账户中心收敛小图标 (合二为一：仅保留小图标，点击展开下拉框：个人档案、权限切换) -->
+        <div class="relative inline-block text-left">
+          <button
+            @click.stop="toggleUserMenu"
+            class="p-2 rounded-xl border text-xs flex items-center justify-center transition-all shadow-sm active:scale-95 select-none relative group"
+            :class="userIconClass"
+            :title="userIconTitle"
           >
-            {{ userRoleLabel(currentUser.role) }}
-          </span>
-          <svg class="w-3 h-3 text-zinc-400 group-hover:text-zinc-200 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
+            <!-- 人物矢量 SVG 图标 -->
+            <svg class="w-3.5 h-3.5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </button>
+
+          <!-- 下拉菜单浮层 -->
+          <div
+            v-if="showUserMenu"
+            @click.stop
+            :class="[
+              'absolute right-0 w-44 py-1.5 rounded-xl border shadow-xl z-50 backdrop-blur-xl transition-all text-xs font-sans text-left mt-1.5',
+              currentTheme === 'light'
+                ? 'bg-white/95 border-slate-200 text-slate-800 shadow-slate-200/60'
+                : 'bg-zinc-900/95 border-white/[0.12] text-zinc-200 ring-1 ring-white/[0.05] shadow-2xl'
+            ]"
+          >
+            <!-- 已登录状态：展示轻量身份摘要与个人档案、权限切换两项操作 -->
+            <template v-if="isLoggedIn">
+              <div class="px-3 py-1.5 border-b" :class="currentTheme === 'light' ? 'border-slate-100 bg-slate-50/60' : 'border-white/[0.06] bg-white/[0.02]'">
+                <div class="font-medium truncate text-xs">{{ currentUser.real_name }}</div>
+                <div class="text-[10px] text-zinc-400 font-mono flex items-center justify-between pt-0.5">
+                  <span>{{ currentUser.username }}</span>
+                  <span class="px-1.5 py-0.2 rounded text-[10px] font-sans border" :class="userRoleClass(currentUser.role)">{{ userRoleLabel(currentUser.role) }}</span>
+                </div>
+              </div>
+
+              <!-- 按钮 1：个人档案 -->
+              <button
+                @click="showUserMenu = false; handleOpenUserProfile(currentUser.username)"
+                class="w-full px-3 py-2 flex items-center space-x-2 transition-colors text-left"
+                :class="currentTheme === 'light' ? 'hover:bg-slate-100 text-slate-700 hover:text-indigo-600' : 'hover:bg-white/[0.08] text-zinc-300 hover:text-indigo-300'"
+              >
+                <svg class="w-3.5 h-3.5 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span>个人档案</span>
+              </button>
+
+              <!-- 按钮 2：权限切换 -->
+              <button
+                @click="showUserMenu = false; showAuthModal = true"
+                class="w-full px-3 py-2 flex items-center space-x-2 transition-colors text-left"
+                :class="currentTheme === 'light' ? 'hover:bg-slate-100 text-slate-700 hover:text-cyan-600' : 'hover:bg-white/[0.08] text-zinc-300 hover:text-cyan-300'"
+              >
+                <svg class="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                <span>权限切换</span>
+              </button>
+            </template>
+
+            <!-- 未登录状态：仅展示登录注册按钮 -->
+            <template v-else>
+              <button
+                @click="showUserMenu = false; showAuthModal = true"
+                class="w-full px-3 py-2 flex items-center space-x-2 transition-colors text-left font-medium"
+                :class="currentTheme === 'light' ? 'hover:bg-slate-100 text-indigo-600' : 'hover:bg-white/[0.08] text-indigo-400'"
+              >
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                <span>登录 / 注册</span>
+              </button>
+            </template>
+          </div>
+        </div>
 
         <!-- 站内待办通知铃铛 🔔 按钮 (含呼吸微光未读红点与数字徽标) -->
         <button
@@ -128,15 +178,15 @@
         <!-- 玻璃视效与背景动力学控制器 -->
         <GlassController v-model:bgAnimation="isBgAnimationActive" :theme="currentTheme" />
 
-        <!-- 后端服务动态连接状态 -->
+        <!-- 后端服务动态连接状态 (通俗易懂去技术化表达) -->
         <div
           @click="refreshAllData"
           class="hidden md:flex items-center space-x-1.5 px-3 py-1 rounded-full border text-[11px] cursor-pointer transition-all shadow-sm"
           :class="backendConnected ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20'"
-          :title="backendConnected ? 'FastAPI 后端服务正常连接 (端口 8000)' : 'FastAPI 后端服务未连接，点击重试'"
+          :title="backendConnected ? '机房运维后台服务运行正常' : '机房运维后台服务未连接，点击重试'"
         >
           <span class="w-1.5 h-1.5 rounded-full" :class="backendConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400 animate-ping'"></span>
-          <span>{{ backendConnected ? 'FastAPI 8000 在线' : 'FastAPI 8000 离线' }}</span>
+          <span>{{ backendConnected ? '系统服务在线' : '系统服务离线' }}</span>
         </div>
 
         <button
@@ -172,20 +222,7 @@
           </svg>
         </button>
 
-        <button
-          @click="refreshAllData"
-          class="p-2 rounded-lg border transition-all active:scale-95 shadow-sm"
-          :class="[
-            currentTheme === 'light'
-              ? 'bg-white/90 hover:bg-indigo-50/80 text-slate-700 hover:text-indigo-600 border-slate-200 hover:border-indigo-400/60'
-              : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-white/[0.08] hover:border-white/[0.15]'
-          ]"
-          title="刷新大盘全部数据"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
+
       </div>
     </header>
 
@@ -314,6 +351,7 @@
               <span
                 v-if="pendingTicketCount > 0"
                 class="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                :title="`当前有 ${pendingTicketCount} 起未成功归档的在办运维工单`"
               >
                 {{ pendingTicketCount }}
               </span>
@@ -397,11 +435,11 @@
               </span>
               <div>
                 <div class="font-medium text-amber-100 flex items-center gap-1.5">
-                  FastAPI 后端服务 (端口 8000) 尚未连接
+                  机房运维后台服务尚未连接
                   <span class="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 font-mono">离线</span>
                 </div>
                 <p class="text-[11px] text-amber-300/70 mt-0.5">
-                  请确认终端已启动后端服务：<code class="px-1.5 py-0.5 rounded bg-black/40 backdrop-blur-sm border border-amber-500/20 text-amber-300 font-mono">cd backend; .\.venv\Scripts\python.exe -m app.main</code>
+                  机房运维后台服务未连接，请检查后台服务是否已正常启动或点击右侧“重试连接”
                 </p>
               </div>
             </div>
@@ -438,7 +476,7 @@
               :tickets="tickets"
               :currentUser="currentUser"
               :highlightedTicketNo="highlightedTicketNo"
-              @refresh="loadTickets"
+              @refresh="handleRefreshTickets"
               @updateStatus="handleUpdateTicketStatus"
               @inspectTicket="handleInspectTicket"
               @viewTimeline="handleViewTicketTimeline"
@@ -467,6 +505,7 @@
             <RackTopologyView
               ref="rackTopologyRef"
               :theme="currentTheme"
+              :currentUser="currentUser"
               @inspectAsset="handleInspectAssetFromTopology"
               @refresh="refreshAllData"
             />
@@ -476,6 +515,7 @@
           <div v-show="currentTab === 'regulations'" class="animate-fade-in">
             <RegulationsCenter
               :theme="currentTheme"
+              :currentUser="currentUser"
               @askAI="handleAskAIAboutRegulation"
               @refresh="refreshAllData"
             />
@@ -544,6 +584,17 @@
       v-model="showAuthModal"
       :currentUser="currentUser"
       @loginSuccess="handleLoginSuccess"
+      @logout="handleLogout"
+      @openProfile="handleOpenUserProfile"
+    />
+
+    <!-- 用户个人全景档案与安全设置弹窗 -->
+    <UserProfileModal
+      v-model="showCurrentUserProfileModal"
+      :identifier="currentProfileIdentifier"
+      :currentUser="currentUser"
+      :theme="currentTheme"
+      @userUpdated="handleUserUpdated"
     />
 
     <!-- 全网主动自治体检《运行健康研判简报》弹窗 -->
@@ -574,6 +625,7 @@
       :currentUser="currentUser"
       :theme="currentTheme"
       @ticketUpdated="refreshAllData"
+      @userUpdated="handleUserUpdated"
     />
 
     <!-- 设备资产超期使用归还催告单模态框 (Overdue Notice Modal) -->
@@ -610,6 +662,7 @@ import RackTopologyView from './components/Dashboard/RackTopologyView.vue'
 import DeviceDetailModal from './components/Dashboard/DeviceDetailModal.vue'
 import TimelineDrawer from './components/Dashboard/TimelineDrawer.vue'
 import AuthModal from './components/Auth/AuthModal.vue'
+import UserProfileModal from './components/Common/UserProfileModal.vue'
 import PatrolReportModal from './components/Dashboard/PatrolReportModal.vue'
 import OverdueNoticeModal from './components/Dashboard/OverdueNoticeModal.vue'
 import UrgeNotificationToast from './components/Dashboard/UrgeNotificationToast.vue'
@@ -735,6 +788,40 @@ function handleLoginSuccess(user) {
   currentUser.value = user
 }
 
+function handleLogout() {
+  currentUser.value = {
+    username: 'guest',
+    real_name: '未登录访客',
+    role: 'STUDENT',
+    department: '未认证访客',
+    phone: '',
+  }
+}
+
+// 个人全景档案与安全设置模态框状态
+const showCurrentUserProfileModal = ref(false)
+const currentProfileIdentifier = ref('admin')
+
+function handleOpenUserProfile(username) {
+  currentProfileIdentifier.value = username || currentUser.value?.username || 'admin'
+  showCurrentUserProfileModal.value = true
+}
+
+function handleUserUpdated(updatedUser) {
+  if (currentUser.value && updatedUser) {
+    if (
+      !updatedUser.username ||
+      currentUser.value.username.toLowerCase() === updatedUser.username.toLowerCase()
+    ) {
+      currentUser.value = {
+        ...currentUser.value,
+        ...updatedUser,
+      }
+    }
+  }
+  refreshAllData()
+}
+
 // 监听当前登录角色切换：当切换为李老师 (teacher_li) 时自动拉取待办并滑出提醒浮窗
 watch(
   () => currentUser.value,
@@ -749,6 +836,71 @@ watch(
   },
   { deep: true }
 )
+
+const isLoggedIn = computed(() => {
+  return currentUser.value && currentUser.value.username && currentUser.value.username !== 'guest'
+})
+
+const showUserMenu = ref(false)
+
+function toggleUserMenu() {
+  showUserMenu.value = !showUserMenu.value
+}
+
+function closeUserMenu() {
+  showUserMenu.value = false
+}
+
+// 小图标柔和色彩映射 (与注册选择身份亮起的颜色一致：STUDENT翠绿, TEACHER青蓝, ADMIN玫瑰红，柔和不刺眼)
+const userIconClass = computed(() => {
+  if (!isLoggedIn.value) {
+    return currentTheme.value === 'light'
+      ? 'bg-white/90 hover:bg-slate-100 text-slate-500 border-slate-200 shadow-slate-200/50'
+      : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 border-white/[0.08] hover:border-white/[0.15] shadow-black/40'
+  }
+  const role = currentUser.value?.role
+  if (role === 'STUDENT') {
+    return currentTheme.value === 'light'
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100/80 shadow-emerald-100/50'
+      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 hover:border-emerald-500/50'
+  }
+  if (role === 'TEACHER') {
+    return currentTheme.value === 'light'
+      ? 'bg-cyan-50 text-cyan-700 border-cyan-300 hover:bg-cyan-100/80 shadow-cyan-100/50'
+      : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 hover:border-cyan-500/50'
+  }
+  if (role === 'ADMIN') {
+    return currentTheme.value === 'light'
+      ? 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100/80 shadow-rose-100/50'
+      : 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20 hover:border-rose-500/50'
+  }
+  return currentTheme.value === 'light'
+    ? 'bg-white/90 hover:bg-slate-100 text-slate-700 border-slate-200'
+    : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 border-white/[0.08]'
+})
+
+const userRolePingClass = computed(() => {
+  const role = currentUser.value?.role
+  if (role === 'STUDENT') return 'bg-emerald-400'
+  if (role === 'TEACHER') return 'bg-cyan-400'
+  if (role === 'ADMIN') return 'bg-rose-400'
+  return 'bg-zinc-400'
+})
+
+const userRoleDotClass = computed(() => {
+  const role = currentUser.value?.role
+  if (role === 'STUDENT') return 'bg-emerald-500'
+  if (role === 'TEACHER') return 'bg-cyan-500'
+  if (role === 'ADMIN') return 'bg-rose-500'
+  return 'bg-zinc-500'
+})
+
+const userIconTitle = computed(() => {
+  if (isLoggedIn.value) {
+    return `当前登录: ${currentUser.value.real_name} [${userRoleLabel(currentUser.value.role)}] · 点击查看操作菜单`
+  }
+  return '未登录访客 · 点击登录或注册'
+})
 
 function userRoleClass(role) {
   switch (role) {
@@ -931,8 +1083,16 @@ const assets = ref([])
 // 统计衍生属性
 const overview = computed(() => metricsSummary.value?.overview || {})
 const avgTemp = computed(() => overview.value.avg_temperature || 24.5)
-const healthRate = computed(() => overview.value.system_health_rate || 100)
-const pendingTicketCount = computed(() => tickets.value.filter((t) => t.status === 'PENDING').length)
+// 设备健康率计算属性：优先根据在册资产状态实时动态计算，兜底采用全局指标
+const healthRate = computed(() => {
+  if (assets.value && assets.value.length > 0) {
+    const healthy = assets.value.filter((a) => a.health_status === 'HEALTHY').length
+    return Math.round((healthy / assets.value.length) * 100)
+  }
+  return overview.value.system_health_rate ?? 100
+})
+// 统计未成功归档的所有在办/待办工单数 (不含 CLOSED 已归档工单)
+const pendingTicketCount = computed(() => tickets.value.filter((t) => t.status !== 'CLOSED').length)
 
 // 联动高亮状态
 const highlightedTicketNo = ref('')
@@ -944,9 +1104,42 @@ let assetHighlightTimer = null
 const showSessionDrawer = ref(false)
 const sessionList = ref([])
 
+// 全局后台被动静默自适应轮询探针 (每 8 秒自动拉取指标与工单，支持休眠避让与流式避让)
+let silentPollingTimer = null
+let isPollingActive = true
+
+function handleVisibilityChange() {
+  if (document.hidden) {
+    isPollingActive = false
+  } else {
+    isPollingActive = true
+    // 重新切回前台时，立即静默拉取一次最新动环与工单数据
+    refreshAllData()
+  }
+}
+
+function startSilentPolling() {
+  if (silentPollingTimer) clearInterval(silentPollingTimer)
+  silentPollingTimer = setInterval(() => {
+    if (isPollingActive && !document.hidden && !isStreaming.value) {
+      // 避免在 AI 对话流打字时抢占网络并发，平时每 8 秒静默被动刷新大盘数据
+      refreshAllData()
+    }
+  }, 8000)
+}
+
+function stopSilentPolling() {
+  if (silentPollingTimer) {
+    clearInterval(silentPollingTimer)
+    silentPollingTimer = null
+  }
+}
+
 onMounted(async () => {
   checkScreenSize()
   window.addEventListener('resize', checkScreenSize)
+  window.addEventListener('click', closeUserMenu)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   initAudioContextUnlock()
   if (typeof window !== 'undefined' && window.speechSynthesis) {
     updateVoicesList()
@@ -958,6 +1151,7 @@ onMounted(async () => {
   }
   startNewSession()
   await refreshAllData()
+  startSilentPolling()
   // 方案 2: 页面加载完成后轻微延迟静默预热 Edge/Azure 云端语音链路，彻底消除首次告警冷启动耗时
   setTimeout(() => {
     warmupTtsConnection()
@@ -966,6 +1160,9 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkScreenSize)
+  window.removeEventListener('click', closeUserMenu)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  stopSilentPolling()
   removeAudioContextUnlock()
   stopDragging()
   if (ticketHighlightTimer) clearTimeout(ticketHighlightTimer)
@@ -1087,6 +1284,10 @@ async function loadTickets() {
   } catch (err) {
     console.error('加载工单列表失败:', err)
   }
+}
+
+async function handleRefreshTickets() {
+  await Promise.all([loadTickets(), loadMetrics()])
 }
 
 async function loadOverdueAssets() {
@@ -1893,12 +2094,14 @@ function handleInspectTicket(ticketNo) {
   handleSendMessage(`查询工单 ${ticketNo} 的详细处置进展与排查说明`)
 }
 
-async function handleUpdateTicketStatus(ticketId, newStatus) {
+async function handleUpdateTicketStatus(ticketId, newStatus, extra = null) {
   try {
-    await api.updateTicket(ticketId, {
-      status: newStatus,
-      operator: currentUser.value?.real_name || currentUser.value?.username || '管理员',
-    })
+    if (!extra) {
+      await api.updateTicket(ticketId, {
+        status: newStatus,
+        operator: currentUser.value?.real_name || currentUser.value?.username || '管理员',
+      })
+    }
     await loadTickets()
     await loadMetrics()
   } catch (err) {

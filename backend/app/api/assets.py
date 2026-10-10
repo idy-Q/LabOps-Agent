@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session, joinedload
@@ -7,7 +8,8 @@ from sqlalchemy.exc import IntegrityError
 
 from datetime import datetime
 from app.db.session import get_db
-from app.db.models import Asset, AssetDetail, ServerRoom, AssetBorrowLog, Ticket, TicketWorkflow
+from app.db.models import Asset, AssetDetail, ServerRoom, ServerRack, AssetBorrowLog, Ticket, TicketWorkflow
+from app.api.rooms import is_asset_in_room
 from app.tools.metric_tools import get_server_metrics
 from app.schemas.asset import (
     AssetCreate,
@@ -66,12 +68,33 @@ def list_assets(
     return assets
 
 
+def link_temperature_to_health_status(temperature: Optional[float], current_health_status: str) -> str:
+    """动环探针遥测注入与设备健康状态联动研判
+
+    联动规则：
+    - 若处于 OFFLINE 状态，保持 OFFLINE 离线脱网状态与环境室温；
+    - 温度 >= 40.0℃ 自动联动为 OVERHEAT (高温高危)；
+    - 38.0 <= 温度 < 40.0℃ 自动联动为 WARNING (亚健康预警)；
+    - 温度 < 38.0℃ 自动联动为 HEALTHY (健康良好)。
+    """
+    if current_health_status == "OFFLINE":
+        return "OFFLINE"
+    if temperature is None:
+        return current_health_status
+    if temperature >= 40.0:
+        return "OVERHEAT"
+    elif temperature >= 38.0:
+        return "WARNING"
+    else:
+        return "HEALTHY"
+
+
 @router.post(
     "/",
     response_model=AssetResponse,
     status_code=status.HTTP_201_CREATED,
     summary="新增机房资产设备与硬件参数",
-    description="录入新资产设备，要求资产编号 asset_no 全局唯一，支持同步录入硬件物理参数。",
+    description="录入新资产设备，要求资产编号 asset_no 全局唯一，支持同步录入硬件物理参数与核心设定温度并联动健康状态。",
 )
 def create_asset(
     asset_in: AssetCreate,
@@ -86,12 +109,24 @@ def create_asset(
             detail=f"资产编号 '{clean_no}' 已存在，不能重复添加",
         )
 
+    # 提取设定的温度（支持顶层字段或 detail 嵌套字段，支持 custom_temperature 或 temperature 别名）
+    temp_val = asset_in.custom_temperature if asset_in.custom_temperature is not None else asset_in.temperature
+    if temp_val is None and asset_in.detail:
+        if asset_in.detail.custom_temperature is not None:
+            temp_val = asset_in.detail.custom_temperature
+        elif asset_in.detail.temperature is not None:
+            temp_val = asset_in.detail.temperature
+
+    target_health = asset_in.health_status or "HEALTHY"
+    if temp_val is not None and target_health != "OFFLINE":
+        target_health = link_temperature_to_health_status(temp_val, target_health)
+
     asset = Asset(
         asset_no=clean_no,
         name=asset_in.name.strip(),
         category=asset_in.category.strip(),
         location=asset_in.location.strip(),
-        health_status=asset_in.health_status or "HEALTHY",
+        health_status=target_health,
         borrow_status=asset_in.borrow_status or "AVAILABLE",
         borrower=asset_in.borrower,
         specs=asset_in.specs,
@@ -101,12 +136,21 @@ def create_asset(
         db.add(asset)
         db.flush()  # 生成 asset.id
 
-        # 如果提供了硬件详细参数，创建 AssetDetail
+        # 如果提供了硬件详细参数或设定了温度，创建 AssetDetail
         if asset_in.detail is not None:
             detail_data = asset_in.detail.model_dump(exclude_unset=True)
+            detail_data.pop("temperature", None)
+            if temp_val is not None:
+                detail_data["custom_temperature"] = temp_val
             asset_detail = AssetDetail(
                 asset_id=asset.id,
                 **detail_data,
+            )
+            db.add(asset_detail)
+        elif temp_val is not None:
+            asset_detail = AssetDetail(
+                asset_id=asset.id,
+                custom_temperature=temp_val,
             )
             db.add(asset_detail)
 
@@ -125,18 +169,6 @@ def create_asset(
             detail=f"录入设备失败: {str(exc)}",
         )
     return asset
-
-
-DEFAULT_ROOM_RACKS = {
-    "ROOM-201": [
-        {"rack_id": "机柜A01", "rack_name": "A01 综合算力与网络核心柜", "total_u": 42},
-        {"rack_id": "机柜A02", "rack_name": "A02 备用算力扩展机柜", "total_u": 42},
-    ],
-    "ROOM-101": [
-        {"rack_id": "机柜B01", "rack_name": "B01 教学虚拟化与网络汇聚柜", "total_u": 42},
-    ],
-    "ROOM-301": [],
-}
 
 
 @router.get(
@@ -237,6 +269,8 @@ def get_rack_topology(
             "specs": asset.specs,
             "start_u": start_u,
             "u_height": u_height,
+            "custom_temperature": asset.custom_temperature,
+            "telemetry_temperature": asset.telemetry_temperature,
             "metrics": {
                 "temperature": metric_data.get("temperature", 22.0),
                 "cpu_usage": metric_data.get("cpu_usage", 0.0),
@@ -264,6 +298,7 @@ def get_rack_topology(
                 "warranty_period": asset.detail.warranty_period if asset.detail else None,
                 "supplier": asset.detail.supplier if asset.detail else None,
                 "extra_params": asset.detail.extra_params if asset.detail else None,
+                "custom_temperature": asset.detail.custom_temperature if asset.detail else None,
             } if asset.detail else None,
         }
         formatted_assets.append(asset_item)
@@ -276,17 +311,9 @@ def get_rack_topology(
 
     for room in rooms_query:
         r_code = room.room_code
-        room_num = r_code.replace("ROOM-", "")
         room_assets = [
             a for a in formatted_assets
-            if a.get("location") and (
-                r_code in a["location"]
-                or f"实训楼{room_num}" in a["location"]
-                or f"{room_num}室" in a["location"]
-                or f"{room_num}机房" in a["location"]
-                or (room.room_name and room.room_name in a["location"])
-                or room_num in a["location"]
-            )
+            if is_asset_in_room(a.get("location", ""), r_code, room.room_name)
         ]
 
         # 区分机架内设备与周边配套/外设实验仪器
@@ -307,16 +334,17 @@ def get_rack_topology(
                 all_unracked_assets.append(a)
                 accounted_asset_ids.add(a["id"])
 
-        # 组装机柜列表
-        default_racks = DEFAULT_ROOM_RACKS.get(r_code, [])
+        # 组装机柜列表 (从 server_racks 表动态加载)
+        db_racks = db.query(ServerRack).filter(ServerRack.room_code == r_code).order_by(ServerRack.rack_id).all()
         rack_map = {}
-        for r_def in default_racks:
-            rack_map[r_def["rack_id"]] = {
-                "rack_id": r_def["rack_id"],
-                "rack_name": r_def["rack_name"],
+        for rk in db_racks:
+            rack_map[rk.rack_id] = {
+                "rack_id": rk.rack_id,
+                "rack_name": rk.rack_name,
                 "room_code": r_code,
                 "room_name": room.room_name,
-                "total_u": r_def["total_u"],
+                "total_u": rk.total_u,
+                "power_rating_w": rk.power_rating_w,
                 "used_u": 0,
                 "usage_rate": 0.0,
                 "health_status": "HEALTHY",
@@ -329,16 +357,31 @@ def get_rack_topology(
 
         for a in in_rack_assets:
             loc = a["location"] or ""
-            # 优先匹配默认机柜名称
+            # 优先匹配已登记机柜编号 (长名称优先匹配，并结合边界匹配)
             matched_rack_id = None
-            for r_def in default_racks:
-                if r_def["rack_id"] in loc:
-                    matched_rack_id = r_def["rack_id"]
+            for rk_id in sorted(rack_map.keys(), key=len, reverse=True):
+                if re.search(rf"(^|[-_ ]){re.escape(rk_id)}([-_ ]|$)", loc):
+                    matched_rack_id = rk_id
                     break
+            if not matched_rack_id:
+                for rk_id in sorted(rack_map.keys(), key=len, reverse=True):
+                    if rk_id in loc:
+                        matched_rack_id = rk_id
+                        break
+
             if matched_rack_id:
                 rack_id = matched_rack_id
             else:
-                rack_id = loc.split("-")[-1].strip() if "-" in loc else loc.strip()
+                # 规范提取机柜编号，防止将尾部 U位 (如 U28(4U)) 误截断为机柜名
+                parts = [p.strip() for p in loc.split("-") if p.strip()]
+                if len(parts) >= 3 and (parts[-1].startswith("U") or parts[-1].startswith("u")):
+                    rack_id = parts[1]
+                elif len(parts) >= 2:
+                    rack_id = parts[1]
+                elif len(parts) == 1:
+                    rack_id = parts[0]
+                else:
+                    rack_id = loc.strip()
 
             if rack_id not in rack_map:
                 rack_map[rack_id] = {
@@ -347,6 +390,7 @@ def get_rack_topology(
                     "room_code": r_code,
                     "room_name": room.room_name,
                     "total_u": 42,
+                    "power_rating_w": 4500,
                     "used_u": 0,
                     "usage_rate": 0.0,
                     "health_status": "HEALTHY",
@@ -830,17 +874,84 @@ def update_asset(
     update_data = asset_update.model_dump(exclude_unset=True)
     detail_data = update_data.pop("detail", None)
 
+    # 提取设定的温度（支持顶层字段或 detail 嵌套字段，支持 custom_temperature 或 temperature，且支持显式设为 None 清除）
+    temp_val = None
+    has_temp_update = False
+
+    if "custom_temperature" in update_data:
+        temp_val = update_data.pop("custom_temperature")
+        has_temp_update = True
+        update_data.pop("temperature", None)
+    elif "temperature" in update_data:
+        temp_val = update_data.pop("temperature")
+        has_temp_update = True
+    elif detail_data is not None and "custom_temperature" in detail_data:
+        temp_val = detail_data.get("custom_temperature")
+        has_temp_update = True
+    elif detail_data is not None and "temperature" in detail_data:
+        temp_val = detail_data.get("temperature")
+        has_temp_update = True
+
+    if detail_data is not None:
+        detail_data.pop("temperature", None)
+
     # 1. 更新主表字段
     for field, value in update_data.items():
         setattr(asset, field, value)
 
-    # 2. 更新或新建从表 AssetDetail 字段
-    if detail_data is not None:
+    # 2. 动环遥测温度与健康状态智能联动
+    if has_temp_update:
+        if asset.health_status != "OFFLINE":
+            asset.health_status = link_temperature_to_health_status(temp_val, asset.health_status)
+    elif "health_status" in update_data and update_data["health_status"] is not None:
+        # 当显式更新健康状态且未传温度时，反向校准设定温度保持逻辑自洽
+        new_hs = update_data["health_status"]
+        if new_hs == "OVERHEAT" and (asset.custom_temperature is None or asset.custom_temperature < 40.0):
+            temp_val = 43.5
+            has_temp_update = True
+        elif new_hs == "WARNING" and (asset.custom_temperature is None or not (38.0 <= asset.custom_temperature < 40.0)):
+            temp_val = 38.5
+            has_temp_update = True
+        elif new_hs == "HEALTHY" and (asset.custom_temperature is not None and asset.custom_temperature >= 38.0):
+            temp_val = 31.5
+            has_temp_update = True
+
+    # 3. 更新或新建从表 AssetDetail 字段
+    if detail_data is not None or has_temp_update:
         if asset.detail:
-            for d_field, d_value in detail_data.items():
-                setattr(asset.detail, d_field, d_value)
+            if detail_data:
+                for d_field, d_value in detail_data.items():
+                    setattr(asset.detail, d_field, d_value)
+            if has_temp_update:
+                asset.detail.custom_temperature = temp_val
+                # 同步更新/清理 extra_params 中的历史残留温度，防止死灰复燃
+                if asset.detail.extra_params:
+                    try:
+                        ep = json.loads(asset.detail.extra_params)
+                        ep_changed = False
+                        if temp_val is None:
+                            if "custom_temperature" in ep:
+                                del ep["custom_temperature"]
+                                ep_changed = True
+                            if "temperature" in ep:
+                                del ep["temperature"]
+                                ep_changed = True
+                        else:
+                            if "custom_temperature" in ep and ep["custom_temperature"] != temp_val:
+                                ep["custom_temperature"] = temp_val
+                                ep_changed = True
+                            if "temperature" in ep and ep["temperature"] != temp_val:
+                                ep["temperature"] = temp_val
+                                ep_changed = True
+                        if ep_changed:
+                            asset.detail.extra_params = json.dumps(ep, ensure_ascii=False)
+                    except Exception:
+                        pass
         else:
-            new_detail = AssetDetail(asset_id=asset.id, **detail_data)
+            new_detail_data = detail_data or {}
+            if has_temp_update:
+                new_detail_data["custom_temperature"] = temp_val
+            new_detail = AssetDetail(asset_id=asset.id, **new_detail_data)
             db.add(new_detail)
 
     try:

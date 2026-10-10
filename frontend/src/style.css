@@ -58,6 +58,16 @@ html.light ::selection {
   color: #1e1b4b;
 }
 
+/* 全局移除 input[type="number"] 原生上下微调箭头，保持现代清爽体验 */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 /* 全景动态玻璃面板 (主框架容器、导航栏、侧栏、表格容器) */
 .glass-panel {
   background-color: var(--glass-panel-bg, var(--glass-bg));
@@ -101,6 +111,23 @@ html.light .glass-card-sub {
 html.light .glass-card-sub:hover {
   background-color: rgba(226, 232, 240, 0.85);
   border-color: rgba(199, 210, 254, 0.9);
+}
+
+/* 专属深邃亚克力 Popover 浮层 (100% 遮光防穿透，高雅 20px 深度模糊与双层微光边框) */
+.glass-acrylic-popover {
+  background-color: #121218 !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9) !important;
+}
+
+html.light .glass-acrylic-popover {
+  background-color: #ffffff !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-color: rgba(203, 213, 225, 0.95) !important;
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05) !important;
 }
 
 /* 双层光学镀膜与防眩光文字阴影 */
@@ -165,8 +192,27 @@ html.light [class*="bg-black/40"] {
 html.light [class*="bg-black/50"] {
   background-color: rgba(248, 250, 252, 0.9) !important;
 }
-html.light [class*="bg-black/70"] {
+html.light [class*="bg-black/70"],
+html.light [class*="bg-black/75"],
+html.light [class*="bg-black/80"] {
   background-color: rgba(15, 23, 42, 0.4) !important;
+}
+
+html.light [class*="hover:bg-white/[0.08]"]:hover,
+html.light [class*="hover:bg-white/[0.06]"]:hover {
+  background-color: rgba(241, 245, 249, 0.9) !important;
+}
+html.light .hover\:text-indigo-300:hover {
+  color: #4f46e5 !important;
+}
+html.light .hover\:text-cyan-300:hover {
+  color: #0891b2 !important;
+}
+html.light .hover\:text-amber-300:hover {
+  color: #d97706 !important;
+}
+html.light .hover\:text-rose-300:hover {
+  color: #e11d48 !important;
 }
 
 /* 明亮模式实块/深灰微底自适应 */

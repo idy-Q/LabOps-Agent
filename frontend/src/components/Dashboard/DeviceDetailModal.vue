@@ -12,7 +12,8 @@
       v-if="modelValue"
       @keydown.esc.window="close"
       class="absolute inset-0 z-40 flex items-center justify-center p-3 sm:p-5 bg-transparent overflow-hidden"
-      @click.self="close"
+      @mousedown="handleBackdropMouseDown"
+      @mouseup="handleBackdropMouseUp"
     >
       <!-- 核心浮窗玻璃卡片 (悬浮在右侧控制面板上方，四周留白，带高不透明度防护与周围柔和阴影) -->
       <div
@@ -89,6 +90,66 @@
 
         <!-- 中间可滚动区域：分层圆角卡片面板 -->
         <div class="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar text-xs font-sans">
+          <!-- 0. 动环传感与探针实时遥测卡片 -->
+          <div class="p-3.5 rounded-2xl bg-black/25 border border-white/[0.06] space-y-2.5 shadow-sm">
+            <div class="flex items-center justify-between text-zinc-300 font-medium pb-1.5 border-b border-white/[0.05]">
+              <span class="flex items-center space-x-1.5 text-rose-400">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span class="font-medium text-zinc-200">动环传感与探针实时遥测</span>
+              </span>
+              <span
+                :class="[
+                  'px-2 py-0.5 rounded-lg text-[10px] font-mono border font-medium flex items-center space-x-1',
+                  asset?.health_status === 'OFFLINE'
+                    ? 'bg-zinc-800 text-zinc-400 border-white/[0.06]'
+                    : currentTemp >= 40.0
+                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                    : currentTemp >= 38.0
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                ]"
+              >
+                <span>{{ asset?.health_status === 'OFFLINE' ? '⚪ 离线脱网' : currentTemp >= 40.0 ? '🔴 超温告警' : currentTemp >= 38.0 ? '🟡 临界预警' : '🟢 动环受控良好' }}</span>
+              </span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
+              <div class="p-2 rounded-xl bg-zinc-900/40 border border-white/[0.03] space-y-0.5">
+                <div class="text-zinc-500 text-[10px] font-sans">核心遥测温度</div>
+                <div
+                  :class="[
+                    'text-base font-bold font-mono',
+                    asset?.health_status === 'OFFLINE'
+                      ? 'text-zinc-400'
+                      : currentTemp >= 40.0
+                      ? 'text-rose-400 animate-pulse'
+                      : currentTemp >= 38.0
+                      ? 'text-amber-400'
+                      : 'text-emerald-400'
+                  ]"
+                >
+                  {{ currentTemp }} °C
+                </div>
+              </div>
+              <div class="p-2 rounded-xl bg-zinc-900/40 border border-white/[0.03] space-y-0.5">
+                <div class="text-zinc-500 text-[10px] font-sans">散热风扇转速</div>
+                <div class="text-zinc-200 font-medium truncate">{{ estimatedFanSpeed }}</div>
+              </div>
+              <div class="p-2 rounded-xl bg-zinc-900/40 border border-white/[0.03] space-y-0.5">
+                <div class="text-zinc-500 text-[10px] font-sans">实时功耗负荷</div>
+                <div class="text-cyan-400 font-medium">{{ estimatedPower }}</div>
+              </div>
+              <div class="p-2 rounded-xl bg-zinc-900/40 border border-white/[0.03] space-y-0.5">
+                <div class="text-zinc-500 text-[10px] font-sans">探针遥测模式</div>
+                <div class="text-indigo-300 font-sans truncate font-medium">
+                  {{ isCustomTelemetry ? '自定义注入' : '动环基准推导' }}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- 1. 出厂标识与网络通信卡片 -->
           <div class="p-3.5 rounded-2xl bg-black/25 border border-white/[0.06] space-y-2.5 shadow-sm">
             <div class="flex items-center justify-between text-zinc-300 font-medium pb-1.5 border-b border-white/[0.05]">
@@ -365,6 +426,45 @@ const emit = defineEmits(['update:modelValue', 'inspect', 'borrow', 'return', 'e
 
 const detail = computed(() => props.asset?.detail || null)
 
+const currentTemp = computed(() => {
+  if (!props.asset) return 31.5
+  if (props.asset.health_status === 'OFFLINE') return 22.0
+  const t =
+    props.asset.custom_temperature ??
+    props.asset.telemetry_temperature ??
+    detail.value?.custom_temperature
+  if (t !== undefined && t !== null) return Number(t)
+  if (props.asset.health_status === 'OVERHEAT') return 43.5
+  if (props.asset.health_status === 'WARNING') return 38.0
+  return 31.5
+})
+
+const isCustomTelemetry = computed(() => {
+  return (
+    props.asset?.custom_temperature !== undefined &&
+    props.asset?.custom_temperature !== null
+  ) || (
+    detail.value?.custom_temperature !== undefined &&
+    detail.value?.custom_temperature !== null
+  )
+})
+
+const estimatedFanSpeed = computed(() => {
+  if (props.asset?.health_status === 'OFFLINE') return '0 RPM (停转)'
+  const temp = currentTemp.value
+  if (temp >= 40.0) return `${Math.min(6000, Math.max(4500, Math.round(4500 + (temp - 40) * 150)))} RPM (超负荷)`
+  if (temp >= 38.0) return `${Math.round(3200 + (temp - 38) * 200)} RPM (中高转速)`
+  return `${Math.round(2000 + Math.max(0, temp - 25) * 30)} RPM (静音巡航)`
+})
+
+const estimatedPower = computed(() => {
+  if (props.asset?.health_status === 'OFFLINE') return '0 W (断电待机)'
+  const temp = currentTemp.value
+  if (temp >= 40.0) return `${Math.min(650, Math.max(400, Math.round(420 + (temp - 40) * 15)))} W`
+  if (temp >= 38.0) return `${Math.round(300 + (temp - 38) * 10)} W`
+  return `${Math.round(180 + Math.max(0, temp - 25) * 3)} W`
+})
+
 const userRole = computed(() => (props.currentUser?.role || 'STUDENT').toUpperCase())
 const isStudent = computed(() => userRole.value === 'STUDENT')
 const isAdmin = computed(() => userRole.value === 'ADMIN')
@@ -407,6 +507,19 @@ const parsedExtraParams = computed(() => {
     return null
   }
 })
+
+let isMouseDownOnBackdrop = false
+
+function handleBackdropMouseDown(e) {
+  isMouseDownOnBackdrop = (e.target === e.currentTarget)
+}
+
+function handleBackdropMouseUp(e) {
+  if (isMouseDownOnBackdrop && e.target === e.currentTarget) {
+    close()
+  }
+  isMouseDownOnBackdrop = false
+}
 
 function close() {
   emit('update:modelValue', false)

@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-3.5">
+  <div class="space-y-4 sm:space-y-4.5">
     <!-- 顶部状态栏与刷新控制 -->
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-2">
@@ -20,7 +20,7 @@
         <button
           @click="handleRunPatrol"
           :disabled="isPatrolling"
-          class="text-xs flex items-center space-x-1.5 transition-all px-3 py-1 rounded-md border font-medium active:scale-95 shadow-sm select-none"
+          class="text-xs flex items-center space-x-1.5 transition-all px-3 py-1.5 rounded-md border font-medium active:scale-95 shadow-sm select-none"
           :class="[
             isPatrolling
               ? 'bg-indigo-950/60 border-indigo-500/40 text-indigo-300 cursor-wait'
@@ -52,7 +52,7 @@
           @click="toggleTts"
           :disabled="!isTtsSupported"
           type="button"
-          class="overview-tts-btn text-xs flex items-center space-x-1.5 transition-all px-2.5 py-1 rounded-md border font-medium active:scale-95 shadow-sm select-none disabled:opacity-40 disabled:cursor-not-allowed"
+          class="overview-tts-btn text-xs flex items-center space-x-1.5 transition-all px-2.5 py-1.5 rounded-md border font-medium active:scale-95 shadow-sm select-none disabled:opacity-40 disabled:cursor-not-allowed"
           :class="[
             ttsEnabled && isTtsSupported
               ? 'tts-active bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25 shadow-amber-500/10'
@@ -72,33 +72,23 @@
           <span>{{ ttsEnabled && isTtsSupported ? '告警播报' : '静音' }}</span>
         </button>
 
-        <button
-          @click="$emit('refresh')"
-          class="text-zinc-400 hover:text-zinc-200 text-xs flex items-center space-x-1.5 transition-all px-2.5 py-1 rounded-md bg-zinc-900/90 hover:bg-zinc-800 border border-white/[0.08] hover:border-white/[0.15] active:scale-95 shadow-sm"
-          title="刷新大盘指标"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          <span>实时同步</span>
-        </button>
       </div>
     </div>
 
-    <!-- 1. 顶部 4 大核心 KPI 磁贴卡片 -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+    <!-- 1. 顶部 4 大核心 KPI 磁贴卡片 (舒展内边距与高度，更显挺拔厚重) -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <!-- KPI 1: 平均温度 -->
-      <div class="p-3.5 rounded-xl glass-card border hover:border-white/[0.22] transition-all duration-200 shadow-sm flex flex-col justify-between">
+      <div class="p-4 sm:p-4.5 rounded-xl glass-card border hover:border-white/[0.22] transition-all duration-200 shadow-sm flex flex-col justify-between">
         <div class="flex items-center justify-between text-zinc-400">
-          <span class="text-[11px] glass-text">环境均温</span>
-          <svg class="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <span class="text-xs glass-text font-medium">环境均温</span>
+          <svg class="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         </div>
-        <div class="flex items-baseline space-x-1.5 my-1.5">
+        <div class="flex items-baseline space-x-1.5 my-2">
           <span
             :class="[
-              'text-2xl font-semibold font-mono tracking-tight glass-text',
+              'text-2xl sm:text-3xl font-semibold font-mono tracking-tight glass-text',
               avgTemp > 40 ? 'text-rose-400 animate-pulse' : avgTemp > 35 ? 'text-amber-400' : 'text-zinc-100'
             ]"
           >
@@ -106,7 +96,7 @@
           </span>
           <span class="text-xs text-zinc-500 font-mono">℃</span>
         </div>
-        <div class="flex items-center justify-between text-[10px] text-zinc-500 pt-1 border-t border-white/[0.04] font-mono">
+        <div class="flex items-center justify-between text-[11px] text-zinc-500 pt-1.5 border-t border-white/[0.04] font-mono">
           <span>红线: 40℃</span>
           <span :class="avgTemp > 40 ? 'text-rose-400 font-medium' : 'text-emerald-400'">
             {{ avgTemp > 40 ? '超温触发提单' : '温控状态平稳' }}
@@ -115,59 +105,65 @@
       </div>
 
       <!-- KPI 2: 算力集群均载 -->
-      <div class="p-3.5 rounded-xl glass-card border hover:border-white/[0.22] transition-all duration-200 shadow-sm flex flex-col justify-between">
+      <div class="p-4 sm:p-4.5 rounded-xl glass-card border hover:border-white/[0.22] transition-all duration-200 shadow-sm flex flex-col justify-between">
         <div class="flex items-center justify-between text-zinc-400">
-          <span class="text-[11px] glass-text">算力集群均载</span>
-          <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <span class="text-xs glass-text font-medium">算力集群均载</span>
+          <svg class="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
           </svg>
         </div>
-        <div class="flex items-baseline space-x-1.5 my-1.5">
-          <span class="text-2xl font-semibold font-mono tracking-tight text-zinc-100 glass-text">{{ avgCpu }}</span>
+        <div class="flex items-baseline space-x-1.5 my-2">
+          <span class="text-2xl sm:text-3xl font-semibold font-mono tracking-tight text-zinc-100 glass-text">{{ avgCpu }}</span>
           <span class="text-xs text-zinc-500 font-mono">%</span>
         </div>
         <!-- 负载微型进度条 -->
-        <div class="w-full bg-zinc-800/80 rounded-full h-1.5 overflow-hidden">
-          <div
-            class="bg-cyan-400 h-1.5 rounded-full transition-all duration-500"
-            :style="{ width: `${Math.min(avgCpu, 100)}%` }"
-          ></div>
+        <div class="space-y-1 pt-1 border-t border-white/[0.04]">
+          <div class="w-full bg-zinc-800/80 rounded-full h-1.5 overflow-hidden">
+            <div
+              class="bg-cyan-400 h-1.5 rounded-full transition-all duration-500"
+              :style="{ width: `${Math.min(avgCpu, 100)}%` }"
+            ></div>
+          </div>
+          <div class="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
+            <span>实时负载率</span>
+            <span class="text-cyan-400">{{ avgCpu }}%</span>
+          </div>
         </div>
       </div>
 
       <!-- KPI 3: 实时供电动力负荷 -->
-      <div class="p-3.5 rounded-xl glass-card border hover:border-white/[0.22] transition-all duration-200 shadow-sm flex flex-col justify-between">
+      <div class="p-4 sm:p-4.5 rounded-xl glass-card border hover:border-white/[0.22] transition-all duration-200 shadow-sm flex flex-col justify-between">
         <div class="flex items-center justify-between text-zinc-400">
-          <span class="text-[11px] glass-text">供电动力负荷</span>
-          <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <span class="text-xs glass-text font-medium">供电动力负荷</span>
+          <svg class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
         </div>
-        <div class="flex items-baseline space-x-1.5 my-1.5">
-          <span class="text-2xl font-semibold font-mono tracking-tight text-zinc-100 glass-text">{{ totalPower }}</span>
+        <div class="flex items-baseline space-x-1.5 my-2">
+          <span class="text-2xl sm:text-3xl font-semibold font-mono tracking-tight text-zinc-100 glass-text">{{ totalPower }}</span>
           <span class="text-xs text-zinc-500 font-mono">W</span>
         </div>
-        <div class="flex items-center justify-between text-[10px] text-zinc-500 pt-1 border-t border-white/[0.04] font-mono">
+        <div class="flex items-center justify-between text-[11px] text-zinc-500 pt-1.5 border-t border-white/[0.04] font-mono">
           <span>额定: 4500W</span>
           <span class="text-zinc-400">{{ Math.round((totalPower / 4500) * 100) }}% 载荷</span>
         </div>
       </div>
 
       <!-- KPI 4: 设备健康率 -->
-      <div class="p-3.5 rounded-xl glass-card border hover:border-white/[0.22] transition-all duration-200 shadow-sm flex flex-col justify-between">
+      <div class="p-4 sm:p-4.5 rounded-xl glass-card border hover:border-white/[0.22] transition-all duration-200 shadow-sm flex flex-col justify-between">
         <div class="flex items-center justify-between text-zinc-400">
-          <span class="text-[11px] glass-text">设备健康率</span>
-          <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <span class="text-xs glass-text font-medium">设备健康率</span>
+          <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
           </svg>
         </div>
-        <div class="flex items-baseline space-x-1.5 my-1.5">
-          <span class="text-2xl font-semibold font-mono tracking-tight text-emerald-400 glass-text">{{ healthRate }}</span>
+        <div class="flex items-baseline space-x-1.5 my-2">
+          <span class="text-2xl sm:text-3xl font-semibold font-mono tracking-tight text-emerald-400 glass-text">{{ healthRate }}</span>
           <span class="text-xs text-zinc-500 font-mono">%</span>
         </div>
-        <div class="flex items-center justify-between text-[10px] text-zinc-500 pt-1 border-t border-white/[0.04] font-mono">
+        <div class="flex items-center justify-between text-[11px] text-zinc-500 pt-1.5 border-t border-white/[0.04] font-mono">
           <span>在册: {{ totalAssetsCount }} 台</span>
-          <span :class="alertsCount > 0 ? 'text-amber-400' : 'text-zinc-500'">
+          <span :class="alertsCount > 0 ? 'text-amber-400 font-medium' : 'text-zinc-500'">
             {{ alertsCount }} 条告警
           </span>
         </div>
@@ -176,8 +172,8 @@
 
     <!-- 2. 中层 Bento: 设备健康分布环图 (5 Cols) + 最新工单事件快照 (7 Cols) -->
     <div class="grid grid-cols-1 xl:grid-cols-12 gap-3.5">
-      <!-- 左磁贴：纯原生 SVG 设备健康度圆环分布图 (5 Cols) -->
-      <div class="donut-bento-card xl:col-span-5 rounded-xl glass-card border p-4 flex flex-col justify-between shadow-sm">
+      <!-- 左磁贴：纯原生 SVG 设备健康度圆环分布图 (5 Cols，自适应等高与舒展视效) -->
+      <div class="donut-bento-card xl:col-span-5 rounded-xl glass-card border p-4 sm:p-4.5 flex flex-col justify-between shadow-sm min-h-[290px]">
         <div class="flex items-center justify-between pb-2 border-b border-white/[0.06]">
           <div class="flex items-center space-x-2">
             <span class="p-1 rounded-md bg-zinc-900/90 border border-white/[0.08] text-emerald-400">
@@ -200,8 +196,8 @@
         </div>
 
         <!-- 纯 SVG Donut Chart (容器查询防挤压自适应布局) -->
-        <div class="donut-bento-body py-3 flex flex-col items-center justify-center gap-4">
-          <div class="relative w-28 h-28 flex items-center justify-center shrink-0">
+        <div class="donut-bento-body py-4 flex flex-col items-center justify-center gap-5">
+          <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
             <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <!-- 底环 -->
               <circle
@@ -268,38 +264,38 @@
             </svg>
             <!-- 环中心文字 -->
             <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span class="text-lg font-bold font-mono text-zinc-100">{{ totalAssetsCount }}</span>
-              <span class="text-[9px] text-zinc-500 uppercase tracking-wider">总设备数</span>
+              <span class="text-xl sm:text-2xl font-bold font-mono text-zinc-100">{{ totalAssetsCount }}</span>
+              <span class="text-[10px] text-zinc-500 uppercase tracking-wider font-medium">总设备数</span>
             </div>
           </div>
 
           <!-- 图例清单：自适应网格与防折字强制声明，坚决杜绝单个汉字竖排 -->
-          <div class="donut-bento-legend grid grid-cols-2 gap-2 text-xs w-full max-w-[260px]">
-            <div class="flex items-center justify-between text-zinc-300 gap-3">
+          <div class="donut-bento-legend grid grid-cols-2 gap-2.5 text-xs w-full max-w-[260px]">
+            <div class="flex items-center justify-between text-zinc-300 gap-3 py-0.5">
               <span class="flex items-center space-x-1.5 whitespace-nowrap shrink-0">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
-                <span class="whitespace-nowrap shrink-0">正常运行</span>
+                <span class="whitespace-nowrap shrink-0 font-medium">正常运行</span>
               </span>
               <span class="font-mono text-[11px] text-zinc-400 whitespace-nowrap shrink-0">{{ healthyCount }} ({{ chartData.healthyPct }}%)</span>
             </div>
-            <div class="flex items-center justify-between text-zinc-300 gap-3">
+            <div class="flex items-center justify-between text-zinc-300 gap-3 py-0.5">
               <span class="flex items-center space-x-1.5 whitespace-nowrap shrink-0">
                 <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
-                <span class="whitespace-nowrap shrink-0">异常预警</span>
+                <span class="whitespace-nowrap shrink-0 font-medium">异常预警</span>
               </span>
               <span class="font-mono text-[11px] text-zinc-400 whitespace-nowrap shrink-0">{{ warningCount }} ({{ chartData.warningPct }}%)</span>
             </div>
-            <div class="flex items-center justify-between text-zinc-300 gap-3">
+            <div class="flex items-center justify-between text-zinc-300 gap-3 py-0.5">
               <span class="flex items-center space-x-1.5 whitespace-nowrap shrink-0">
                 <span class="w-2 h-2 rounded-full bg-rose-400 shrink-0"></span>
-                <span class="whitespace-nowrap shrink-0">超温高温</span>
+                <span class="whitespace-nowrap shrink-0 font-medium">超温高温</span>
               </span>
               <span class="font-mono text-[11px] text-rose-400 whitespace-nowrap shrink-0">{{ overheatCount }} ({{ chartData.overheatPct }}%)</span>
             </div>
-            <div class="flex items-center justify-between text-zinc-300 gap-3">
+            <div class="flex items-center justify-between text-zinc-300 gap-3 py-0.5">
               <span class="flex items-center space-x-1.5 whitespace-nowrap shrink-0">
                 <span class="w-2 h-2 rounded-full bg-zinc-500 shrink-0"></span>
-                <span class="whitespace-nowrap shrink-0">脱网离线</span>
+                <span class="whitespace-nowrap shrink-0 font-medium">脱网离线</span>
               </span>
               <span class="font-mono text-[11px] text-zinc-500 whitespace-nowrap shrink-0">{{ offlineCount }} ({{ chartData.offlinePct }}%)</span>
             </div>
@@ -312,8 +308,8 @@
         </div>
       </div>
 
-      <!-- 右磁贴：最新运维工单与事件流快照 (7 Cols) -->
-      <div class="xl:col-span-7 rounded-xl glass-card border p-4 flex flex-col justify-between shadow-sm">
+      <!-- 右磁贴：最新运维工单与事件流快照 (7 Cols，展示 5 条工单，自适应舒展) -->
+      <div class="xl:col-span-7 rounded-xl glass-card border p-4 sm:p-4.5 flex flex-col justify-between shadow-sm min-h-[290px]">
         <div class="flex items-center justify-between pb-2 border-b border-white/[0.06]">
           <div class="flex items-center space-x-2">
             <span class="p-1 rounded-md bg-zinc-900/90 border border-white/[0.08] text-amber-400">
@@ -323,7 +319,7 @@
             </span>
             <span class="text-xs font-medium text-zinc-200 glass-text">最新工单事件快照流</span>
             <span class="px-2 py-0.5 rounded-md bg-zinc-900/80 border border-white/[0.06] text-[10px] text-zinc-400 font-mono">
-              待处理 {{ pendingTicketsCount }}
+              在办 {{ pendingTicketsCount }}
             </span>
           </div>
 
@@ -338,9 +334,9 @@
           </button>
         </div>
 
-        <!-- 工单快照列表 -->
-        <div class="py-2 space-y-2 flex-1 overflow-y-auto max-h-52">
-          <div v-if="recentTickets.length === 0" class="py-8 text-center text-zinc-500 text-xs">
+        <!-- 工单快照列表 (舒适展开高度) -->
+        <div class="py-2.5 space-y-2.5 flex-1 overflow-y-auto max-h-60 sm:max-h-64">
+          <div v-if="recentTickets.length === 0" class="py-10 text-center text-zinc-500 text-xs">
             暂无历史工单流转记录
           </div>
           <div
@@ -348,7 +344,7 @@
             :key="ticket.id"
             @click="handleTicketClick(ticket.ticket_no)"
             :class="[
-              'p-2.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between text-xs',
+              'p-3 rounded-lg border transition-all cursor-pointer flex items-center justify-between text-xs',
               ticket.ticket_no === highlightedTicketNo
                 ? 'bg-amber-950/30 border-amber-500/40 ring-1 ring-amber-500/30 animate-pulse-ticket font-medium text-amber-200'
                 : 'glass-card-sub hover:bg-white/[0.08] border-white/[0.06] hover:border-white/[0.14]'
@@ -383,111 +379,100 @@
       </div>
     </div>
 
-    <!-- 3. 下层 Bento: 重点感知节点硬件探针 (8 Cols) + 高频运维快捷通道 (4 Cols) -->
-    <div class="grid grid-cols-1 xl:grid-cols-12 gap-3.5">
-      <!-- 硬件探针节点 (8 Cols) -->
-      <div class="xl:col-span-8 rounded-xl glass-card border p-4 space-y-3 shadow-sm">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2">
-            <span class="p-1 rounded-md bg-zinc-900/90 border border-white/[0.08] text-cyan-400">
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
-              </svg>
-            </span>
-            <span class="text-xs font-medium text-zinc-200 glass-text">核心算力与通信节点探针</span>
-          </div>
+    <!-- 3. 下层 Bento: 核心算力与通信节点探针 (全宽 12 列 3×2 完美对称矩阵，深度饱满遥测卡片) -->
+    <div class="rounded-xl glass-card border p-4 sm:p-5 space-y-3.5 shadow-sm">
+      <div class="flex items-center justify-between pb-1 border-b border-white/[0.04]">
+        <div class="flex items-center space-x-2">
+          <span class="p-1 rounded-md bg-zinc-900/90 border border-white/[0.08] text-cyan-400">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+            </svg>
+          </span>
+          <span class="text-xs sm:text-sm font-medium text-zinc-200 glass-text">核心算力与通信节点探针</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-mono hidden sm:inline">
+            3×2 动环孪生矩阵
+          </span>
         </div>
+        <span class="text-[11px] text-zinc-500 font-mono">共 {{ nodes.length }} 个重点监测节点</span>
+      </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <div
-            v-for="node in nodes"
-            :key="node.device_id"
-            @click="$emit('inspectDevice', node.device_id)"
-            class="p-3 rounded-lg glass-card-sub hover:bg-white/[0.08] border border-white/[0.06] hover:border-cyan-500/30 cursor-pointer transition-all space-y-2 group shadow-sm"
-          >
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <div
+          v-for="node in nodes"
+          :key="node.device_id"
+          @click="$emit('inspectDevice', node.device_id)"
+          class="p-3.5 sm:p-4 rounded-xl glass-card-sub hover:bg-white/[0.08] border border-white/[0.06] hover:border-cyan-500/30 cursor-pointer transition-all space-y-3 group shadow-sm flex flex-col justify-between"
+        >
+          <!-- 卡片头部：设备编号、健康状态、槽位/位置 -->
+          <div class="space-y-1">
             <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-1.5">
-                <span class="font-mono text-xs font-medium text-zinc-200 group-hover:text-cyan-400 transition-colors">
+              <div class="flex items-center space-x-2">
+                <span class="font-mono text-xs sm:text-sm font-semibold text-zinc-200 group-hover:text-cyan-400 transition-colors">
                   {{ node.device_id }}
                 </span>
-                <span :class="['px-1.5 py-0.5 rounded text-[9px] font-mono', statusBadgeClass(node.health_status)]">
+                <span :class="['px-2 py-0.5 rounded text-[10px] font-mono', statusBadgeClass(node.health_status)]">
                   {{ node.health_status }}
                 </span>
               </div>
-              <span class="text-[10px] text-zinc-500 truncate max-w-[120px] font-mono">{{ node.location }}</span>
-            </div>
-
-            <div class="flex items-center justify-between text-[11px] font-mono text-zinc-400">
-              <span>
-                温度:
-                <strong :class="node.temperature > 40 ? 'text-rose-400 font-medium' : node.temperature > 35 ? 'text-amber-400 font-medium' : 'text-emerald-400 font-medium'">
-                  {{ node.temperature }}℃
-                </strong>
+              <span class="text-[10px] text-zinc-400 truncate max-w-[130px] font-mono px-2 py-0.5 rounded bg-zinc-900/60 border border-white/[0.04]">
+                {{ node.location }}
               </span>
-              <span>CPU: {{ node.cpu_usage }}%</span>
-              <span>风扇: {{ node.fan_speed_rpm }} RPM</span>
+            </div>
+            <!-- 设备名称微标 (如提供) -->
+            <p v-if="node.device_name" class="text-xs text-zinc-400 truncate font-sans">
+              {{ node.device_name }}
+            </p>
+          </div>
+
+          <!-- 核心遥测 4 维微型指标矩阵 (温度、CPU、风扇、功耗) -->
+          <div class="grid grid-cols-2 gap-2 pt-2.5 border-t border-white/[0.04]">
+            <!-- 指标 1: 核心温度 -->
+            <div class="p-2 rounded-lg bg-zinc-900/40 border border-white/[0.03] space-y-1">
+              <div class="flex items-center justify-between text-[10px] text-zinc-500">
+                <span>核心温度</span>
+                <span class="w-1.5 h-1.5 rounded-full" :class="node.temperature > 40 ? 'bg-rose-400 animate-ping' : node.temperature > 35 ? 'bg-amber-400' : 'bg-emerald-400'"></span>
+              </div>
+              <div class="flex items-baseline space-x-1">
+                <span
+                  class="font-mono text-xs sm:text-sm font-bold"
+                  :class="node.temperature > 40 ? 'text-rose-400 animate-pulse' : node.temperature > 35 ? 'text-amber-400' : 'text-emerald-400'"
+                >
+                  {{ node.temperature }}
+                </span>
+                <span class="text-[10px] text-zinc-500 font-mono">℃</span>
+              </div>
+            </div>
+
+            <!-- 指标 2: 算力负载 CPU -->
+            <div class="p-2 rounded-lg bg-zinc-900/40 border border-white/[0.03] space-y-1">
+              <div class="flex items-center justify-between text-[10px] text-zinc-500">
+                <span>CPU 负载</span>
+                <span class="font-mono text-cyan-400 text-[10px]">{{ node.cpu_usage }}%</span>
+              </div>
+              <div class="w-full bg-zinc-800/80 rounded-full h-1 overflow-hidden mt-1">
+                <div
+                  class="bg-cyan-400 h-1 rounded-full transition-all duration-500"
+                  :style="{ width: `${Math.min(node.cpu_usage, 100)}%` }"
+                ></div>
+              </div>
+            </div>
+
+            <!-- 指标 3: 散热风扇转速 -->
+            <div class="p-2 rounded-lg bg-zinc-900/40 border border-white/[0.03] space-y-1">
+              <div class="text-[10px] text-zinc-500">散热风扇</div>
+              <div class="font-mono text-xs sm:text-sm font-semibold text-zinc-300">
+                {{ node.fan_speed_rpm }} <span class="text-[9px] text-zinc-500 font-normal">RPM</span>
+              </div>
+            </div>
+
+            <!-- 指标 4: 实时功耗动力 -->
+            <div class="p-2 rounded-lg bg-zinc-900/40 border border-white/[0.03] space-y-1">
+              <div class="text-[10px] text-zinc-500">实时功耗</div>
+              <div class="font-mono text-xs sm:text-sm font-semibold text-zinc-300">
+                {{ node.power_watts || (node.temperature > 40 ? 450 : 210) }} <span class="text-[9px] text-zinc-500 font-normal">W</span>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- 快捷运维通道 (4 Cols) -->
-      <div class="xl:col-span-4 rounded-xl glass-card border p-4 flex flex-col justify-between space-y-3 shadow-sm">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2">
-            <span class="p-1 rounded-md bg-zinc-900/90 border border-white/[0.08] text-indigo-400">
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </span>
-            <span class="text-xs font-medium text-zinc-200 glass-text">快捷运维入口</span>
-          </div>
-        </div>
-
-        <div class="space-y-2 flex-1 flex flex-col justify-center">
-          <button
-            @click="$emit('quickAction', '一键巡检当前机房全部资产设备，若存在超温或警告请自动提单')"
-            class="w-full text-left p-2.5 rounded-lg glass-card-sub hover:bg-emerald-500/10 border border-white/[0.06] hover:border-emerald-500/30 transition-all text-xs text-zinc-300 hover:text-white flex items-center justify-between group active:scale-95 shadow-sm"
-          >
-            <div class="flex items-center space-x-2">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              <span class="font-medium">一键全盘健康巡检</span>
-            </div>
-            <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:text-emerald-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
-
-          <button
-            @click="$emit('quickAction', '查询当前处于 WARNING 或 OVERHEAT 异常状态的硬件，并根据机房规范输出处置建议')"
-            class="w-full text-left p-2.5 rounded-lg glass-card-sub hover:bg-amber-500/10 border border-white/[0.06] hover:border-amber-500/30 transition-all text-xs text-zinc-300 hover:text-white flex items-center justify-between group active:scale-95 shadow-sm"
-          >
-            <div class="flex items-center space-x-2">
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-              <span class="font-medium">排查告警与超温节点</span>
-            </div>
-            <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:text-amber-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
-
-          <button
-            @click="$emit('quickAction', '检索机房用电安全和机柜额定功耗限制规范，说明红线阈值')"
-            class="w-full text-left p-2.5 rounded-lg glass-card-sub hover:bg-indigo-500/10 border border-white/[0.06] hover:border-indigo-500/30 transition-all text-xs text-zinc-300 hover:text-white flex items-center justify-between group active:scale-95 shadow-sm"
-          >
-            <div class="flex items-center space-x-2">
-              <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-              <span class="font-medium">溯源检索用电与功耗规章</span>
-            </div>
-            <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:text-indigo-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
-        </div>
-
-        <div class="pt-2 border-t border-white/[0.04] text-[10px] text-zinc-500 flex items-center justify-between">
-          <span>点击即可直接由智能管家执行</span>
-          <span class="text-emerald-400">Ready</span>
         </div>
       </div>
     </div>
@@ -637,9 +622,9 @@ const chartData = computed(() => {
   }
 })
 
-// 3. 最新工单快照
-const recentTickets = computed(() => props.tickets.slice(0, 4))
-const pendingTicketsCount = computed(() => props.tickets.filter((t) => t.status === 'PENDING').length)
+// 3. 最新工单快照 (统计未归档的在办工单数)
+const recentTickets = computed(() => props.tickets.slice(0, 5))
+const pendingTicketsCount = computed(() => props.tickets.filter((t) => t.status !== 'CLOSED').length)
 
 function handleTicketClick(ticketNo) {
   emit('switchTab', 'tickets')
