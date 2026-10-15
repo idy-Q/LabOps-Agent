@@ -499,3 +499,93 @@ def test_update_regulation_validation_edges(client: TestClient):
     )
     assert resp_extra.status_code == 422
 
+
+def test_regulation_permissions_teacher_and_student_forbidden(client: TestClient):
+    """测试普通教师与学生角色无权录入、编辑或废止规章规程，严格拦截 403 Forbidden"""
+    create_payload = {
+        "title": "非法测试规程-非管理员不可创建",
+        "category": "用电规范",
+        "effective_date": "2026-10-13",
+        "content": "## 第一条 违规越权测试\n1. 普通教师与学生角色无权录入新规程条文。",
+    }
+
+    # 1. 教师角色尝试创建规程 -> 403
+    resp_t_create = client.post(
+        "/api/regulations",
+        params={"operator_role": "TEACHER", "operator": "李老师"},
+        json=create_payload,
+    )
+    assert resp_t_create.status_code == 403
+    assert "仅限系统超级管理员" in resp_t_create.json()["detail"]
+
+    # 2. 学生角色通过 Header 尝试创建规程 -> 403
+    resp_s_create = client.post(
+        "/api/regulations",
+        headers={"X-User-Role": "STUDENT"},
+        json=create_payload,
+    )
+    assert resp_s_create.status_code == 403
+    assert "仅限系统超级管理员" in resp_s_create.json()["detail"]
+
+    # 3. 教师角色尝试更新已有规程 -> 403
+    resp_t_update = client.put(
+        "/api/regulations/DOC-RAG-001",
+        params={"operator_role": "TEACHER", "operator": "李老师"},
+        json={"title": "教师越权修改标题"},
+    )
+    assert resp_t_update.status_code == 403
+    assert "仅限系统超级管理员" in resp_t_update.json()["detail"]
+
+    # 4. 学生角色尝试废止规程 -> 403
+    resp_s_delete = client.delete(
+        "/api/regulations/DOC-RAG-001",
+        params={"operator_role": "STUDENT", "operator": "张同学"},
+    )
+    assert resp_s_delete.status_code == 403
+    assert "仅限系统超级管理员" in resp_s_delete.json()["detail"]
+
+    # 5. 教师角色通过 Header 尝试废止规程 -> 403
+    resp_t_delete = client.delete(
+        "/api/regulations/DOC-RAG-001",
+        headers={"X-User-Role": "TEACHER"},
+    )
+    assert resp_t_delete.status_code == 403
+    assert "仅限系统超级管理员" in resp_t_delete.json()["detail"]
+
+
+def test_regulation_permissions_admin_allowed(client: TestClient):
+    """测试系统超级管理员 (ADMIN) 角色具备完整的录入、编辑与废止权限"""
+    create_payload = {
+        "title": "管理员安全规程闭环测试",
+        "category": "用电规范",
+        "effective_date": "2026-10-13",
+        "content": "## 第一条 管理员权限测试条款\n1. 管理员有权执行规程全生命周期操作。",
+    }
+
+    # 1. 管理员创建规程 -> 201
+    resp_create = client.post(
+        "/api/regulations",
+        params={"operator_role": "ADMIN", "operator": "系统管理员"},
+        json=create_payload,
+    )
+    assert resp_create.status_code == 201
+    doc_id = resp_create.json()["doc_id"]
+
+    # 2. 管理员更新规程 -> 200
+    resp_update = client.put(
+        f"/api/regulations/{doc_id}",
+        params={"operator_role": "ADMIN", "operator": "系统管理员"},
+        json={"title": "管理员安全规程闭环测试-已修改"},
+    )
+    assert resp_update.status_code == 200
+    assert resp_update.json()["title"] == "管理员安全规程闭环测试-已修改"
+
+    # 3. 管理员废止规程 -> 200
+    resp_del = client.delete(
+        f"/api/regulations/{doc_id}",
+        params={"operator_role": "ADMIN", "operator": "系统管理员"},
+    )
+    assert resp_del.status_code == 200
+    assert "已成功废止" in resp_del.json()["message"]
+
+

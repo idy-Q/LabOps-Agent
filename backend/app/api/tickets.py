@@ -1,5 +1,4 @@
-"""运维工单 RESTful API 路由"""
-
+import json
 import uuid
 from datetime import datetime
 from typing import List, Optional
@@ -9,7 +8,7 @@ from sqlalchemy import desc, or_, func
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import get_db
-from app.db.models import Ticket, TicketWorkflow, AuditLog, User
+from app.db.models import Ticket, TicketWorkflow, AuditLog, User, Asset, AssetDetail
 from app.schemas.ticket import (
     TicketCreate,
     TicketUpdate,
@@ -416,6 +415,76 @@ def update_ticket(
             comment=cm,
         )
         db.add(wf)
+
+        # 核心闭环联动：工单已解决或已结单时，调用语义解析器提炼用户实测温控参数（如 26℃、二十三度）与 AI 验收复核
+        effective_device_id = update_data.get("device_id") or ticket.device_id
+        if new_status in ("RESOLVED", "CLOSED") and effective_device_id:
+            device = (
+                db.query(Asset)
+                .filter(Asset.asset_no == effective_device_id)
+                .first()
+            )
+            if device:
+                from app.services.ticket_comment_analyzer import (
+                    analyze_ticket_resolution_comment,
+                    extract_temperature_from_text,
+                )
+
+                # 上下文感知：若本次办结说明 cm 未提及具体温度，自动向上回溯本工单先前的流转记录（如受理节点录入的实测说明）
+                context_comment = cm or ""
+                if extract_temperature_from_text(context_comment) is None:
+                    past_wfs = (
+                        db.query(TicketWorkflow)
+                        .filter(TicketWorkflow.ticket_id == ticket.ticket_no)
+                        .order_by(TicketWorkflow.id.desc())
+                        .all()
+                    )
+                    for pw in past_wfs:
+                        if pw.comment and extract_temperature_from_text(pw.comment) is not None:
+                            context_comment = f"{context_comment}\n{pw.comment}"
+                            break
+
+                analysis = analyze_ticket_resolution_comment(
+                    comment=context_comment,
+                    current_device_temp=device.custom_temperature,
+                    default_baseline_temp=31.5,
+                )
+                resolved_temp = analysis["effective_temperature"]
+
+                # 物理温度客观回写：不论是否还有其他在办工单，本工单实测降温数据必须客观回写至在架设备台账
+                if device.detail:
+                    device.detail.custom_temperature = resolved_temp
+                    if device.detail.extra_params:
+                        try:
+                            ep = json.loads(device.detail.extra_params)
+                            ep["custom_temperature"] = resolved_temp
+                            if "temperature" in ep:
+                                ep["temperature"] = resolved_temp
+                            device.detail.extra_params = json.dumps(ep, ensure_ascii=False)
+                        except Exception:
+                            pass
+                else:
+                    device_detail = AssetDetail(asset_id=device.id, custom_temperature=resolved_temp)
+                    db.add(device_detail)
+
+                # 健康状态研判：若实测温度已降至安全阈值以下 (< 38℃)，设备健康状态自洽恢复为 HEALTHY
+                other_active_tickets = (
+                    db.query(Ticket)
+                    .filter(
+                        Ticket.device_id == effective_device_id,
+                        Ticket.id != ticket.id,
+                        Ticket.status.in_(["PENDING", "PROCESSING"]),
+                    )
+                    .count()
+                )
+                if other_active_tickets == 0 or resolved_temp < 38.0:
+                    device.health_status = analysis["evaluated_health"]
+
+                    # 将 AI 验收审计小结追加到本次工作流说明中
+                    if cm:
+                        wf.comment = f"{cm}\n{analysis['audit_note']}"
+                    else:
+                        wf.comment = analysis['audit_note']
 
     for field, value in update_data.items():
         setattr(ticket, field, value)

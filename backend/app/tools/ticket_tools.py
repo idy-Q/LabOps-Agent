@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, or_
 
-from app.db.models import Ticket, TicketWorkflow
+from app.db.models import Ticket, TicketWorkflow, Asset, AssetDetail
 from app.tools.registry import tool
 
 VALID_PRIORITIES = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
@@ -205,11 +205,12 @@ def query_tickets(
             active_db.close()
 
 
-@tool(name="update_ticket_status", description="更新指定工单的流转状态（如由 PENDING 推进至 PROCESSING、RESOLVED 或 CLOSED 办结归档），并可追加排查处置记录")
+@tool(name="update_ticket_status", description="更新指定工单的流转状态（如由 PENDING 推进至 PROCESSING、RESOLVED 或 CLOSED 办结归档），并可追加排查处置记录，当工单解决/办结时可同步回写实测温度并解除关联设备告警")
 def update_ticket_status(
     ticket_no: str,
     status: str,
     description_append: Optional[str] = None,
+    resolved_temperature: Optional[float] = None,
     operator: Optional[str] = None,
     db: Optional[Session] = None,
 ) -> Dict[str, Any]:
@@ -218,6 +219,7 @@ def update_ticket_status(
     :param ticket_no: 目标工单编号，如 TK-20260901-001
     :param status: 目标状态 (PENDING, PROCESSING, RESOLVED, CLOSED)
     :param description_append: 追加的处置过程或排查说明
+    :param resolved_temperature: 解决/办结时的设备实测温度（可选，如 26.0）
     :param operator: 流转处置人或智能体标识，缺省为 'LabOps-Agent'
     :param db: 数据库会话 (由系统自动注入)
     :return: 更新后的工单信息
@@ -253,14 +255,52 @@ def update_ticket_status(
         if description_append and description_append.strip():
             ticket.description = f"{ticket.description}\n[追加处置]: {description_append.strip()}"
 
-        if old_status != norm_status:
+        device_msg = ""
+        analysis = None
+
+        # 核心闭环：工单解决或结单时，调用语义分析器提取实测温度并联动解除关联设备告警
+        if norm_status in ("RESOLVED", "CLOSED") and ticket.device_id:
+            from app.services.ticket_comment_analyzer import analyze_ticket_resolution_comment
+            import json
+
+            device = active_db.query(Asset).filter(Asset.asset_no == ticket.device_id).first()
+            if device:
+                analysis = analyze_ticket_resolution_comment(
+                    comment=description_append,
+                    current_device_temp=device.custom_temperature,
+                    default_baseline_temp=31.5,
+                )
+                final_temp = resolved_temperature if resolved_temperature is not None else analysis["effective_temperature"]
+                device.health_status = analysis["evaluated_health"]
+                if device.detail:
+                    device.detail.custom_temperature = final_temp
+                    if device.detail.extra_params:
+                        try:
+                            ep = json.loads(device.detail.extra_params)
+                            ep["custom_temperature"] = final_temp
+                            if "temperature" in ep:
+                                ep["temperature"] = final_temp
+                            device.detail.extra_params = json.dumps(ep, ensure_ascii=False)
+                        except Exception:
+                            pass
+                else:
+                    device_detail = AssetDetail(asset_id=device.id, custom_temperature=final_temp)
+                    active_db.add(device_detail)
+
+                device_msg = f"，关联设备 {device.asset_no} 实测温度已联动校准为 {final_temp}℃ 并恢复健康"
+
+        if old_status != norm_status or description_append:
             clean_op = (operator or "").strip() or "LabOps-Agent"
+            comment_text = description_append.strip() if (description_append and description_append.strip()) else f"Agent 自动流转工单状态: {old_status} -> {norm_status}"
+            if analysis and "audit_note" in analysis:
+                comment_text = f"{comment_text}\n{analysis['audit_note']}"
+
             wf = TicketWorkflow(
                 ticket_id=ticket.ticket_no,
                 previous_status=old_status,
                 next_status=norm_status,
                 operator=clean_op,
-                comment=description_append.strip() if (description_append and description_append.strip()) else f"Agent 自动流转工单状态: {old_status} -> {norm_status}",
+                comment=comment_text,
             )
             active_db.add(wf)
 
@@ -273,7 +313,7 @@ def update_ticket_status(
 
         return {
             "status": "success",
-            "message": f"工单 {clean_ticket_no} 状态已更新为 {norm_status}",
+            "message": f"工单 {clean_ticket_no} 状态已更新为 {norm_status}{device_msg}",
             "ticket": {
                 "id": ticket.id,
                 "ticket_no": ticket.ticket_no,

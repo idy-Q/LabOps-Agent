@@ -16,6 +16,14 @@
       </div>
 
       <div class="flex items-center space-x-2">
+        <!-- 巡检异常非阻塞提示条 -->
+        <span
+          v-if="patrolError"
+          class="text-[11px] font-sans text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded-md"
+        >
+          {{ patrolError }}
+        </span>
+
         <!-- 发起全网自治体检 (雷达扫描动效按钮) -->
         <button
           @click="handleRunPatrol"
@@ -529,33 +537,42 @@ function toggleTts() {
 }
 
 const isPatrolling = ref(false)
+const patrolError = ref('')
 
 async function handleRunPatrol() {
   if (isPatrolling.value) return
   isPatrolling.value = true
+  patrolError.value = ''
   try {
     const res = await api.runAutonomousPatrol()
     if (res && res.status === 'success' && res.data) {
       emit('patrolCompleted', res.data)
       emit('refresh')
     } else {
-      alert(`发起全网自治体检未成功: ${res?.message || '未知异常'}`)
+      console.warn('发起全网自治体检未成功:', res?.message)
+      patrolError.value = res?.message || '发起全网自治体检未成功'
+      setTimeout(() => {
+        patrolError.value = ''
+      }, 4000)
     }
   } catch (err) {
     console.error('发起全网自治体检失败:', err)
-    alert(`发起全网自治体检失败: ${err.message || '网络连接或后端异常'}`)
+    patrolError.value = err.message || '网络连接或后端异常'
+    setTimeout(() => {
+      patrolError.value = ''
+    }, 4000)
   } finally {
     isPatrolling.value = false
   }
 }
 
-// 1. 指标计算
+// 1. 指标计算 (使用空值合并操作符 ?? 防止合法 0 值被误覆写为默认假值)
 const overview = computed(() => props.metrics?.overview || {})
-const avgTemp = computed(() => overview.value.avg_temperature || 24.5)
-const avgCpu = computed(() => overview.value.avg_cpu_load || 35.0)
-const totalPower = computed(() => overview.value.total_power_watts || 1200)
-const healthRate = computed(() => overview.value.system_health_rate || 100)
-const alertsCount = computed(() => overview.value.active_alerts_count || 0)
+const avgTemp = computed(() => overview.value.avg_temperature ?? 24.5)
+const avgCpu = computed(() => overview.value.avg_cpu_load ?? 35.0)
+const totalPower = computed(() => overview.value.total_power_watts ?? 1200)
+const healthRate = computed(() => overview.value.system_health_rate ?? 100)
+const alertsCount = computed(() => overview.value.active_alerts_count ?? 0)
 const nodes = computed(() => props.metrics?.nodes || [])
 
 // 2. 资产统计与 Donut Chart

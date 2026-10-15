@@ -13,7 +13,7 @@
         v-if="modelValue"
         @keydown.esc.window="close"
         class="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm overflow-hidden select-none"
-        @click.self="close"
+        v-backdrop-dismiss="close"
       >
         <!-- 右侧滑出抽屉面板 (Timeline Drawer) -->
         <Transition
@@ -431,6 +431,14 @@
                 ]"
               />
 
+              <!-- 操作失败非阻塞警告条 -->
+              <div
+                v-if="actionError"
+                class="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-mono"
+              >
+                {{ actionError }}
+              </div>
+
               <!-- 状态推进按钮组 -->
               <div class="flex items-center justify-end space-x-2">
                 <!-- 待处理工单：受理 -->
@@ -527,6 +535,7 @@ const emit = defineEmits(['update:modelValue', 'ticketUpdated', 'userUpdated'])
 const loading = ref(false)
 const submitting = ref(false)
 const error = ref('')
+const actionError = ref('')
 const ticketData = ref(null)
 const assetData = ref(null)
 const timelineNodes = ref([])
@@ -639,6 +648,7 @@ function handleQuickEnter() {
 async function submitQuickStatus(newStatus) {
   if (!ticketData.value || submitting.value) return
   submitting.value = true
+  actionError.value = ''
   try {
     const operator = props.currentUser?.real_name || props.currentUser?.username || '系统管理员'
     await api.updateTicket(ticketData.value.id, {
@@ -650,7 +660,11 @@ async function submitQuickStatus(newStatus) {
     await fetchTimelineData()
     emit('ticketUpdated')
   } catch (err) {
-    alert(`流转状态更新失败: ${err.message}`)
+    console.error('流转状态更新失败:', err)
+    actionError.value = err.message || '流转状态更新失败'
+    setTimeout(() => {
+      actionError.value = ''
+    }, 5000)
   } finally {
     submitting.value = false
   }

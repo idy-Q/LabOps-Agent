@@ -9,7 +9,7 @@
       tabindex="0"
       class="role-trigger-badge flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all duration-200 cursor-pointer shadow-xs active:scale-95 group focus:outline-none"
       :class="triggerClass"
-      :title="`当前身份：${roleConfig.title}。点击或悬停查看权限说明与推荐提示词`"
+      :title="`当前身份：${roleConfig.title}。点击查看权限指引`"
     >
       <!-- 角色矢量图标 -->
       <span class="shrink-0 flex items-center justify-center">
@@ -36,7 +36,7 @@
       <span
         class="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[10px] font-bold border transition-transform duration-200 group-hover:scale-110 ml-0.5"
         :class="helpIconClass"
-        title="点击展开权限与提示词说明"
+        title="点击展开角色权限说明"
       >
         ?
       </span>
@@ -97,16 +97,16 @@
         </div>
 
         <!-- 权限说明区：允许 vs 受限 -->
-        <div class="space-y-2.5 mb-3">
+        <div class="space-y-3">
           <!-- 允许操作 -->
           <div>
-            <div class="flex items-center space-x-1.5 font-medium text-emerald-400 text-[11px] mb-1">
+            <div class="flex items-center space-x-1.5 font-medium text-emerald-400 text-[11px] mb-1.5">
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
               </svg>
               <span>允许执行的操作</span>
             </div>
-            <ul class="space-y-1 pl-5 text-[11px] text-zinc-300 popover-list-item">
+            <ul class="space-y-1.5 pl-5 text-[11px] text-zinc-300 popover-list-item">
               <li v-for="(item, idx) in roleConfig.allowed" :key="idx" class="list-disc leading-relaxed">
                 {{ item }}
               </li>
@@ -115,41 +115,26 @@
 
           <!-- 受限边界 / 拦截禁区 -->
           <div v-if="roleConfig.restricted && roleConfig.restricted.length > 0">
-            <div class="flex items-center space-x-1.5 font-medium text-amber-400 text-[11px] mb-1">
+            <div class="flex items-center space-x-1.5 font-medium text-amber-400 text-[11px] mb-1.5">
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <span>权限受限边界 (触发将拦截提醒)</span>
+              <span>受限操作边界 (系统将自动拦截)</span>
             </div>
-            <ul class="space-y-1 pl-5 text-[11px] text-zinc-400 popover-list-restricted">
+            <ul class="space-y-1.5 pl-5 text-[11px] text-zinc-400 popover-list-restricted">
               <li v-for="(item, idx) in roleConfig.restricted" :key="idx" class="list-disc leading-relaxed">
                 {{ item }}
               </li>
             </ul>
           </div>
-        </div>
-
-        <!-- 快捷提示词指引 (点击直接填入输入框) -->
-        <div class="pt-2.5 border-t border-inherit/20">
-          <div class="text-[11px] font-medium text-zinc-300 popover-text-title mb-1.5 flex items-center justify-between">
-            <span class="flex items-center gap-1">
-              <span>💡 推荐常用提示词 (点击填入)</span>
-            </span>
-            <span class="text-[10px] text-zinc-500">点选即用</span>
-          </div>
-          <div class="space-y-1.5">
-            <button
-              v-for="(prompt, pIdx) in roleConfig.prompts"
-              :key="pIdx"
-              type="button"
-              @click.stop="handleSelectPrompt(prompt)"
-              class="w-full text-left px-2.5 py-1.5 rounded-lg border text-[11px] transition-all flex items-center justify-between group active:scale-[0.99]"
-              :class="promptButtonClass"
-              :title="`填入提示词: ${prompt}`"
-            >
-              <span class="truncate pr-2 font-mono text-[10.5px]">{{ prompt }}</span>
-              <span class="text-[10px] opacity-60 group-hover:opacity-100 text-indigo-400 shrink-0 font-sans">填入 ↵</span>
-            </button>
+          <div
+            v-else
+            class="p-2.5 rounded-lg border bg-emerald-500/10 border-emerald-500/20 text-emerald-400 text-[11px] flex items-center space-x-2"
+          >
+            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span>系统超级管理员拥有全栈最高管辖权，无任何操作受限边界</span>
           </div>
         </div>
       </div>
@@ -172,8 +157,6 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['fill-prompt'])
-
 const isOpen = ref(false)
 const popoverContainerRef = ref(null)
 let closeTimer = null
@@ -184,58 +167,46 @@ const ROLE_PERMISSIONS = {
   STUDENT: {
     title: '学生身份',
     allowed: [
-      '感知机房环境指标与各服务器温度、CPU实时负载',
-      '超温（>40℃）告警或脱网故障自动触发报修工单',
-      '检索机房用电防火管理规章、应急处置与借调规范',
-      '只读查询全部工单进展、待办清单与排查日志',
+      '实时查看机房环境大盘、机柜拓扑及各服务器温度与负载监控',
+      '在设备发生超温或离线告警时，向 AI 运维管家发起故障报修工单',
+      '查阅机房用电安全条例、应急处置预案与日常巡检规程',
+      '只读追踪工单流转进展、处理说明与故障排查记录',
     ],
     restricted: [
-      '禁止直接借调机房服务器或固定设备（需指导教师代办）',
-      '禁止修改运维工单流转状态（如认领或办结归档）',
-      '禁止手动改写硬件健康等级台账或删除添加设备',
-    ],
-    prompts: [
-      '查询 DEV-SRV-201 的实时监控指标，若异常请自动提单',
-      '查一下机房用电安全和防火巡检的相关规定',
-      '查询工单 TK-20260901-001 的处置进展',
+      '无法直接借调或归还机房服务器（须由指导教师代办）',
+      '无法受理、推进或办结归档任何运维工单',
+      '无权新增/编辑设备资产，无权新增/修改/废止安全规章规程',
     ],
   },
   TEACHER: {
     title: '教师身份',
     allowed: [
-      '办理科研或教学实验算力节点的借调登记与归还出入库',
-      '受理工单并流转推进至处理中（PROCESSING），追加维保备注',
-      '查验机房服务器运行大盘、历史工单与应急规程条例',
+      '登记办理教学科研算力节点的借用出库与设备归还入库',
+      '提报运维工单，受理工单并推进至“处理中”，追加处置进展',
+      '在机房拓扑图谱中可视化拖拽调整机架设备的空间布局',
+      '全文检索机房安全规约，向 AI 咨询规程细则与合规要求',
     ],
     restricted: [
-      '禁止直接办结或归档工单（须由机房专职主管现场实地验收闭环）',
-      '禁止擅自修改硬件健康台账等级或变更物理供电配置',
-    ],
-    prompts: [
-      '帮我办理 DEV-SRV-202 服务器的借用登记，用途为课程实验',
-      '受理工单 TK-20260901-001 并标记为处理中',
-      '办理设备 DEV-SRV-202 的归还登记',
+      '无法最终办结或归档工单（须由管理员现场实测验收闭环）',
+      '无法录入新规程、编辑或废止规程（安全规约库由管理员维护）',
+      '无法删除核心硬件设备台账或变更机房物理空间规划',
     ],
   },
   ADMIN: {
     title: '管理员身份',
     allowed: [
-      '全生命周期工单管理：创建、分派、受理、终审验收与关闭归档',
-      '资产台账全量运维：设备增删改查、借调归还、硬件健康状态标定',
-      '机房安全规程知识库检视与多智能体自主决策全局调度',
+      '全生命周期工单闭环：创建、受理、指派、实测温度验收与终审办结',
+      '机房空间与资产全景运维：机房/机柜增删改、设备拖拽调度与健康标定',
+      '安全规约库全生命周期：录入新规、智能语义切块、编辑修订与废止下线',
+      '全局自主自治巡检调度，调优大模型参数与系统级运维策略',
     ],
     restricted: [],
-    prompts: [
-      '排查全部机房指标异常设备并按规章自动提单闭环',
-      '将设备 DEV-SRV-201 健康等级标记为正常',
-      '办结工单 TK-20260901-001 并验收归档',
-    ],
   },
 }
 
 const roleConfig = computed(() => ROLE_PERMISSIONS[roleKey.value] || ROLE_PERMISSIONS.STUDENT)
 
-// 样式根据暗黑与明亮模式计算
+// 样式根据身份药丸胶囊计算
 const triggerClass = computed(() => {
   if (roleKey.value === 'STUDENT') {
     return 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
@@ -257,12 +228,7 @@ const helpIconClass = computed(() => {
 })
 
 const popoverCardClass = computed(() => {
-  // class 结合 CSS 自定义样式保证高质感
   return 'role-popover-card-theme'
-})
-
-const promptButtonClass = computed(() => {
-  return 'role-prompt-btn-theme'
 })
 
 function handleMouseEnter() {
@@ -283,11 +249,6 @@ function togglePopover() {
   isOpen.value = !isOpen.value
 }
 
-function handleSelectPrompt(prompt) {
-  emit('fill-prompt', prompt)
-  isOpen.value = false
-}
-
 function handleClickOutside(e) {
   if (popoverContainerRef.value && !popoverContainerRef.value.contains(e.target)) {
     isOpen.value = false
@@ -305,22 +266,11 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
-/* 明亮与暗黑模式适配 (采用全局类自适应，确保不会被 scoped 截断) */
+/* 明亮与暗黑模式深度适配 (采用全局类自适应) */
 .role-popover-card-theme {
   background: rgba(20, 20, 25, 0.96);
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-
-.role-prompt-btn-theme {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.08);
-  color: #d4d4d8;
-}
-.role-prompt-btn-theme:hover {
-  background: rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.35);
-  color: #ffffff;
 }
 
 /* 明亮模式高透白底冰晶风格 */
@@ -340,15 +290,5 @@ html.light .role-popover-card-theme .popover-list-item {
 }
 html.light .role-popover-card-theme .popover-list-restricted {
   color: #475569 !important;
-}
-html.light .role-prompt-btn-theme {
-  background: rgba(248, 250, 252, 0.95);
-  border-color: rgba(226, 232, 240, 0.9);
-  color: #334155;
-}
-html.light .role-prompt-btn-theme:hover {
-  background: rgba(238, 242, 255, 0.95);
-  border-color: rgba(129, 140, 248, 0.6);
-  color: #4338ca;
 }
 </style>

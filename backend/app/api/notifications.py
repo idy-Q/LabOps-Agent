@@ -156,9 +156,9 @@ def send_urge_notification(
         .first()
     )
 
-    borrower_username = "teacher_li"
-    borrower_name = "李老师"
-    overdue_days = 18
+    borrower_username = "admin"
+    borrower_name = "设备主管/管理员"
+    overdue_days = 1
 
     now = datetime.now()
     if blog:
@@ -170,7 +170,12 @@ def send_urge_notification(
             overdue_days = max(1, (now - blog.expected_return_time).days)
     elif asset.borrower:
         # 尝试通过名字反查系统用户
-        user = db.query(User).filter(User.real_name.contains(asset.borrower) | (User.username == asset.borrower)).first()
+        clean_b = asset.borrower.split("(")[0].split("（")[0].strip()
+        user = db.query(User).filter(
+            (User.real_name == clean_b)
+            | (User.username == clean_b)
+            | (User.real_name.contains(clean_b))
+        ).first()
         if user:
             borrower_username = user.username
             borrower_name = user.real_name

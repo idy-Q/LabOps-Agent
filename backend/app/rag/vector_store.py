@@ -62,21 +62,27 @@ class KnowledgeBase:
             try:
                 self.client = chromadb.PersistentClient(path=self.persist_directory)
                 self.collection = self.client.get_or_create_collection(name=self.collection_name)
-                # 检查现有集合的向量维度是否与当前特征词表一致，不一致则自动重建集合以避免维度冲突
+                # 检查现有集合的向量维度，若集合内已存在向量，自适应对齐维度以避免误删持久化数据
                 sample = self.collection.get(include=['embeddings'], limit=1)
-                expected_dim = len(DEFAULT_VOCAB)
                 if sample and sample.get('embeddings') is not None and len(sample['embeddings']) > 0:
-                    existing_dim = len(sample['embeddings'][0])
-                    if existing_dim != expected_dim:
-                        self.client.delete_collection(name=self.collection_name)
-                        self.collection = self.client.create_collection(name=self.collection_name)
+                    self.dim = len(sample['embeddings'][0])
+                else:
+                    self.dim = len(DEFAULT_VOCAB)
             except Exception as e:
                 print(f"ChromaDB init failed: {e}, fallback to memory store.")
                 self.use_chroma = False
+                self.dim = len(DEFAULT_VOCAB)
+        else:
+            self.dim = len(DEFAULT_VOCAB)
                 
     def _mock_embedding(self, text: str) -> List[float]:
-        # 基于全域规程词表构建字符频次特征向量与 L2 归一化
+        # 基于全域规程词表构建字符频次特征向量与 L2 归一化，自适应对齐集合维度保障数据持久稳定性
+        target_dim = getattr(self, "dim", len(DEFAULT_VOCAB))
         vec = [float(text.count(c)) for c in DEFAULT_VOCAB]
+        if len(vec) < target_dim:
+            vec.extend([0.0] * (target_dim - len(vec)))
+        elif len(vec) > target_dim:
+            vec = vec[:target_dim]
         norm = math.sqrt(sum(v * v for v in vec))
         if norm > 0:
             vec = [v / norm for v in vec]

@@ -12,7 +12,7 @@
       @keydown.esc.window="close"
       class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden print:p-0 print:bg-white print:static print:inset-auto print:overflow-visible transition-colors"
       :class="theme === 'light' ? 'bg-slate-900/35 backdrop-blur-sm' : 'bg-black/80 backdrop-blur-md'"
-      @click.self="close"
+      v-backdrop-dismiss="close"
     >
       <!-- 简报主体卡片 -->
       <div
@@ -612,6 +612,16 @@ async function copyMarkdownReport() {
   }
 }
 
+function escapeHtml(val) {
+  if (val === null || val === undefined) return ''
+  return String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 /**
  * 专为 A4 纸张排版打印构建纯正的“明亮版”官方研判简报 HTML 文档
  * 无论当前界面处于暗黑还是明亮主题，打印出来的永远是统一、标准、融洽的白底彩色高校专业简报
@@ -686,7 +696,7 @@ function buildLightPrintDocument(report, kpiData, score, abnormalList, regList) 
         ticketBadge = `
           <div style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; background: #e0e7ff; border: 1px solid #c7d2fe; border-radius: 6px; font-size: 11px; font-family: monospace; color: #3730a3; font-weight: 600;">
             <span>${actionLabel}</span>
-            <span>工单: ${dev.ticket_no}</span>
+            <span>工单: ${escapeHtml(dev.ticket_no)}</span>
           </div>
         `
       } else {
@@ -697,20 +707,20 @@ function buildLightPrintDocument(report, kpiData, score, abnormalList, regList) 
         <div style="background: ${cardBg}; border: 1px solid ${cardBorder}; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; page-break-inside: avoid;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-family: monospace; font-size: 13px; font-weight: 700; color: #0f172a;">${dev.asset_no}</span>
-              <span style="font-size: 12px; color: #475569;">(${dev.name || '核心节点'})</span>
+              <span style="font-family: monospace; font-size: 13px; font-weight: 700; color: #0f172a;">${escapeHtml(dev.asset_no)}</span>
+              <span style="font-size: 12px; color: #475569;">(${escapeHtml(dev.name || '核心节点')})</span>
               <span style="padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; ${badgeStyle}">${badgeText}</span>
             </div>
             ${ticketBadge}
           </div>
           <div style="display: flex; gap: 14px; font-size: 11px; font-family: monospace; color: #334155; margin-bottom: 4px;">
-            <span>位置: <strong>${dev.location || '实训楼机房'}</strong></span>
-            <span>温度: <strong style="${tempStyle}">${dev.temperature || 0}℃</strong></span>
-            <span>CPU: <strong>${dev.cpu_usage || 0}%</strong></span>
-            <span>功耗: <strong>${dev.power_watts || 0}W</strong></span>
+            <span>位置: <strong>${escapeHtml(dev.location || '实训楼机房')}</strong></span>
+            <span>温度: <strong style="${tempStyle}">${escapeHtml(dev.temperature ?? 0)}℃</strong></span>
+            <span>CPU: <strong>${escapeHtml(dev.cpu_usage ?? 0)}%</strong></span>
+            <span>功耗: <strong>${escapeHtml(dev.power_watts ?? 0)}W</strong></span>
           </div>
           <div style="font-size: 11px; color: #1e293b; line-height: 1.4;">
-            ${dev.alert_message || '检测到传感器遥测指标偏离预置健康基准。'}
+            ${escapeHtml(dev.alert_message || '检测到传感器遥测指标偏离预置健康基准。')}
           </div>
         </div>
       `
@@ -728,9 +738,9 @@ function buildLightPrintDocument(report, kpiData, score, abnormalList, regList) 
         ${regList.map((reg) => `
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-size: 11px;">
             <div style="color: #4338ca; font-weight: 600; margin-bottom: 2px;">
-              《${reg.doc_name}》 ${reg.clause ? `<span style="color: #64748b; font-size: 10px; font-family: monospace;">[${reg.clause}]</span>` : ''}
+              《${escapeHtml(reg.doc_name)}》 ${reg.clause ? `<span style="color: #64748b; font-size: 10px; font-family: monospace;">[${escapeHtml(reg.clause)}]</span>` : ''}
             </div>
-            <div style="color: #475569; font-style: italic; line-height: 1.4;">“${reg.content}”</div>
+            <div style="color: #475569; font-style: italic; line-height: 1.4;">“${escapeHtml(reg.content)}”</div>
           </div>
         `).join('')}
       </div>
@@ -742,7 +752,7 @@ function buildLightPrintDocument(report, kpiData, score, abnormalList, regList) 
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>高校实验室 IT 基础设施运行健康研判简报 - ${report.batch_no || ''}</title>
+  <title>高校实验室 IT 基础设施运行健康研判简报 - ${escapeHtml(report.batch_no || '')}</title>
   <style>
     @page {
       size: A4 portrait;
@@ -889,12 +899,12 @@ function buildLightPrintDocument(report, kpiData, score, abnormalList, regList) 
     <div class="header-box">
       <div class="title-row">
         <h1 class="main-title">高校实验室 IT 基础设施运行健康研判简报</h1>
-        <span class="posture-pill">${report.posture_text || '态势平稳'}</span>
+        <span class="posture-pill">${escapeHtml(report.posture_text || '态势平稳')}</span>
       </div>
       <div class="meta-row">
-        <span>巡检批次: <strong>${report.batch_no || 'PTR-实时巡检'}</strong></span>
-        <span>执行架构: <strong>${report.operator || '系统自治巡检'}</strong></span>
-        <span>研判时间: <strong>${report.patrol_time || ''}</strong></span>
+        <span>巡检批次: <strong>${escapeHtml(report.batch_no || 'PTR-实时巡检')}</strong></span>
+        <span>执行架构: <strong>${escapeHtml(report.operator || '系统自治巡检')}</strong></span>
+        <span>研判时间: <strong>${escapeHtml(report.patrol_time || '')}</strong></span>
       </div>
     </div>
 
@@ -914,7 +924,7 @@ function buildLightPrintDocument(report, kpiData, score, abnormalList, regList) 
           </div>
         </div>
         <div style="font-size: 11px; font-weight: 700; color: ${postureColor}; margin-top: 2px;">
-          ${report.posture_text || '态势平稳'}
+          ${escapeHtml(report.posture_text || '态势平稳')}
         </div>
       </div>
 
@@ -958,7 +968,7 @@ function buildLightPrintDocument(report, kpiData, score, abnormalList, regList) 
     <!-- 研判结论与概况 -->
     <div class="summary-card">
       <div style="font-weight: 700; color: #1e40af; margin-bottom: 3px;">📌 研判结论与自主处置概况</div>
-      <div>${report.summary_text || '机房基础设施主动巡检完成，各项遥测参数符合安全管理要求。'}</div>
+      <div>${escapeHtml(report.summary_text || '机房基础设施主动巡检完成，各项遥测参数符合安全管理要求。')}</div>
     </div>
 
     <!-- 异常台账 -->

@@ -311,3 +311,41 @@ def test_full_lifecycle_new_room_rack_asset_topology(client):
         # 9. 清理注销 机房 ROOM-601
         del_room_ok = client.delete("/api/rooms/ROOM-601")
         assert del_room_ok.status_code == 200
+
+
+def test_room_location_unique_constraint(client):
+    """测试机房物理位置 (location) 在添加与修改时的排他唯一性硬拦截规则"""
+    # 1. 查询现有机房 ROOM-201 的物理位置
+    res_201 = client.get("/api/rooms/ROOM-201")
+    assert res_201.status_code == 200
+    loc_201 = res_201.json()["location"]
+
+    # 2. 尝试新增一个编号不同但物理位置完全相同的机房，应被严格拦截 (HTTP 400)
+    dup_loc_create = client.post("/api/rooms/", json={
+        "room_code": "ROOM-DUP-LOC",
+        "room_name": "重复物理位置测试机房",
+        "location": loc_201,
+        "manager_teacher": "测试员",
+        "power_capacity_kw": 30.0,
+    })
+    assert dup_loc_create.status_code == 400
+    assert "机房物理位置" in dup_loc_create.json()["detail"]
+    assert "不可重复" in dup_loc_create.json()["detail"]
+
+    # 3. 尝试编辑 ROOM-101，将其物理位置更改为已存在的 ROOM-201 位置，应被拦截 (HTTP 400)
+    dup_loc_update = client.put("/api/rooms/ROOM-101", json={
+        "location": loc_201,
+    })
+    assert dup_loc_update.status_code == 400
+    assert "机房物理位置" in dup_loc_update.json()["detail"]
+    assert "不可重复" in dup_loc_update.json()["detail"]
+
+    # 4. 编辑 ROOM-101 但保持自身位置不变，应允许成功 (排除自身)
+    res_101 = client.get("/api/rooms/ROOM-101")
+    loc_101 = res_101.json()["location"]
+    self_update = client.put("/api/rooms/ROOM-101", json={
+        "location": loc_101,
+        "room_name": res_101.json()["room_name"],
+    })
+    assert self_update.status_code == 200
+

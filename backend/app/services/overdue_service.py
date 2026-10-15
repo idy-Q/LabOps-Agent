@@ -137,15 +137,12 @@ def generate_overdue_notice(db: Session, asset_no: str) -> Dict[str, Any]:
     now = datetime.now()
     clean_no = (asset_no or "").strip().upper()
 
-    # 1. 校验设备是否存在
-    asset = (
-        db.query(Asset)
-        .options(joinedload(Asset.detail))
-        .filter(Asset.asset_no == clean_no)
-        .first()
-    )
+    # 1. 校验设备是否存在 (支持编号全称与口语简称智能解析)
+    from app.tools.asset_tools import resolve_asset
+    asset = resolve_asset(clean_no, db=db)
     if not asset:
-        raise ValueError(f"资产编号 '{clean_no}' 不存在于机房台账中")
+        raise ValueError(f"资产编号或简称 '{clean_no}' 不存在于机房台账中")
+    clean_no = asset.asset_no
 
     # 2. 校验设备当前借用状态（在库设备不得出具催告单）
     if asset.borrow_status == "AVAILABLE":

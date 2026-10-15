@@ -11,6 +11,71 @@ VALID_HEALTH_STATUSES = {"HEALTHY", "WARNING", "OVERHEAT", "OFFLINE"}
 VALID_BORROW_STATUSES = {"AVAILABLE", "IN_USE", "MAINTENANCE"}
 
 
+def resolve_asset(
+    identifier: str,
+    db: Optional[Session] = None,
+) -> Optional[Asset]:
+    """智能资产解析器：根据资产编号全称、口语简称、后缀编号或设备名称解析目标 Asset 实体。
+
+    支持例如：
+    - "DEV-LAB-106" -> 精确匹配
+    - "LAB-106" / "lab-106" -> 自动补全 DEV- 前缀
+    - "106" -> 后缀编号匹配 DEV-LAB-106
+    - "201" -> DEV-SRV-201
+    - "ARM综合开发实验箱" -> 名称模糊匹配 DEV-LAB-106
+    """
+    if not identifier:
+        return None
+    raw = str(identifier).strip()
+    if not raw:
+        return None
+
+    import re
+    # 仅去除末尾纯语气助词与紧跟在代码/数字后的量词（例如 "lab-106啊" -> "lab-106", "106号机" -> "106"）
+    cleaned = re.sub(r"[啊呀呢吧哦吗了呗呐]+$", "", raw).strip()
+    cleaned = re.sub(r"(?<=[0-9A-Za-z])(?:号机|号|台|机)$", "", cleaned).strip()
+    if not cleaned:
+        cleaned = raw
+
+    if db is None:
+        return None
+
+    # 1. 严格不区分大小写匹配 asset_no
+    asset = db.query(Asset).filter(Asset.asset_no.ilike(cleaned)).first()
+    if asset:
+        return asset
+
+    # 2. 补全 DEV- 前缀
+    if not cleaned.upper().startswith("DEV-"):
+        asset = db.query(Asset).filter(Asset.asset_no.ilike(f"DEV-{cleaned}")).first()
+        if asset:
+            return asset
+
+    # 3. 后缀匹配（如 106 匹配 DEV-LAB-106，201 匹配 DEV-SRV-201）
+    asset = db.query(Asset).filter(Asset.asset_no.ilike(f"%-{cleaned}")).first()
+    if asset:
+        return asset
+
+    # 4. 编号子串包含匹配
+    asset = db.query(Asset).filter(Asset.asset_no.ilike(f"%{cleaned}%")).first()
+    if asset:
+        return asset
+
+    # 5. 设备名称精确/模糊匹配
+    asset = db.query(Asset).filter(Asset.name.ilike(f"%{cleaned}%")).first()
+    if asset:
+        return asset
+
+    # 6. 如果清理后的 cleaned 未匹配到，尝试用原始 raw 再匹配一次名称
+    if cleaned != raw:
+        asset = db.query(Asset).filter(Asset.name.ilike(f"%{raw}%")).first()
+        if asset:
+            return asset
+
+    return None
+
+
+
 @tool(name="query_assets", description="查询机房设备资产台账，支持按资产编号、名称、机房位置模糊搜索，或按设备分类与健康状态精确过滤")
 def query_assets(
     keyword: Optional[str] = None,
@@ -142,9 +207,10 @@ def borrow_asset(
         if not clean_no or not clean_borrower:
             return {"status": "error", "message": "设备编号和借用人不能为空"}
 
-        asset = active_db.query(Asset).filter(Asset.asset_no == clean_no).first()
+        asset = resolve_asset(clean_no, db=active_db)
         if not asset:
-            return {"status": "error", "message": f"未在台账中检索到设备编号为 '{clean_no}' 的资产"}
+            return {"status": "error", "message": f"未在台账中检索到匹配 '{clean_no}' 的资产设备"}
+        clean_no = asset.asset_no
 
         # 防重复借用校验
         if asset.borrow_status != "AVAILABLE":
@@ -156,6 +222,23 @@ def borrow_asset(
                     "name": asset.name,
                     "borrow_status": asset.borrow_status,
                     "borrower": asset.borrower,
+                },
+            }
+
+        # 机房运行安全联锁校验 (设备超温 >=40℃ 或处于故障/离线时禁止出借)
+        if asset.health_status in ["OVERHEAT", "FAULT", "OFFLINE"] or (
+            asset.custom_temperature is not None and asset.custom_temperature >= 40.0
+        ):
+            temp_desc = f"{asset.custom_temperature}℃" if asset.custom_temperature is not None else "未知"
+            return {
+                "status": "blocked",
+                "message": f"资产 '{clean_no}' ({asset.name}) 当前处于健康异常/超温状态 [{asset.health_status}] (当前温度: {temp_desc})，触发机房安全联锁，禁止借出！",
+                "asset": {
+                    "asset_no": asset.asset_no,
+                    "name": asset.name,
+                    "health_status": asset.health_status,
+                    "borrow_status": asset.borrow_status,
+                    "temperature": asset.custom_temperature,
                 },
             }
 
@@ -182,10 +265,21 @@ def borrow_asset(
         if not candidate_log_no:
             candidate_log_no = f"{prefix}{uuid.uuid4().hex[:6].upper()}"
 
+        # 反查 User 用户表匹配真实登录名 username，避免将中文姓名直接作为系统用户名
+        short_borrower_name = clean_borrower.split("(")[0].split("（")[0].strip()
+        matched_user = active_db.query(User).filter(
+            (User.username == clean_borrower)
+            | (User.real_name == clean_borrower)
+            | (User.username == short_borrower_name)
+            | (User.real_name == short_borrower_name)
+            | (User.real_name.contains(short_borrower_name))
+        ).first()
+        actual_borrower_username = matched_user.username if matched_user else clean_borrower
+
         borrow_log = AssetBorrowLog(
             log_no=candidate_log_no,
             asset_id=clean_no,
-            borrower_username=clean_borrower,
+            borrower_username=actual_borrower_username,
             borrower_name=clean_borrower,
             purpose="高校科研与教学实验领用",
             borrow_time=now,
@@ -248,9 +342,10 @@ def return_asset(
         if not clean_no:
             return {"status": "error", "message": "资产编号不能为空"}
 
-        asset = active_db.query(Asset).filter(Asset.asset_no == clean_no).first()
+        asset = resolve_asset(clean_no, db=active_db)
         if not asset:
-            return {"status": "error", "message": f"未在台账中检索到设备编号为 '{clean_no}' 的资产"}
+            return {"status": "error", "message": f"未在台账中检索到匹配 '{clean_no}' 的资产设备"}
+        clean_no = asset.asset_no
 
         if asset.borrow_status == "AVAILABLE":
             return {
@@ -344,9 +439,10 @@ def update_asset_health(
                 "message": f"无效的健康状态 '{health_status}'，可选值为 {list(VALID_HEALTH_STATUSES)}",
             }
 
-        asset = active_db.query(Asset).filter(Asset.asset_no == clean_no).first()
+        asset = resolve_asset(clean_no, db=active_db)
         if not asset:
-            return {"status": "error", "message": f"未在台账中检索到设备编号为 '{clean_no}' 的资产"}
+            return {"status": "error", "message": f"未在台账中检索到匹配 '{clean_no}' 的资产设备"}
+        clean_no = asset.asset_no
 
         asset.health_status = norm_status
 
@@ -401,14 +497,10 @@ def get_asset_detail(
         if not clean_no:
             return {"status": "error", "message": "资产编号不能为空"}
 
-        asset = (
-            active_db.query(Asset)
-            .options(joinedload(Asset.detail))
-            .filter(Asset.asset_no == clean_no)
-            .first()
-        )
+        asset = resolve_asset(clean_no, db=active_db)
         if not asset:
-            return {"status": "error", "message": f"未在台账中检索到设备编号为 '{clean_no}' 的资产"}
+            return {"status": "error", "message": f"未在台账中检索到匹配 '{clean_no}' 的资产设备"}
+        clean_no = asset.asset_no
 
         detail_info = None
         if asset.detail:
@@ -658,9 +750,10 @@ def send_overdue_urge_notification(
         if not clean_no:
             return {"status": "error", "message": "设备资产编号不能为空"}
 
-        asset = active_db.query(Asset).filter(Asset.asset_no == clean_no).first()
+        asset = resolve_asset(clean_no, db=active_db)
         if not asset:
-            return {"status": "error", "message": f"未找到编号为 {clean_no} 的机房设备"}
+            return {"status": "error", "message": f"未找到匹配 '{clean_no}' 的机房设备"}
+        clean_no = asset.asset_no
 
         # 查询当前未归还的借调记录与借调教师
         blog = (
@@ -674,9 +767,9 @@ def send_overdue_urge_notification(
             .first()
         )
 
-        borrower_username = "teacher_li"
-        borrower_name = "李老师"
-        overdue_days = 18
+        borrower_username = "admin"
+        borrower_name = "设备主管/管理员"
+        overdue_days = 1
 
         now = datetime.now()
         if blog:
@@ -687,7 +780,12 @@ def send_overdue_urge_notification(
             if blog.expected_return_time:
                 overdue_days = max(1, (now - blog.expected_return_time).days)
         elif asset.borrower:
-            user = active_db.query(User).filter(User.real_name.contains(asset.borrower) | (User.username == asset.borrower)).first()
+            clean_b = asset.borrower.split("(")[0].split("（")[0].strip()
+            user = active_db.query(User).filter(
+                (User.real_name == clean_b)
+                | (User.username == clean_b)
+                | (User.real_name.contains(clean_b))
+            ).first()
             if user:
                 borrower_username = user.username
                 borrower_name = user.real_name

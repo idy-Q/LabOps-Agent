@@ -345,6 +345,10 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  currentUser: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'saved'])
@@ -483,16 +487,21 @@ async function handleSubmit() {
     content: form.content.trim(),
   }
 
+  const opParams = {
+    operator: props.currentUser?.real_name || props.currentUser?.username || '管理员',
+    operator_role: props.currentUser?.role || 'ADMIN',
+  }
+
   try {
     if (isEditMode.value && props.editDoc?.doc_id) {
-      const updated = await api.updateRegulation(props.editDoc.doc_id, payload)
+      const updated = await api.updateRegulation(props.editDoc.doc_id, payload, opParams)
       successMsg.value = `规程《${updated.title}》修改保存成功！已同步更新 ${updated.chunk_count} 个语义切块至向量知识库。`
       emit('saved', updated)
     } else {
       if (form.doc_id?.trim()) {
         payload.doc_id = form.doc_id.trim()
       }
-      const created = await api.createRegulation(payload)
+      const created = await api.createRegulation(payload, opParams)
       successMsg.value = `规程《${created.title}》录入成功！已自动完成 ${created.chunk_count} 个语义切块并同步至向量知识库。`
       emit('saved', created)
     }

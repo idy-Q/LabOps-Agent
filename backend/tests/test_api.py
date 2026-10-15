@@ -199,6 +199,15 @@ def test_create_and_update_asset(client):
     assert patch_res.json()["borrow_status"] == "IN_USE"
     assert patch_res.json()["borrower"] == "测试借用人"
 
+    # 3.1 借出使用中资产执行删除应触发安全联锁拦截 (HTTP 400)
+    del_blocked = client.delete(f"/api/assets/{created_id}")
+    assert del_blocked.status_code == 400
+    assert "借出使用中" in del_blocked.json()["detail"]
+
+    # 3.2 归还设备恢复为 AVAILABLE 状态后方可安全注销删除
+    return_res = client.patch(f"/api/assets/{created_id}", json={"borrow_status": "AVAILABLE", "borrower": None})
+    assert return_res.status_code == 200
+
     # 4. 删除测试资产 (HTTP 204 无内容)
     del_res = client.delete(f"/api/assets/{created_id}")
     assert del_res.status_code == 204

@@ -14,7 +14,7 @@
         @keydown.esc.window="close"
         class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden transition-colors select-none"
         :class="effectiveTheme === 'light' ? 'bg-slate-900/40 backdrop-blur-sm' : 'bg-black/80 backdrop-blur-md'"
-        @click.self="close"
+        v-backdrop-dismiss="close"
       >
         <!-- 微光磨砂玻璃卡片 -->
         <div

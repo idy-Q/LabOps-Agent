@@ -322,7 +322,7 @@
           v-if="showWorkflowModal"
           @keydown.esc.window="showWorkflowModal = false"
           class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md overflow-hidden"
-          @click.self="showWorkflowModal = false"
+          v-backdrop-dismiss="() => showWorkflowModal = false"
         >
           <div
             class="w-full max-w-lg rounded-3xl bg-zinc-900/95 border border-white/[0.12] ring-1 ring-white/[0.05] p-5 sm:p-6 space-y-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-zinc-100"
@@ -395,35 +395,27 @@
               />
             </div>
 
-            <!-- 快捷处理小结选项 -->
-            <div class="space-y-1.5">
-              <label class="text-xs font-medium text-zinc-300 flex items-center justify-between">
-                <span>快捷常用处理小结</span>
-                <span class="text-[10px] text-zinc-500">点击自动填入处置备忘</span>
-              </label>
-              <div class="flex flex-wrap gap-1.5">
-                <button
-                  v-for="(preset, idx) in currentWorkflowPresets"
-                  :key="idx"
-                  type="button"
-                  @click="applyPresetComment(preset)"
-                  class="px-2.5 py-1 rounded-lg text-[11px] bg-zinc-800/80 hover:bg-zinc-700 hover:text-cyan-300 text-zinc-300 border border-white/[0.06] transition-all active:scale-95 text-left"
-                >
-                  + {{ preset }}
-                </button>
+            <!-- 归档专属核验说明卡片 (非排查处置节点，无需重复录入排障说明) -->
+            <div v-if="targetWorkflowStatus === 'CLOSED'" class="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-start space-x-2.5">
+              <svg class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div class="space-y-0.5">
+                <div class="font-medium text-emerald-200">故障排查已于前序节点完成，确认正式闭环归档</div>
+                <div class="text-[11px] text-zinc-400 leading-relaxed">系统将正式终结该工单全生命周期，并在时序履历中自动写入由【{{ workflowOperator || '系统管理员' }}】核验归档的闭环记录。</div>
               </div>
             </div>
 
-            <!-- 自定义处置说明输入框 -->
-            <div class="space-y-1">
+            <!-- 自定义排查处置说明输入框 (仅在处理中与已解决等非归档节点展示) -->
+            <div v-else class="space-y-1">
               <label class="text-xs font-medium text-zinc-300 flex items-center justify-between">
                 <span>排查处置说明 (Comment) <span class="text-rose-400">*</span></span>
                 <span class="text-[10px] text-zinc-500">将写入全生命周期工单时序履历</span>
               </label>
               <textarea
                 v-model="workflowComment"
-                rows="3"
-                placeholder="请详细记录排障现场检查情况、处置动作与测试结论..."
+                rows="4"
+                placeholder="请详细记录排障现场检查情况、采取的处置动作与验证测试结论..."
                 class="w-full bg-zinc-950/80 border border-white/[0.08] focus:border-cyan-500 rounded-xl p-3 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none transition-colors resize-none leading-relaxed"
               ></textarea>
             </div>
@@ -443,12 +435,12 @@
               </button>
               <button
                 @click="submitWorkflowUpdate"
-                :disabled="isSubmittingWorkflow || !workflowComment.trim()"
+                :disabled="isSubmittingWorkflow || (targetWorkflowStatus !== 'CLOSED' && !workflowComment.trim())"
                 class="px-5 py-2 rounded-xl text-white font-medium text-xs shadow-md transition-all active:scale-95 disabled:opacity-40 flex items-center space-x-1.5"
-                :class="targetWorkflowStatus === 'PROCESSING' ? 'bg-blue-600 hover:bg-blue-500' : targetWorkflowStatus === 'RESOLVED' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-zinc-700 hover:bg-zinc-600'"
+                :class="targetWorkflowStatus === 'PROCESSING' ? 'bg-blue-600 hover:bg-blue-500' : targetWorkflowStatus === 'RESOLVED' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'"
               >
                 <span v-if="isSubmittingWorkflow" class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                <span>{{ isSubmittingWorkflow ? '提交流转中...' : '确认流转并记录备忘' }}</span>
+                <span>{{ isSubmittingWorkflow ? '提交流转中...' : targetWorkflowStatus === 'CLOSED' ? '确认正式闭环归档' : '确认流转并记录备忘' }}</span>
               </button>
             </div>
           </div>
@@ -470,7 +462,7 @@
           v-if="showEditTicketModal"
           @keydown.esc.window="showEditTicketModal = false"
           class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md overflow-hidden"
-          @click.self="showEditTicketModal = false"
+          v-backdrop-dismiss="() => showEditTicketModal = false"
         >
           <div
             class="w-full max-w-lg rounded-3xl bg-zinc-900/95 border border-white/[0.12] ring-1 ring-white/[0.05] p-5 sm:p-6 space-y-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-zinc-100"
@@ -593,7 +585,7 @@
           v-if="showDeleteTicketModal"
           @keydown.esc.window="showDeleteTicketModal = false"
           class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md overflow-hidden"
-          @click.self="showDeleteTicketModal = false"
+          v-backdrop-dismiss="() => showDeleteTicketModal = false"
         >
           <div
             class="w-full max-w-sm rounded-3xl bg-zinc-900 border border-white/[0.12] p-5 space-y-4 shadow-2xl backdrop-blur-2xl text-zinc-100"
@@ -691,60 +683,33 @@ const workflowModalTitle = computed(() => {
   }
 })
 
-const presetOptions = {
-  PROCESSING: [
-    '现场巡检已启动，正核实告警硬件指标',
-    '已联系责任教师核实验证异常现象',
-    '已根据安全规程启动前置降频保护，展开故障排查',
-  ],
-  RESOLVED: [
-    '现场巡检已完成并更换风扇',
-    '已根据安全条例完成降频降载处置',
-    '动环温湿度探针校准完毕，告警消除',
-    '硬件冷备板卡热插拔替换完毕，性能恢复正常',
-    '高负荷计算作业迁移至从机架，实测功率已回落至安全阈值以下',
-  ],
-  CLOSED: [
-    '连续观察24小时各项遥测参数平稳，确认故障根除',
-    '运维主管现场核验合格，同意归档结案',
-  ],
-}
-
-const currentWorkflowPresets = computed(() => {
-  return presetOptions[targetWorkflowStatus.value] || []
-})
-
-function applyPresetComment(preset) {
-  if (!workflowComment.value.trim()) {
-    workflowComment.value = preset
-  } else {
-    workflowComment.value += `；${preset}`
-  }
-}
-
 function openWorkflowModal(ticket, newStatus) {
   targetTicket.value = ticket
   targetWorkflowStatus.value = newStatus
   workflowOperator.value = props.currentUser?.real_name || props.currentUser?.username || '运维值班员'
-  workflowComment.value = ''
+  workflowComment.value = newStatus === 'CLOSED' ? '核验确认无误，工单正式闭环归档' : ''
   workflowError.value = ''
   showWorkflowModal.value = true
 }
 
 async function submitWorkflowUpdate() {
   if (!targetTicket.value) return
-  if (!workflowComment.value.trim()) {
+  if (targetWorkflowStatus.value !== 'CLOSED' && !workflowComment.value.trim()) {
     workflowError.value = '请填写流转处置说明'
     return
   }
   isSubmittingWorkflow.value = true
   workflowError.value = ''
 
+  const finalComment = targetWorkflowStatus.value === 'CLOSED'
+    ? (workflowComment.value.trim() || '核验确认无误，工单正式闭环归档')
+    : workflowComment.value.trim()
+
   const payload = {
     status: targetWorkflowStatus.value,
     operator: workflowOperator.value.trim() || '系统管理员',
     operator_role: props.currentUser?.role || 'ADMIN',
-    comment: workflowComment.value.trim(),
+    comment: finalComment,
   }
 
   try {

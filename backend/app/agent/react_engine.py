@@ -303,19 +303,22 @@ class MockDecisionBrain:
                 except Exception:
                     tool_results[t_name] = {}
 
-        # 提取关键实体 (当前轮次优先，若无则从多轮会话历史逆向回溯提取)
-        device_match = re.search(r"(DEV[_-][A-Z0-9]+-[0-9]+|DEV-[A-Z]+-[0-9]+)", user_prompt, re.IGNORECASE)
+        # 提取关键实体 (当前轮次优先，支持口语简称如 106、lab-106、srv-201，并在需要时逆向回溯多轮会话)
+        DEVICE_REGEX = r"(DEV[_-][A-Z0-9]+-[0-9]+|(?:DEV[_-])?(?:LAB|SRV|NET|PWR|UPS|AC)[_-][0-9]+|\b(?:106|201|202|203|204|205|301|302)\b)"
+
+        def _normalize_dev_id(raw: str) -> str:
+            raw_id = raw.upper().replace("_", "-")
+            if raw_id in ("106", "LAB-106"):
+                return "DEV-LAB-106"
+            if raw_id in ("201", "SRV-201"):
+                return "DEV-SRV-201"
+            if raw_id in ("202", "SRV-202"):
+                return "DEV-SRV-202"
+            if not raw_id.startswith("DEV-") and "-" in raw_id:
+                return f"DEV-{raw_id}"
+            return raw_id
+
         ticket_match = re.search(r"(TK-[0-9]{8}-[A-Za-z0-9]+)", user_prompt, re.IGNORECASE)
-
-        # 多轮会话实体回溯溯源 (代词如“它”、“刚才的设备”、“刚才的工单”)
-        if not device_match:
-            for m in reversed(messages[:-1]):
-                content_txt = str(m.get("content", "") or "")
-                dm = re.search(r"(DEV[_-][A-Z0-9]+-[0-9]+|DEV-[A-Z]+-[0-9]+)", content_txt, re.IGNORECASE)
-                if dm:
-                    device_match = dm
-                    break
-
         if not ticket_match:
             for m in reversed(messages[:-1]):
                 content_txt = str(m.get("content", "") or "")
@@ -324,7 +327,26 @@ class MockDecisionBrain:
                     ticket_match = tm
                     break
 
-        device_id = device_match.group(1).upper().replace("_", "-") if device_match else "DEV-SRV-201"
+        # 当前轮直接提取设备
+        current_dev_match = re.search(DEVICE_REGEX, user_prompt, re.IGNORECASE)
+        if not current_dev_match and ("实验箱" in user_prompt or "106" in user_prompt):
+            current_dev_match = re.search(r"(DEV-LAB-106)", "DEV-LAB-106")
+
+        device_match = current_dev_match
+
+        # 多轮会话实体回溯溯源 (代词如“它”、“刚才的设备”；若当前轮已显式指定工单或规章，则不回溯设备干扰)
+        if not device_match and not ticket_match and not any(k in user_prompt for k in ["工单", "规章", "规范", "制度"]):
+            for m in reversed(messages[:-1]):
+                content_txt = str(m.get("content", "") or "")
+                dm = re.search(DEVICE_REGEX, content_txt, re.IGNORECASE)
+                if dm:
+                    device_match = dm
+                    break
+                if "实验箱" in content_txt:
+                    device_match = re.search(r"(DEV-LAB-106)", "DEV-LAB-106")
+                    break
+
+        device_id = _normalize_dev_id(device_match.group(1)) if device_match else "DEV-SRV-201"
         ticket_no = ticket_match.group(1).upper() if ticket_match else None
 
         # -------------------------------------------------------------
@@ -345,7 +367,7 @@ class MockDecisionBrain:
         )
 
         # 当前轮次用户输入是否显式指定了单个特定设备
-        current_device_match = re.search(r"(DEV[_-][A-Z0-9]+-[0-9]+|DEV-[A-Z]+-[0-9]+)", user_prompt, re.IGNORECASE)
+        current_device_match = current_dev_match is not None
         if current_device_match:
             is_whole_patrol = any(kw in user_prompt for kw in [
                 "全网", "全机房", "全面", "全体", "所有设备", "全部设备", "全部", "所有",
@@ -891,7 +913,15 @@ class MockDecisionBrain:
         # -------------------------------------------------------------
         # 决策逻辑 6：机房监控与设备健康/超温排查流程 (get_server_metrics)
         # -------------------------------------------------------------
-        if any(kw in user_prompt for kw in ["指标", "监控", "温度", "巡检", "排查", "超温", "传感器", "cpu", "内存"]):
+        has_metrics_kw = any(kw in user_prompt for kw in ["指标", "监控", "温度", "巡检", "排查", "超温", "传感器", "cpu", "内存", "过热", "发热", "高温", "脱网", "掉线"])
+        is_short_device_mention = bool(
+            current_dev_match
+            and len(user_prompt.strip().rstrip("啊呀呢吧哦吗了？?！!")) <= 14
+            and not any(k in user_prompt for k in ["借", "还", "催", "工单", "办结", "关闭", "解决", "受理", "规章", "规范", "制度"])
+        )
+
+        is_metrics_query = has_metrics_kw or is_short_device_mention
+        if is_metrics_query:
             if "get_server_metrics" not in executed_tools:
                 return {
                     "thought": f"管理员指令涉及设备排查，优先感知设备 {device_id} 的实时运行指标与温度传感器数据。",
@@ -1168,13 +1198,87 @@ class ReActEngine:
         self.mock_mode = settings.AGENT_MOCK_MODE.lower()
 
     def _should_use_mock(self) -> bool:
-        """判定当前是否应采用本地 Mock 大脑"""
+        """判定当前是否应直接采用本地 Mock 大脑"""
         if self.mock_mode == "mock":
             return True
         if self.mock_mode == "real":
             return False
-        # auto 模式下：若无 Key 则默认自动降级为 Mock 大脑
-        return not bool((settings.OPENAI_API_KEY or "").strip())
+        # auto 模式下：若主通道与备用通道均未配置有效 Key，则默认采用确定性 Mock 大脑
+        primary = settings.get_primary_channel()
+        fallback = settings.get_fallback_channel()
+        has_any_key = bool(primary.get("api_key")) or bool(fallback.get("api_key"))
+        return not has_any_key
+
+    def _sanitize_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """规范化消息列表，防止因历史残留孤立 tool 消息或格式不合规导致商业 LLM 报 400 Bad Request"""
+        sanitized_messages: List[Dict[str, Any]] = []
+        for msg in messages:
+            role = msg.get("role")
+            if role in ("system", "user"):
+                sanitized_messages.append(msg)
+            elif role == "assistant":
+                sanitized_messages.append(msg)
+            elif role == "tool":
+                prev_msg = sanitized_messages[-1] if sanitized_messages else None
+                if prev_msg and prev_msg.get("role") == "assistant":
+                    tool_call_ids = [tc.get("id") for tc in (prev_msg.get("tool_calls") or [])]
+                    if msg.get("tool_call_id") in tool_call_ids:
+                        sanitized_messages.append(msg)
+                        continue
+                # 孤立的 tool 消息：转写为 user 观测内容以满足 OpenAI API 规范
+                sanitized_messages.append({
+                    "role": "user",
+                    "content": f"[工具调用结果 - {msg.get('name', 'tool')}]: {msg.get('content', '')}",
+                })
+        return sanitized_messages
+
+    def _invoke_channel(
+        self,
+        channel: Dict[str, Any],
+        sanitized_messages: List[Dict[str, Any]],
+        tools_schemas: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """通过 OpenAI 兼容协议调用指定的 LLM 通道 (集成 Fail-Fast 超时控制)"""
+        from openai import OpenAI
+        import httpx
+
+        timeout = httpx.Timeout(
+            settings.LLM_READ_TIMEOUT,
+            connect=settings.LLM_CONNECT_TIMEOUT,
+            write=5.0,
+            pool=5.0,
+        )
+        client = OpenAI(
+            api_key=channel["api_key"],
+            base_url=channel["base_url"],
+            timeout=timeout,
+        )
+        response = client.chat.completions.create(
+            model=channel["model_name"],
+            messages=sanitized_messages,
+            tools=tools_schemas if tools_schemas else None,
+            tool_choice="auto" if tools_schemas else None,
+            temperature=0.2,
+        )
+        choice = response.choices[0]
+        msg = choice.message
+        tool_calls = []
+        if msg.tool_calls:
+            for tc in msg.tool_calls:
+                tool_calls.append(
+                    {
+                        "id": tc.id,
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                )
+        return {
+            "thought": getattr(msg, "reasoning_content", None) or "模型分析用户意图并制定执行策略。",
+            "content": msg.content or "",
+            "tool_calls": tool_calls,
+        }
 
     def _call_llm(
         self,
@@ -1184,7 +1288,7 @@ class ReActEngine:
         user_name: str = "管理员",
         user_department: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """统一调用决策大脑（具备硬性 RBAC 安全网关前置拦截与双模大脑支持）"""
+        """统一调用决策大脑（具备硬性 RBAC 安全网关前置拦截与三级弹性容灾流水线）"""
         # 1. 优先执行系统级 RBAC 前置硬安全网关拦截 (不论是否使用外部大模型，系统级权限均硬性生效)
         rbac_intercept = MockDecisionBrain.check_rbac_guard(
             messages,
@@ -1195,7 +1299,7 @@ class ReActEngine:
         if rbac_intercept is not None:
             return rbac_intercept
 
-        # 2. 本地确定性 Mock 大脑分支
+        # 2. 本地确定性 Mock 大脑直接分支 (强制 mock 或未配置任何商业 API Key)
         if self._should_use_mock():
             return MockDecisionBrain.decide(
                 messages,
@@ -1204,47 +1308,44 @@ class ReActEngine:
                 user_department=user_department,
             )
 
-        try:
-            from openai import OpenAI
+        sanitized_messages = self._sanitize_messages(messages)
+        primary = settings.get_primary_channel()
+        fallback = settings.get_fallback_channel()
 
-            client = OpenAI(
-                api_key=settings.OPENAI_API_KEY,
-                base_url=settings.OPENAI_BASE_URL,
-            )
-            response = client.chat.completions.create(
-                model=settings.OPENAI_MODEL_NAME,
-                messages=messages,
-                tools=tools_schemas if tools_schemas else None,
-                tool_choice="auto" if tools_schemas else None,
-                temperature=0.2,
-            )
-            choice = response.choices[0]
-            msg = choice.message
-            tool_calls = []
-            if msg.tool_calls:
-                for tc in msg.tool_calls:
-                    tool_calls.append(
-                        {
-                            "id": tc.id,
-                            "function": {
-                                "name": tc.function.name,
-                                "arguments": tc.function.arguments,
-                            },
-                        }
-                    )
-            return {
-                "thought": getattr(msg, "reasoning_content", None) or "模型分析用户意图并制定执行策略。",
-                "content": msg.content or "",
-                "tool_calls": tool_calls,
-            }
-        except Exception as exc:
-            logger.warning("调用远程大模型 API 失败，自动容灾回退至本地 Mock 大脑: %s", str(exc))
-            return MockDecisionBrain.decide(
-                messages,
-                user_role=user_role,
-                user_name=user_name,
-                user_department=user_department,
-            )
+        # 3. 尝试主通道调用 (Primary Channel，默认 DeepSeek)
+        if primary.get("api_key"):
+            try:
+                return self._invoke_channel(primary, sanitized_messages, tools_schemas)
+            except Exception as exc_primary:
+                logger.warning("主通道 (%s) 调用异常，进入备用通道容灾研判: %s", primary.get("name"), str(exc_primary))
+        else:
+            logger.info("主通道未配置有效 API Key，直接尝试备用通道")
+
+        # 4. 尝试备用通道调用 (Fallback Channel，默认阿里通义千问 Qwen)
+        if fallback.get("api_key"):
+            try:
+                res = self._invoke_channel(fallback, sanitized_messages, tools_schemas)
+                # 自然工科语体陈述通道切换，严格剔除 [容灾感知] 或 [自主降级] 生硬字样
+                fb_name = fallback.get("name", "通义千问")
+                prefix = f"主通道响应异常，已自动切换至备用模型「{fb_name}」继续执行研判。"
+                orig_thought = res.get("thought", "")
+                res["thought"] = f"{prefix}\n\n{orig_thought}" if orig_thought else prefix
+                return res
+            except Exception as exc_fallback:
+                logger.warning("备用通道 (%s) 调用异常，进入本地确定性大脑兜底: %s", fallback.get("name"), str(exc_fallback))
+
+        # 5. 三级兜底：降级回退至本地确定性 Mock 运维大脑
+        # 严格遵循规范：自然工科语体，绝无任何 [容灾感知] 或 [自主降级] 标签
+        mock_res = MockDecisionBrain.decide(
+            messages,
+            user_role=user_role,
+            user_name=user_name,
+            user_department=user_department,
+        )
+        fallback_notice = "主备模型通道均未响应，已启用本地确定性自治运维引擎执行安全推演与规则研判。"
+        orig_mock_thought = mock_res.get("thought", "")
+        mock_res["thought"] = f"{fallback_notice}\n\n{orig_mock_thought}" if orig_mock_thought else fallback_notice
+        return mock_res
 
     def stream_run(
         self,
@@ -1280,10 +1381,12 @@ class ReActEngine:
                     .all()
                 )
                 for rec in reversed(prior_records):
-                    messages.append({
-                        "role": rec.role,
-                        "content": rec.content,
-                    })
+                    # 仅保留 user 与 assistant 的最终文本回复，坚决过滤孤立的 tool 角色消息
+                    if rec.role in ("user", "assistant") and (rec.content or "").strip():
+                        messages.append({
+                            "role": rec.role,
+                            "content": rec.content,
+                        })
             except Exception as e:
                 logger.warning("加载历史会话上下文失败: %s", str(e))
 

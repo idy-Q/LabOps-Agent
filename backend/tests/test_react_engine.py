@@ -308,6 +308,115 @@ def test_engine_api_error_fallback_to_mock(monkeypatch, engine_test_db):
     assert "DEV-SRV-202" in res.content
 
 
+def test_engine_primary_channel_failover_to_fallback(monkeypatch, engine_test_db):
+    """验证主通道故障时毫秒级自动切换至备用模型（通义千问），且思考过程绝无生硬标签"""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "AGENT_MOCK_MODE", "real")
+    monkeypatch.setattr(settings, "PRIMARY_API_KEY", "primary_sk_test")
+    monkeypatch.setattr(settings, "FALLBACK_API_KEY", "fallback_sk_test")
+    monkeypatch.setattr(settings, "FALLBACK_MODEL_NAME", "qwen-plus")
+
+    call_records = []
+
+    class MockResponse:
+        def __init__(self, content, thought=""):
+            class Message:
+                def __init__(self, c, t):
+                    self.content = c
+                    self.reasoning_content = t
+                    self.tool_calls = []
+
+            self.choices = [type("Choice", (), {"message": Message(content, thought)})()]
+
+    class DynamicMockOpenAI:
+        def __init__(self, api_key=None, base_url=None, timeout=None, **kwargs):
+            self.api_key = api_key
+            self.base_url = base_url
+
+        @property
+        def chat(self):
+            parent = self
+
+            class Chat:
+                @property
+                def completions(self):
+                    class Completions:
+                        def create(self, model=None, messages=None, **kwargs):
+                            call_records.append({"key": parent.api_key, "model": model})
+                            if parent.api_key == "primary_sk_test":
+                                raise ConnectionError("Primary DeepSeek cluster timeout 504")
+                            return MockResponse("通义千问成功回复：DEV-SRV-202 运行指标正常。", "通义千问正在执行逻辑拆解...")
+
+                    return Completions()
+
+            return Chat()
+
+    monkeypatch.setattr("openai.OpenAI", DynamicMockOpenAI)
+
+    engine = ReActEngine()
+    res = engine.run(
+        user_prompt="查询 DEV-SRV-202 的运行指标",
+        session_id="sess-failover-qwen-001",
+        db=engine_test_db,
+    )
+
+    # 验证主通道与备用通道的调用时序
+    assert len(call_records) == 2
+    assert call_records[0]["key"] == "primary_sk_test"
+    assert call_records[1]["key"] == "fallback_sk_test"
+
+    # 验证最终内容与思考链
+    assert "通义千问成功回复" in res.content
+    assert "主通道响应异常，已自动切换至备用模型「通义千问」继续执行研判" in res.thought
+    # 强制红线约束：绝无 [容灾感知] 或 [自主降级] 生硬标签
+    assert "[容灾感知]" not in res.thought
+    assert "[自主降级]" not in res.thought
+
+
+def test_engine_multi_level_failover_clean_thought_text(monkeypatch, engine_test_db):
+    """验证主备双通道均异常时降级至确定性 Mock 大脑，且思考链绝无生硬标签"""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "AGENT_MOCK_MODE", "real")
+    monkeypatch.setattr(settings, "PRIMARY_API_KEY", "primary_sk_test")
+    monkeypatch.setattr(settings, "FALLBACK_API_KEY", "fallback_sk_test")
+
+    class AllFailingOpenAI:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        @property
+        def chat(self):
+            class Chat:
+                @property
+                def completions(self):
+                    class Completions:
+                        def create(self, *args, **kwargs):
+                            raise TimeoutError("Cloud cluster unreachable")
+
+                    return Completions()
+
+            return Chat()
+
+    monkeypatch.setattr("openai.OpenAI", AllFailingOpenAI)
+
+    engine = ReActEngine()
+    res = engine.run(
+        user_prompt="查询 DEV-SRV-202 的运行指标",
+        session_id="sess-failover-mock-001",
+        db=engine_test_db,
+    )
+
+    # 验证降级到本地确定性决策大脑
+    assert res.steps >= 1
+    assert "DEV-SRV-202" in res.content
+    assert "已启用本地确定性自治运维引擎执行安全推演与规则研判" in res.thought
+    # 强制红线约束：绝无 [容灾感知] 或 [自主降级] 生硬标签
+    assert "[容灾感知]" not in res.thought
+    assert "[自主降级]" not in res.thought
+
+
 def test_engine_borrow_conflict_feedback(engine_test_db):
     """验证资产已被占用时，引擎执行借用工具后能向管理员反馈冲突提示"""
     engine = ReActEngine()

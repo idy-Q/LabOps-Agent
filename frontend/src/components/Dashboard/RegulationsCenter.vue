@@ -26,7 +26,7 @@
       </div>
 
       <div class="flex items-center space-x-2 flex-wrap gap-y-1">
-        <!-- 【+ 录入新规程】按钮（教师与管理员可见） -->
+        <!-- 【+ 录入新规程】按钮（仅系统超级管理员可见） -->
         <button
           v-if="canAddRegulation"
           @click="openCreateModal"
@@ -86,6 +86,7 @@
     <RegulationFormModal
       v-model="showCreateModal"
       :theme="theme"
+      :currentUser="currentUser"
       :editDoc="editingDoc"
       @saved="handleRegulationSaved"
     />
@@ -395,7 +396,7 @@
                   <span>{{ expandedDocs[doc.doc_id] ? '收起规约细目' : '查验规约条目细目' }}</span>
                 </button>
 
-                <!-- 教师与管理员专属操作：编辑与废止 -->
+                <!-- 管理员专属操作：编辑与废止 -->
                 <template v-if="canAddRegulation">
                   <div class="my-1 border-t" :class="theme === 'light' ? 'border-slate-100' : 'border-white/[0.08]'"></div>
 
@@ -549,7 +550,7 @@
           v-if="showDeleteConfirmModal"
           class="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md overflow-hidden"
           :class="theme === 'light' ? 'bg-slate-900/40' : 'bg-black/75'"
-          @click.self="showDeleteConfirmModal = false"
+          v-backdrop-dismiss="() => showDeleteConfirmModal = false"
         >
           <div
             class="w-full max-w-sm rounded-3xl border p-5 space-y-4 shadow-2xl backdrop-blur-2xl transition-all"
@@ -634,10 +635,9 @@ function closeMoreMenu() {
   activeMoreMenuDocId.value = null
 }
 
-// 权限控制：仅高校专业教师与系统超级管理员可见【录入新规程】
+// 权限控制：规章规程录入、编辑与废止下线工作仅限系统超级管理员(ADMIN)操作
 const canAddRegulation = computed(() => {
-  if (!props.currentUser) return true
-  return ['TEACHER', 'ADMIN'].includes(props.currentUser?.role)
+  return props.currentUser?.role === 'ADMIN'
 })
 
 // 规程录入与编辑模态框控制
@@ -680,7 +680,10 @@ async function confirmDeleteRegulation() {
   isDeletingDoc.value = true
   deleteDocError.value = ''
   try {
-    await api.deleteRegulation(docToDelete.value.doc_id)
+    await api.deleteRegulation(docToDelete.value.doc_id, {
+      operator: props.currentUser?.real_name || props.currentUser?.username || '管理员',
+      operator_role: props.currentUser?.role || 'ADMIN',
+    })
     showDeleteConfirmModal.value = false
     docToDelete.value = null
     await loadAll()

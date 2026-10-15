@@ -529,7 +529,7 @@
       v-if="showSessionDrawer"
       @keydown.esc.window="showSessionDrawer = false"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
-      @click.self="showSessionDrawer = false"
+      v-backdrop-dismiss="() => showSessionDrawer = false"
     >
       <div class="w-full max-w-lg rounded-2xl glass-card border border-white/[0.12] p-5 space-y-4 shadow-2xl flex flex-col max-h-[80vh] backdrop-blur-xl">
         <div class="flex items-center justify-between border-b border-white/[0.08] pb-3">
@@ -614,8 +614,71 @@
       @borrow="handleBorrowAssetFromTopology"
       @return="handleReturnAssetFromTopology"
       @edit="handleEditAssetFromTopology"
+      @delete="handleDeleteAssetFromTopology"
       @viewTimeline="handleViewAssetTimeline"
     />
+
+    <!-- 拓扑视图设备删除二次确认模态框 (与台账删除体验保持严格一致) -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div
+          v-if="showTopologyDeleteModal"
+          @keydown.esc.window="showTopologyDeleteModal = false"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-hidden"
+          v-backdrop-dismiss="() => showTopologyDeleteModal = false"
+        >
+          <div class="w-full max-w-sm rounded-3xl bg-zinc-900/95 border border-rose-500/30 ring-1 ring-rose-500/10 p-5 space-y-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+            <div class="flex items-center space-x-3 text-rose-400">
+              <div class="p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-semibold text-zinc-100 tracking-tight">确认彻底删除该设备？</h4>
+                <p class="text-[11px] text-zinc-400">此操作不可撤销，硬件档案亦将清理</p>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-zinc-950/60 border border-white/[0.06] text-xs space-y-1">
+              <div>目标编号: <span class="font-mono text-cyan-400 font-semibold select-all">{{ targetAssetForTopologyDelete?.asset_no }}</span></div>
+              <div class="text-zinc-200 font-medium">{{ targetAssetForTopologyDelete?.name }}</div>
+              <div class="text-zinc-500 font-mono text-[11px]">{{ targetAssetForTopologyDelete?.location }}</div>
+              <div v-if="targetAssetForTopologyDelete?.borrow_status === 'IN_USE'" class="pt-1 text-rose-400 font-medium">
+                ⚠️ 该设备处于借用中 (借用人: {{ targetAssetForTopologyDelete?.borrower || '未填写' }})！
+              </div>
+            </div>
+
+            <div v-if="deleteTopologyError" class="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+              {{ deleteTopologyError }}
+            </div>
+
+            <div class="flex items-center justify-end space-x-2 pt-2 border-t border-white/[0.06]">
+              <button
+                @click="showTopologyDeleteModal = false"
+                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium transition-all"
+              >
+                取消
+              </button>
+              <button
+                @click="confirmDeleteTopologyAsset"
+                :disabled="isDeletingTopologyAsset"
+                class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs shadow-md transition-all active:scale-95 disabled:opacity-50"
+              >
+                {{ isDeletingTopologyAsset ? '正在删除...' : '确认移除设备' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- 运维工单流转与资产全生命周期履历时间轴抽屉 (Timeline Drawer) -->
     <TimelineDrawer
@@ -642,6 +705,8 @@
     <UrgeNotificationToast
       v-model="showUrgeToast"
       :notification="activeNotification"
+      :assets="assets"
+      :overdueMap="overdueMap"
       :theme="currentTheme"
       @viewNotice="handleViewNoticeFromToast"
       @markRead="handleNotificationMarkRead"
@@ -1104,9 +1169,10 @@ let assetHighlightTimer = null
 const showSessionDrawer = ref(false)
 const sessionList = ref([])
 
-// 全局后台被动静默自适应轮询探针 (每 8 秒自动拉取指标与工单，支持休眠避让与流式避让)
+// 全局后台被动静默自适应轮询探针 (每 8 秒自动拉取指标与工单，支持休眠避让、流式避让与并发防重叠互斥锁)
 let silentPollingTimer = null
 let isPollingActive = true
+let isSilentPollingRunning = false
 
 function handleVisibilityChange() {
   if (document.hidden) {
@@ -1120,10 +1186,17 @@ function handleVisibilityChange() {
 
 function startSilentPolling() {
   if (silentPollingTimer) clearInterval(silentPollingTimer)
-  silentPollingTimer = setInterval(() => {
-    if (isPollingActive && !document.hidden && !isStreaming.value) {
-      // 避免在 AI 对话流打字时抢占网络并发，平时每 8 秒静默被动刷新大盘数据
-      refreshAllData()
+  silentPollingTimer = setInterval(async () => {
+    // 互斥防护：慢网络或高延迟下若上一轮请求未结束，直接跳过本次触发，严防并发堆叠
+    if (isPollingActive && !document.hidden && !isStreaming.value && !isSilentPollingRunning) {
+      isSilentPollingRunning = true
+      try {
+        await refreshAllData()
+      } catch (err) {
+        console.error('静默轮询同步数据异常:', err)
+      } finally {
+        isSilentPollingRunning = false
+      }
     }
   }, 8000)
 }
@@ -1287,7 +1360,12 @@ async function loadTickets() {
 }
 
 async function handleRefreshTickets() {
-  await Promise.all([loadTickets(), loadMetrics()])
+  await Promise.all([loadTickets(), loadMetrics(), loadAssets()])
+  if (rackTopologyRef.value?.loadTopology) {
+    try {
+      await rackTopologyRef.value.loadTopology()
+    } catch (e) {}
+  }
 }
 
 async function loadOverdueAssets() {
@@ -1304,7 +1382,7 @@ async function loadOverdueAssets() {
 async function loadAssets() {
   try {
     const [list] = await Promise.all([
-      api.listAssets({ limit: 50 }),
+      api.listAssets({ limit: 500 }),
       loadOverdueAssets(),
     ])
     assets.value = list
@@ -1911,11 +1989,16 @@ async function handleSendMessage(promptText) {
       assistantMsg.isStreaming = false
       agentStatusText.value = '就绪'
     },
-    onFinish: () => {
+    onFinish: async () => {
       assistantMsg.isThinking = false
       assistantMsg.isStreaming = false
       isStreaming.value = false
       agentStatusText.value = '就绪'
+      // 对话流结束时无条件静默兜底同步最新台账与指标，防止智能体在后台修改数据后前端视图未刷新
+      await Promise.allSettled([loadAssets(), loadTickets(), loadMetrics()])
+      if (rackTopologyRef.value?.loadTopology) {
+        rackTopologyRef.value.loadTopology().catch(() => {})
+      }
     },
   })
 }
@@ -2066,10 +2149,39 @@ const totalRacksCount = computed(() => {
 const showTopologyDeviceModal = ref(false)
 const selectedTopologyAsset = ref(null)
 
+const showTopologyDeleteModal = ref(false)
+const targetAssetForTopologyDelete = ref(null)
+const isDeletingTopologyAsset = ref(false)
+const deleteTopologyError = ref('')
+
 function handleInspectAssetFromTopology(asset) {
   const matched = assets.value.find((a) => a.asset_no === asset.asset_no)
   selectedTopologyAsset.value = matched || asset
   showTopologyDeviceModal.value = true
+}
+
+function handleDeleteAssetFromTopology(asset) {
+  if (currentUser.value?.role !== 'ADMIN') return
+  targetAssetForTopologyDelete.value = asset
+  deleteTopologyError.value = ''
+  showTopologyDeleteModal.value = true
+}
+
+async function confirmDeleteTopologyAsset() {
+  if (!targetAssetForTopologyDelete.value || currentUser.value?.role !== 'ADMIN') return
+  isDeletingTopologyAsset.value = true
+  deleteTopologyError.value = ''
+  try {
+    await api.deleteAsset(targetAssetForTopologyDelete.value.id)
+    showTopologyDeleteModal.value = false
+    showTopologyDeviceModal.value = false
+    targetAssetForTopologyDelete.value = null
+    await refreshAllData()
+  } catch (err) {
+    deleteTopologyError.value = err.message || '删除设备失败'
+  } finally {
+    isDeletingTopologyAsset.value = false
+  }
 }
 
 function handleBorrowAssetFromTopology(assetOrNo) {
@@ -2096,25 +2208,65 @@ function handleInspectTicket(ticketNo) {
 
 async function handleUpdateTicketStatus(ticketId, newStatus, extra = null) {
   try {
-    if (!extra) {
-      await api.updateTicket(ticketId, {
-        status: newStatus,
-        operator: currentUser.value?.real_name || currentUser.value?.username || '管理员',
-      })
+    const payload = {
+      status: newStatus,
+      operator: currentUser.value?.real_name || currentUser.value?.username || '管理员',
+      ...(extra && typeof extra === 'object' ? extra : {}),
     }
-    await loadTickets()
-    await loadMetrics()
+    await api.updateTicket(ticketId, payload)
+    await Promise.all([loadTickets(), loadMetrics(), loadAssets()])
+    if (rackTopologyRef.value?.loadTopology) {
+      try {
+        await rackTopologyRef.value.loadTopology()
+      } catch (e) {}
+    }
   } catch (err) {
-    alert(`工单状态更新失败: ${err.message}`)
+    console.error('工单状态更新失败:', err)
   }
 }
 
 async function handleBorrowAsset(assetNo, borrower) {
-  handleSendMessage(`帮 ${borrower} 办理设备 ${assetNo} 的借用登记`)
+  try {
+    const target = assets.value.find((a) => a.asset_no === assetNo)
+    if (target) {
+      target.borrow_status = 'IN_USE'
+      target.borrower = borrower
+    }
+    await api.borrowAsset(assetNo, { borrower })
+    triggerAssetHighlight(assetNo)
+    await Promise.allSettled([loadAssets(), loadMetrics()])
+    if (rackTopologyRef.value?.loadTopology) {
+      rackTopologyRef.value.loadTopology().catch(() => {})
+    }
+  } catch (err) {
+    console.error('借用设备失败:', err)
+    handleSendMessage(`帮 ${borrower} 办理设备 ${assetNo} 的借用登记`)
+  }
 }
 
 async function handleReturnAsset(assetNo) {
-  handleSendMessage(`办理设备 ${assetNo} 的归还登记`)
+  try {
+    // 1. 本地即时响应式乐观更新：立刻将设备状态恢复为 AVAILABLE，借用人清空！
+    // 彻底杜绝界面图标不更新、按钮仍为“归还”、以及再次点击触发状态冲突
+    const target = assets.value.find((a) => a.asset_no === assetNo)
+    if (target) {
+      target.borrow_status = 'AVAILABLE'
+      target.borrower = null
+    }
+    await api.returnAsset(assetNo)
+    triggerAssetHighlight(assetNo)
+    await Promise.allSettled([
+      loadAssets(),
+      loadMetrics(),
+      fetchUserNotifications(currentUser.value?.username),
+    ])
+    if (rackTopologyRef.value?.loadTopology) {
+      rackTopologyRef.value.loadTopology().catch(() => {})
+    }
+  } catch (err) {
+    console.error('归还设备失败:', err)
+    handleSendMessage(`办理设备 ${assetNo} 的归还登记`)
+  }
 }
 
 async function handleUpdateAssetHealth(assetId, healthStatus) {
@@ -2126,7 +2278,7 @@ async function handleUpdateAssetHealth(assetId, healthStatus) {
     await loadAssets()
     await loadMetrics()
   } catch (err) {
-    alert(`更新资产健康状态失败: ${err.message}`)
+    console.error('更新资产健康状态失败:', err)
   }
 }
 </script>

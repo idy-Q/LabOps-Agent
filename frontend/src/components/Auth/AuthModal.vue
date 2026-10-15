@@ -3,7 +3,7 @@
     v-if="modelValue"
     @keydown.esc.window="closeModal"
     class="auth-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in"
-    @click.self="closeModal"
+    v-backdrop-dismiss="closeModal"
   >
     <div
       class="auth-modal-glass-card w-full max-w-xl rounded-2xl glass-card border border-white/[0.14] p-5 sm:p-6 shadow-2xl flex flex-col max-h-[90vh] backdrop-blur-2xl overflow-y-auto text-zinc-100"

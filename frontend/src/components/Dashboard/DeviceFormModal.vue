@@ -84,20 +84,21 @@
         </button>
       </div>
 
-      <!-- 表单主体区 -->
-      <form @submit.prevent="handleSubmit" class="flex-1 overflow-y-auto pr-1 space-y-4 custom-scrollbar text-xs">
-        <!-- TAB 1: 基础台账与位置 -->
-        <div v-show="activeTab === 'basic'" class="space-y-3.5">
-          <!-- 资产编号与自动生成 -->
-          <div class="space-y-1">
-            <div class="flex items-center justify-between">
-              <label class="font-medium text-zinc-300">资产编号 <span class="text-rose-400">*</span></label>
-              <button
-                v-if="!isEdit"
-                type="button"
-                @click="autoGenerateNo"
-                class="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline flex items-center space-x-1"
-              >
+      <!-- 表单主体区 (可滚动内容区与固定底部提交条分离) -->
+      <form @submit.prevent="handleSubmit" class="flex-1 flex flex-col min-h-0 overflow-hidden space-y-3 text-xs">
+        <div class="flex-1 overflow-y-auto pr-1 space-y-4 custom-scrollbar">
+          <!-- TAB 1: 基础台账与位置 -->
+          <div v-show="activeTab === 'basic'" class="space-y-3.5">
+            <!-- 资产编号与自动生成 -->
+            <div class="space-y-1">
+              <div class="flex items-center justify-between">
+                <label class="font-medium text-zinc-300">资产编号 <span class="text-rose-400">*</span></label>
+                <button
+                  v-if="!isEdit"
+                  type="button"
+                  @click="autoGenerateNo"
+                  class="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline flex items-center space-x-1"
+                >
                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
@@ -216,23 +217,94 @@
                   </select>
                 </div>
 
-                <!-- 起始插槽 (Start U) -->
-                <div class="space-y-1">
+                <!-- 起始插槽 (Start U) - 自研 Glassmorphism 下拉选框 (支持高亮可用、暗淡删除线不可用) -->
+                <div class="space-y-1 relative slot-dropdown-container">
                   <label class="text-[11px] text-zinc-400">起始插槽 (Start U)</label>
-                  <select
-                    v-model.number="rackStartU"
-                    @change="updateRackLocation"
-                    class="w-full bg-zinc-900 border border-white/[0.08] focus:border-cyan-500 rounded-lg px-2.5 py-1.5 text-zinc-200 focus:outline-none transition-colors text-xs font-mono"
+                  
+                  <!-- 触发按钮 -->
+                  <button
+                    type="button"
+                    @click="toggleSlotDropdown"
+                    class="w-full bg-zinc-900 border rounded-lg px-2.5 py-1.5 text-zinc-200 focus:outline-none transition-all text-xs font-mono flex items-center justify-between text-left shadow-sm"
+                    :class="[
+                      currentSlotConflict
+                        ? 'border-rose-500/80 focus:border-rose-400 bg-rose-950/20 text-rose-300'
+                        : 'border-white/[0.08] hover:border-white/[0.18]',
+                      slotDropdownOpen ? 'ring-1 ring-cyan-500/50 border-cyan-500 bg-zinc-800/80' : ''
+                    ]"
                   >
-                    <option
-                      v-for="u in maxAllowedStartU"
-                      :key="'u-' + u"
-                      :value="u"
+                    <span class="truncate font-medium">
+                      {{ selectedSlotDisplay }}
+                    </span>
+                    <svg
+                      class="w-3.5 h-3.5 text-zinc-400 shrink-0 ml-1.5 transition-transform duration-200"
+                      :class="{ 'rotate-180 text-cyan-400': slotDropdownOpen }"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
                     >
-                      U{{ u }} (占用 U{{ u }} ~ U{{ u + rackUHeight - 1 }})
-                    </option>
-                  </select>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  <!-- 自定义下拉选项浮层 (可选高亮亮起，不可选暗淡+删除线+红字冲突声明) -->
+                  <div
+                    v-show="slotDropdownOpen"
+                    class="absolute left-0 right-0 top-full mt-1.5 z-[120] max-h-56 overflow-y-auto rounded-xl bg-zinc-900/98 border border-white/[0.14] shadow-[0_15px_50px_rgba(0,0,0,0.8)] backdrop-blur-2xl p-1 space-y-0.5 custom-scrollbar text-xs font-mono"
+                  >
+                    <div
+                      v-for="opt in uSlotOptions"
+                      :key="'u-' + opt.u"
+                      @click="handleSelectSlot(opt)"
+                      :class="[
+                        opt.disabled
+                          ? 'px-2.5 py-1.5 rounded-lg flex items-center justify-between text-zinc-500/60 line-through decoration-zinc-500 cursor-not-allowed select-none bg-zinc-950/40 opacity-50'
+                          : [
+                              'px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer group',
+                              opt.u === rackStartU
+                                ? 'bg-cyan-950/70 text-cyan-300 font-semibold border border-cyan-500/30'
+                                : 'text-zinc-100 hover:bg-cyan-500/15 hover:text-cyan-200'
+                            ]
+                      ]"
+                    >
+                      <!-- 左侧槽位文本：若禁用则显示暗淡+删除线，若可用则明亮 -->
+                      <span
+                        class="truncate"
+                        :class="opt.disabled ? 'line-through decoration-zinc-500 text-zinc-400' : ''"
+                      >
+                        U{{ opt.u }} (占用 U{{ opt.u }} ~ U{{ opt.end }})
+                      </span>
+
+                      <!-- 右侧状态标签 -->
+                      <span
+                        v-if="opt.disabled"
+                        class="text-[10px] text-rose-400 font-sans not-italic shrink-0 ml-2 select-none whitespace-nowrap"
+                        style="text-decoration: none !important;"
+                      >
+                        [已占: {{ opt.conflictDevice?.asset_no || opt.conflictDevice?.name || '在架设备' }}]
+                      </span>
+                      <span
+                        v-else-if="opt.u === rackStartU"
+                        class="text-[10px] text-cyan-400 font-sans shrink-0 ml-2 whitespace-nowrap"
+                      >
+                        ✓ 已选
+                      </span>
+                    </div>
+                  </div>
                 </div>
+              </div>
+
+              <!-- 槽位冲突/可用性状态实时提示条 (仅在发生冲突时显示红色拦截警告) -->
+              <div
+                v-if="currentSlotConflict"
+                class="flex items-center space-x-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs select-none"
+              >
+                <svg class="w-4 h-4 shrink-0 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span class="leading-relaxed">
+                  <strong>槽位冲突拦截：</strong>所选 U{{ rackStartU }}~U{{ rackStartU + rackUHeight - 1 }} 已被已有设备「<strong>{{ currentSlotConflict.name }}</strong>」占用，不可重复存放！
+                </span>
               </div>
 
               <!-- 联动拼接规范位置展示 -->
@@ -309,15 +381,15 @@
           <!-- 健康状态与借还状态 -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="space-y-1">
-              <label class="font-medium text-zinc-300">初始健康状态</label>
+              <label class="font-medium text-zinc-300">{{ isEdit ? '健康状态' : '初始健康状态' }}</label>
               <select
                 v-model="form.health_status"
-                class="w-full bg-zinc-950 border border-white/[0.08] focus:border-cyan-500 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none font-mono transition-colors"
+                class="w-full bg-zinc-950 border border-white/[0.08] focus:border-cyan-500 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none font-sans transition-colors"
               >
-                <option value="HEALTHY">HEALTHY (良好)</option>
-                <option value="WARNING">WARNING (预警)</option>
-                <option value="OVERHEAT">OVERHEAT (高温超温)</option>
-                <option value="OFFLINE">OFFLINE (离线脱网)</option>
+                <option value="HEALTHY">正常 (HEALTHY)</option>
+                <option value="WARNING">预警 (WARNING)</option>
+                <option value="OVERHEAT">超温 (OVERHEAT)</option>
+                <option value="OFFLINE">离线 (OFFLINE)</option>
               </select>
             </div>
             <div class="space-y-1">
@@ -723,9 +795,17 @@
             </div>
           </div>
         </div>
+      </div>
 
-        <div v-if="errorMsg" class="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
-          {{ errorMsg }}
+        <!-- 弹窗内部操作错误与冲突提示横幅 (固定于提交按钮上方，长表单下亦清晰可见且不关闭弹窗) -->
+        <div
+          v-if="errorMsg"
+          class="shrink-0 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center space-x-2 select-none"
+        >
+          <svg class="w-4 h-4 shrink-0 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span class="leading-relaxed">{{ errorMsg }}</span>
         </div>
 
         <!-- 底部提交与取消 -->
@@ -754,7 +834,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, computed, onMounted } from 'vue'
+import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
 import { api } from '../../api/client'
 
 const props = defineProps({
@@ -814,11 +894,44 @@ const dynamicRacks = ref([
   { rack_id: '机柜B01', rack_name: 'B01 教学虚拟化与网络汇聚柜', room_code: 'ROOM-101' },
 ])
 
+// 全量资产与机架拓扑数据缓存 (双重保障物理槽位占用与碰撞检测)
+const existingAssets = ref([])
+const topologyData = ref(null)
+
+// 起始插槽自定义下拉菜单控制
+const slotDropdownOpen = ref(false)
+
+function toggleSlotDropdown() {
+  slotDropdownOpen.value = !slotDropdownOpen.value
+}
+
+function handleSelectSlot(opt) {
+  if (opt.disabled) return
+  rackStartU.value = opt.u
+  updateRackLocation()
+  slotDropdownOpen.value = false
+}
+
+const selectedSlotDisplay = computed(() => {
+  const h = Number(rackUHeight.value) || 1
+  const u = Number(rackStartU.value) || 1
+  const end = u + h - 1
+  return `U${u} (占用 U${u} ~ U${end})`
+})
+
+function closeSlotDropdownOnClickOutside(e) {
+  if (slotDropdownOpen.value && !e.target.closest('.slot-dropdown-container')) {
+    slotDropdownOpen.value = false
+  }
+}
+
 async function fetchDynamicRoomsAndRacks() {
   try {
-    const [roomsData, racksData] = await Promise.all([
+    const [roomsData, racksData, assetsData, topoData] = await Promise.all([
       api.getRooms(),
       api.getRacks(),
+      api.listAssets({ limit: 500 }),
+      api.getTopology(),
     ])
     if (Array.isArray(roomsData) && roomsData.length > 0) {
       dynamicRooms.value = roomsData
@@ -826,13 +939,24 @@ async function fetchDynamicRoomsAndRacks() {
     if (Array.isArray(racksData) && racksData.length > 0) {
       dynamicRacks.value = racksData
     }
+    if (Array.isArray(assetsData)) {
+      existingAssets.value = assetsData
+    }
+    if (topoData && Array.isArray(topoData.rooms)) {
+      topologyData.value = topoData
+    }
   } catch (err) {
-    console.warn('动态加载机房机柜数据失败，保留基础预设:', err)
+    console.warn('动态加载机房机柜及资产数据失败，保留基础预设:', err)
   }
 }
 
 onMounted(() => {
   fetchDynamicRoomsAndRacks()
+  window.addEventListener('click', closeSlotDropdownOnClickOutside)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('click', closeSlotDropdownOnClickOutside)
 })
 
 const currentRackTotalU = computed(() => {
@@ -854,29 +978,172 @@ const availableRacks = computed(() => {
   ]
 })
 
-const maxAllowedStartU = computed(() => {
-  const maxU = currentRackTotalU.value - (rackUHeight.value || 1) + 1
+// 当前选定机柜已被其他在架设备占用的槽位区间列表 (编辑模式下排除自身)
+const occupiedSlotsInCurrentRack = computed(() => {
+  if (!rackId.value) return []
   const list = []
-  for (let i = 1; i <= Math.max(1, maxU); i++) {
-    list.push(i)
+  const currentEditId = isEdit.value && props.asset ? String(props.asset.id) : null
+  const currentEditNo = isEdit.value && props.asset ? props.asset.asset_no : null
+  const roomNum = (rackRoom.value || '').replace('ROOM-', '').trim()
+  const cleanRack = (rackId.value || '').replace('机柜', '').trim()
+
+  // 1. 优先使用拓扑接口的权威机柜在架设备数据 (结构化且最为准确)
+  if (topologyData.value?.rooms) {
+    const rm = topologyData.value.rooms.find(
+      r => r.room_code === rackRoom.value || (r.room_code && r.room_code.replace('ROOM-', '').trim() === roomNum)
+    )
+    if (rm && Array.isArray(rm.racks)) {
+      const targetRack = rm.racks.find(
+        rk => rk.rack_id === rackId.value || (cleanRack && rk.rack_id.replace('机柜', '').trim() === cleanRack)
+      )
+      if (targetRack && Array.isArray(targetRack.assets)) {
+        for (const a of targetRack.assets) {
+          if (currentEditId && String(a.id) === currentEditId) continue
+          if (currentEditNo && a.asset_no === currentEditNo) continue
+          const sU = Number(a.start_u)
+          const uH = Number(a.u_height) || 1
+          if (sU && sU > 0) {
+            list.push({
+              id: a.id,
+              name: a.name,
+              asset_no: a.asset_no,
+              start_u: sU,
+              end_u: sU + uH - 1,
+              u_height: uH,
+            })
+          }
+        }
+        return list
+      }
+    }
+  }
+
+  // 2. 兜底方案：遍历全量现有资产库 existingAssets
+  for (const a of existingAssets.value) {
+    if (currentEditId && String(a.id) === currentEditId) continue
+    if (currentEditNo && a.asset_no === currentEditNo) continue
+    const loc = a.location || ''
+
+    // 判断机房归属 (如果指定了机房，要求 location 包含房间编号或代码)
+    if (roomNum && !loc.includes(roomNum) && !loc.includes(rackRoom.value)) {
+      continue
+    }
+
+    // 判断机柜归属 (兼容 "机柜A01" 或 "A01")
+    const rackMatch = loc.includes(rackId.value) || (cleanRack && loc.includes(cleanRack))
+    if (!rackMatch) continue
+
+    let sU = null
+    let uH = 1
+
+    if (a.detail?.extra_params) {
+      try {
+        const ep = typeof a.detail.extra_params === 'string'
+          ? JSON.parse(a.detail.extra_params)
+          : a.detail.extra_params
+        if (ep.start_u !== undefined && ep.start_u !== null) sU = Number(ep.start_u)
+        if (ep.u_height !== undefined && ep.u_height !== null) uH = Number(ep.u_height)
+        else if (ep.rack_units) {
+          const m = String(ep.rack_units).match(/(\d+)/)
+          if (m) uH = Number(m[1])
+        }
+      } catch (e) {}
+    }
+
+    if (sU === null) {
+      const matchU = loc.match(/-U(\d+)/i) || loc.match(/U(\d+)/i)
+      if (matchU) sU = Number(matchU[1])
+    }
+    if (uH <= 1) {
+      const matchH = loc.match(/\((\d+)U\)/i)
+      if (matchH) uH = Number(matchH[1])
+    }
+
+    if (sU !== null && sU > 0) {
+      list.push({
+        id: a.id,
+        name: a.name,
+        asset_no: a.asset_no,
+        start_u: sU,
+        end_u: sU + uH - 1,
+        u_height: uH,
+      })
+    }
   }
   return list
 })
 
+// 槽位碰撞冲突判断函数
+function getSlotConflict(u, height = rackUHeight.value) {
+  const reqStart = Number(u)
+  const reqEnd = reqStart + Number(height) - 1
+  for (const occ of occupiedSlotsInCurrentRack.value) {
+    if (Math.max(reqStart, occ.start_u) <= Math.min(reqEnd, occ.end_u)) {
+      return occ
+    }
+  }
+  return null
+}
+
+// 当前所选槽位的冲突对象 (无冲突则为 null)
+const currentSlotConflict = computed(() => {
+  if (!isRackCategory.value || !rackId.value) return null
+  return getSlotConflict(rackStartU.value, rackUHeight.value)
+})
+
+// 可选 U 位下拉选项列表 (附带占用状态、冲突标记及禁用标识，不再附加冗余的“空闲可用”)
+const uSlotOptions = computed(() => {
+  const maxU = (currentRackTotalU.value || 42) - (rackUHeight.value || 1) + 1
+  const h = Number(rackUHeight.value) || 1
+  const list = []
+  for (let u = 1; u <= Math.max(1, maxU); u++) {
+    const end = u + h - 1
+    const conflict = getSlotConflict(u, h)
+    list.push({
+      u,
+      end,
+      disabled: !!conflict,
+      conflictDevice: conflict,
+      label: conflict
+        ? `U${u} (占用 U${u} ~ U${end}) - [已被 ${conflict.name || conflict.asset_no} 占用]`
+        : `U${u} (占用 U${u} ~ U${end})`,
+    })
+  }
+  return list
+})
+
+// 自动避让冲突并对齐到首个空闲槽位
+function autoPickAvailableSlot() {
+  if (isRackCategory.value && rackId.value) {
+    const conflict = getSlotConflict(rackStartU.value, rackUHeight.value)
+    if (conflict) {
+      const firstFree = uSlotOptions.value.find(o => !o.disabled)
+      if (firstFree) {
+        rackStartU.value = firstFree.u
+        updateRackLocation()
+      }
+    }
+  }
+}
+
 function onRackRoomChange() {
+  slotDropdownOpen.value = false
   const validRacks = availableRacks.value.filter(r => !r.disabled && r.id)
   if (!validRacks.some(r => r.id === rackId.value)) {
     rackId.value = validRacks[0]?.id || ''
   }
   updateRackLocation()
+  autoPickAvailableSlot()
 }
 
 function onUHeightChange() {
+  slotDropdownOpen.value = false
   const maxU = currentRackTotalU.value - (rackUHeight.value || 1) + 1
   if (rackStartU.value > maxU) {
     rackStartU.value = Math.max(1, maxU)
   }
   updateRackLocation()
+  autoPickAvailableSlot()
 }
 
 function updateRackLocation() {
@@ -1091,6 +1358,7 @@ watch(
 watch(
   () => props.modelValue,
   (val) => {
+    slotDropdownOpen.value = false
     if (val) {
       fetchDynamicRoomsAndRacks()
       errorMsg.value = ''
@@ -1100,7 +1368,6 @@ watch(
         form.name = props.asset.name || ''
         form.category = props.asset.category || '服务器'
         form.location = props.asset.location || ''
-        form.health_status = props.asset.health_status || 'HEALTHY'
         form.borrow_status = props.asset.borrow_status || 'AVAILABLE'
         form.borrower = props.asset.borrower || ''
         form.specs = props.asset.specs || ''
@@ -1117,6 +1384,18 @@ watch(
             ? 22.0
             : 31.5)
         form.custom_temperature = Number(loadedTemp)
+
+        let initialHealth = props.asset.health_status || 'HEALTHY'
+        if (initialHealth !== 'OFFLINE') {
+          if (Number(loadedTemp) >= 40.0) {
+            initialHealth = 'OVERHEAT'
+          } else if (Number(loadedTemp) >= 38.0) {
+            initialHealth = 'WARNING'
+          } else {
+            initialHealth = 'HEALTHY'
+          }
+        }
+        form.health_status = initialHealth
 
         const d = props.asset.detail || {}
         detailForm.serial_number = d.serial_number || ''
@@ -1278,6 +1557,16 @@ function close() {
   emit('update:modelValue', false)
 }
 
+watch(
+  [form, () => rackStartU.value, () => rackUHeight.value, () => rackId.value],
+  () => {
+    if (errorMsg.value) {
+      errorMsg.value = ''
+    }
+  },
+  { deep: true }
+)
+
 async function handleSubmit() {
   if (!form.asset_no.trim() || !form.name.trim() || !form.location.trim()) {
     errorMsg.value = '请完整填写资产编号、名称与机房物理位置'
@@ -1287,6 +1576,15 @@ async function handleSubmit() {
   if (isRackCategory.value && !rackId.value) {
     errorMsg.value = '所选机房暂无在册机柜，请先在机柜拓扑大盘中立项设立机柜，或将设备类别切换为非机架外设'
     return
+  }
+
+  // 机架槽位物理冲突防呆硬拦截 (已占用槽位坚决阻止提交)
+  if (isRackCategory.value) {
+    const conflict = currentSlotConflict.value
+    if (conflict) {
+      errorMsg.value = `所选机柜槽位 U${rackStartU.value}~U${rackStartU.value + rackUHeight.value - 1} 已被设备「${conflict.name || conflict.asset_no}」(占用 U${conflict.start_u}~U${conflict.end_u}) 占用，请重新选择空闲槽位！`
+      return
+    }
   }
 
   isSubmitting.value = true

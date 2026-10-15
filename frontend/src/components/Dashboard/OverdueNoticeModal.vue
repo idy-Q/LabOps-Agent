@@ -12,7 +12,7 @@
       @keydown.esc.window="close"
       class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden print:p-0 print:bg-white print:static print:inset-auto print:overflow-visible transition-colors"
       :class="theme === 'light' ? 'bg-slate-900/40 backdrop-blur-sm' : 'bg-black/80 backdrop-blur-md'"
-      @click.self="close"
+      v-backdrop-dismiss="close"
     >
       <!-- 公函模态框主体卡片 -->
       <div

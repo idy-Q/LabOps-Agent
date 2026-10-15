@@ -19,6 +19,11 @@ def is_asset_in_rack(loc: str, rack_id: str) -> bool:
 
 
 @router.get(
+    "",
+    response_model=List[RackResponse],
+    include_in_schema=False,
+)
+@router.get(
     "/",
     response_model=List[RackResponse],
     summary="查询机柜列表",
@@ -50,6 +55,12 @@ def get_rack(rack_id: str, db: Session = Depends(get_db)) -> RackResponse:
     return rack
 
 
+@router.post(
+    "",
+    response_model=RackResponse,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 @router.post(
     "/",
     response_model=RackResponse,

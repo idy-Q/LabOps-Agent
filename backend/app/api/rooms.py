@@ -11,28 +11,61 @@ router = APIRouter()
 
 
 def is_asset_in_room(loc: str, room_code: str, room_name: str = "") -> bool:
-    """判断资产物理位置字符串是否归属于指定机房（支持严格边界匹配，防止 ROOM-2 误匹配 ROOM-201）"""
-    if not loc:
+    """判断资产物理位置字符串是否归属于指定机房（支持严格边界匹配与单数字防穿透防护）"""
+    if not loc or not room_code:
         return False
-    # 1. 严格边界匹配 room_code，防止 ROOM-2 误匹配 ROOM-201
-    if re.search(rf"(^|[^a-zA-Z0-9]){re.escape(room_code)}([^a-zA-Z0-9]|$)", loc, re.IGNORECASE):
+
+    loc_strip = loc.strip()
+    r_code_strip = room_code.strip()
+
+    # 1. 严格全字匹配标准带前缀 room_code（如 ROOM-201, ROOM-1 等）
+    if r_code_strip.upper().startswith("ROOM-"):
+        pattern = rf"(^|[^a-zA-Z0-9_-]){re.escape(r_code_strip)}([^a-zA-Z0-9_-]|$)"
+        if re.search(pattern, loc_strip, re.IGNORECASE):
+            return True
+
+    # 2. room_name 具备足够专有区分度时的语义匹配
+    # 严格排除单字符、纯数字或无特征词（如 '1', '2', '402', '机房', '实验室'），防止灾难性子串误匹配
+    if room_name:
+        rn_strip = room_name.strip()
+        if len(rn_strip) >= 3 and not rn_strip.isdigit() and rn_strip not in ("机房", "实验室", "实训室", "办公室", "设备间"):
+            if rn_strip in loc_strip:
+                return True
+
+    # 3. 提取房间数字编号 (如 ROOM-201 -> 201, 101 -> 101, 1 -> 1)
+    room_num = r_code_strip.upper().replace("ROOM-", "").strip()
+    if not room_num:
+        return False
+
+    # 3.1 针对 1~2 位超短房间号（如 '1', '2', '01'）：
+    # 极其严格：必须带明确的房间实体后缀（'1室', '1机房', '1实验室'）或以 '1-' 作为位置开头，严格排除 '1层', '1楼', 'U1', 'A01'
+    if len(room_num) <= 2:
+        pattern_short = rf"(^|[^a-zA-Z0-9_\u4e00-\u9fa5]|实训楼){re.escape(room_num)}(室|机房|实验室|实训室)"
+        if re.search(pattern_short, loc_strip, re.IGNORECASE):
+            return True
+        if re.match(rf"^{re.escape(room_num)}-(机柜|核心柜|配电柜|网络柜)", loc_strip):
+            return True
+        return False
+
+    # 3.2 针对标准 3 位及以上房间号（如 101, 201, 402 等）：
+    # 匹配标准前缀 '实训楼201-' 或 '实训楼201' 且尾部非数字
+    if re.search(rf"实训楼{re.escape(room_num)}([^0-9]|$)", loc_strip, re.IGNORECASE):
         return True
-    if room_name and room_name in loc:
+    # 匹配 '201室'、'201机房'、'201实验室'、'201实训室'
+    if re.search(rf"(^|[^0-9]){re.escape(room_num)}(室|机房|实验室|实训室)", loc_strip, re.IGNORECASE):
         return True
-    room_num = room_code.replace("ROOM-", "").strip()
-    if room_num:
-        # 2. 匹配标准实训楼前缀：如 '实训楼201-'，要求尾部为非字母数字边界
-        if re.search(rf"实训楼{re.escape(room_num)}([^a-zA-Z0-9]|$)", loc, re.IGNORECASE):
-            return True
-        # 3. 匹配 '201室' 或 '201机房'
-        if re.search(rf"(^|[^a-zA-Z0-9]){re.escape(room_num)}(室|机房)", loc, re.IGNORECASE):
-            return True
-        # 4. 独立房间编号边界匹配：如 '201-机柜A01'
-        if re.search(rf"(^|[^a-zA-Z0-9]){re.escape(room_num)}([^a-zA-Z0-9]|$)", loc, re.IGNORECASE):
-            return True
+    # 匹配独立分段如 '201-机柜A01' 或开头 '201-'
+    if re.search(rf"(^|[^0-9]){re.escape(room_num)}-", loc_strip, re.IGNORECASE):
+        return True
+
     return False
 
 
+@router.get(
+    "",
+    response_model=List[RoomResponse],
+    include_in_schema=False,
+)
 @router.get(
     "/",
     response_model=List[RoomResponse],
@@ -64,6 +97,12 @@ def get_room(room_code: str, db: Session = Depends(get_db)) -> RoomResponse:
 
 
 @router.post(
+    "",
+    response_model=RoomResponse,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
+@router.post(
     "/",
     response_model=RoomResponse,
     status_code=status.HTTP_201_CREATED,
@@ -71,18 +110,29 @@ def get_room(room_code: str, db: Session = Depends(get_db)) -> RoomResponse:
     description="录入新的机房空间，包括机房编号、名称、物理位置、责任教师与配电容量",
 )
 def create_room(payload: RoomCreate, db: Session = Depends(get_db)) -> RoomResponse:
-    exists = db.query(ServerRoom).filter(ServerRoom.room_code == payload.room_code).first()
+    clean_code = payload.room_code.strip()
+    exists = db.query(ServerRoom).filter(ServerRoom.room_code == clean_code).first()
     if exists:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"机房编号 {payload.room_code} 已存在，请勿重复创建",
+            detail=f"机房编号 {clean_code} 已存在，请勿重复创建",
         )
 
+    # 物理位置全局唯一性校验
+    clean_loc = payload.location.strip()
+    if clean_loc:
+        existing_loc = db.query(ServerRoom).filter(ServerRoom.location == clean_loc).first()
+        if existing_loc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"机房物理位置 '{clean_loc}' 已被机房 [{existing_loc.room_code}] ({existing_loc.room_name}) 登记占用，物理位置不可重复！",
+            )
+
     room = ServerRoom(
-        room_code=payload.room_code,
-        room_name=payload.room_name,
-        location=payload.location,
-        manager_teacher=payload.manager_teacher,
+        room_code=clean_code,
+        room_name=payload.room_name.strip(),
+        location=clean_loc,
+        manager_teacher=payload.manager_teacher.strip(),
         power_capacity_kw=payload.power_capacity_kw,
         total_racks=0,
     )
@@ -112,6 +162,22 @@ def update_room(
         )
 
     update_data = payload.model_dump(exclude_unset=True)
+
+    # 物理位置修改唯一性排他校验 (排除当前机房自身)
+    if "location" in update_data and update_data["location"]:
+        clean_loc = update_data["location"].strip()
+        existing_loc = (
+            db.query(ServerRoom)
+            .filter(ServerRoom.location == clean_loc, ServerRoom.room_code != room.room_code)
+            .first()
+        )
+        if existing_loc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"机房物理位置 '{clean_loc}' 已被其他机房 [{existing_loc.room_code}] ({existing_loc.room_name}) 登记占用，物理位置不可重复！",
+            )
+        update_data["location"] = clean_loc
+
     for field, val in update_data.items():
         setattr(room, field, val)
 

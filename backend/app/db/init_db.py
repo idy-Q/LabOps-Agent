@@ -905,7 +905,6 @@ def init_db(
                 db.add(user)
                 added_users += 1
             else:
-                exists.password_hash = pwd_hash
                 exists.real_name = user_data["real_name"]
                 exists.role = user_data["role"]
                 exists.department = user_data["department"]
@@ -915,8 +914,6 @@ def init_db(
         logger.info("系统用户种子数据处理完成: 新增 %d 个，同步更新 %d 个 (当前共 %d 个)。", added_users, updated_users, len(SEED_USERS))
 
         # 5. 机房区域与机柜台账种子数据幂等填充 (按唯一 room_code 判定)
-        valid_codes = [r["room_code"] for r in SEED_SERVER_ROOMS]
-        db.query(ServerRoom).filter(ServerRoom.room_code.notin_(valid_codes)).delete(synchronize_session=False)
         added_rooms = 0
         updated_rooms = 0
         for room_data in SEED_SERVER_ROOMS:

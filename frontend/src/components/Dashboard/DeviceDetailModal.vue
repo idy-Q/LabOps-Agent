@@ -48,10 +48,10 @@
                   {{ asset?.name || '设备全景参数档案' }}
                 </h3>
                 <!-- 圆角胶囊状态药丸 -->
-                <span :class="['px-2.5 py-0.5 rounded-full text-[10px] font-mono border font-medium shadow-sm', healthClass(asset?.health_status)]">
-                  {{ asset?.health_status }}
+                <span :class="['px-2.5 py-0.5 rounded-full text-[10px] font-sans border font-medium shadow-sm', healthClass(effectiveHealthStatus)]">
+                  {{ getHealthLabel(effectiveHealthStatus) }}
                 </span>
-                <span :class="['px-2.5 py-0.5 rounded-full text-[10px] font-mono border font-medium shadow-sm', borrowClass(asset?.borrow_status)]">
+                <span :class="['px-2.5 py-0.5 rounded-full text-[10px] font-sans border font-medium shadow-sm', borrowClass(asset?.borrow_status)]">
                   {{ asset?.borrow_status === 'AVAILABLE' ? '空闲可用' : asset?.borrow_status === 'IN_USE' ? '借调在用' : '检修维护' }}
                 </span>
               </div>
@@ -111,7 +111,7 @@
                     : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                 ]"
               >
-                <span>{{ asset?.health_status === 'OFFLINE' ? '⚪ 离线脱网' : currentTemp >= 40.0 ? '🔴 超温告警' : currentTemp >= 38.0 ? '🟡 临界预警' : '🟢 动环受控良好' }}</span>
+                <span>{{ asset?.health_status === 'OFFLINE' ? '⚪ 离线脱网' : currentTemp >= 40.0 ? '🔴 超温告警' : currentTemp >= 38.0 ? '🟡 临界预警' : '🟢 动环受控正常' }}</span>
               </span>
             </div>
 
@@ -438,6 +438,25 @@ const currentTemp = computed(() => {
   if (props.asset.health_status === 'WARNING') return 38.0
   return 31.5
 })
+
+const effectiveHealthStatus = computed(() => {
+  if (!props.asset) return 'HEALTHY'
+  if (props.asset.health_status === 'OFFLINE') return 'OFFLINE'
+  const temp = currentTemp.value
+  if (temp >= 40.0) return 'OVERHEAT'
+  if (temp >= 38.0) return 'WARNING'
+  return 'HEALTHY'
+})
+
+function getHealthLabel(status) {
+  const map = {
+    HEALTHY: '正常',
+    WARNING: '预警',
+    OVERHEAT: '超温',
+    OFFLINE: '离线',
+  }
+  return map[status] || status || '-'
+}
 
 const isCustomTelemetry = computed(() => {
   return (

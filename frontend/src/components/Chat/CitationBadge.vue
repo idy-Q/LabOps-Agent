@@ -18,7 +18,7 @@
     <div
       v-if="showModal"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
-      @click.self="showModal = false"
+      v-backdrop-dismiss="() => showModal = false"
       @keydown.esc.window="showModal = false"
     >
       <div class="relative w-full max-w-lg rounded-2xl glass-card border border-white/[0.12] p-5 shadow-2xl space-y-4 backdrop-blur-xl">

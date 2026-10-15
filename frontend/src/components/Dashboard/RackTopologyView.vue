@@ -371,18 +371,19 @@
 
     <!-- 4. 2D 机架阵列渲染区 -->
     <div class="space-y-3 relative z-10">
-      <div class="flex items-center justify-between relative z-20">
-        <div class="flex items-center space-x-2">
-          <span class="w-1.5 h-3.5 rounded-full bg-emerald-500"></span>
-          <h4 class="text-xs sm:text-sm font-semibold text-zinc-200">
-            {{ selectedRoomCode === 'ALL' ? '全机房标准机架阵列 (42U)' : `${currentRoom?.room_name} 机架阵列` }}
+      <div class="flex items-center justify-between relative z-20 gap-2">
+        <div class="flex items-center space-x-2 min-w-0">
+          <span class="w-1.5 h-3.5 rounded-full bg-emerald-500 shrink-0"></span>
+          <h4
+            class="text-xs sm:text-sm font-semibold truncate"
+            :class="isLight ? 'text-slate-800' : 'text-zinc-200'"
+            :title="rackArraySectionTitle"
+          >
+            {{ rackArraySectionTitle }}
           </h4>
-          <span class="text-xs text-zinc-500 font-mono">
-            共 {{ displayedRacks.length }} 台机柜
-          </span>
 
           <!-- 教师/管理员可见：暗淡透明、低调不抢眼的“机柜管理”下拉框按钮 (提升层级至 z-30) -->
-          <div v-if="canManage" class="relative z-30 rack-dropdown-container ml-1">
+          <div v-if="canManage" class="relative z-30 rack-dropdown-container ml-1 shrink-0">
             <button
               @click.stop="rackDropdownOpen = !rackDropdownOpen"
               type="button"
@@ -506,7 +507,7 @@
         </div>
 
         <!-- 图例标识说明 -->
-        <div class="hidden sm:flex items-center space-x-3 text-[11px] text-zinc-400">
+        <div class="hidden sm:flex items-center space-x-3 text-[11px] text-zinc-400 shrink-0">
           <span class="flex items-center space-x-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span><span>健康 (HEALTHY)</span></span>
           <span class="flex items-center space-x-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span><span>预警 (WARNING)</span></span>
           <span class="flex items-center space-x-1"><span class="w-2 h-2 rounded-full bg-rose-400"></span><span>超温 (OVERHEAT)</span></span>
@@ -1000,7 +1001,8 @@
         <div
           v-if="showRoomModal"
           class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md"
-          @click.self="showRoomModal = false"
+          @mousedown="handleRoomBackdropMouseDown"
+          @mouseup="handleRoomBackdropMouseUp"
         >
           <div
             class="w-full max-w-md rounded-3xl border p-5 sm:p-6 space-y-4 shadow-2xl backdrop-blur-2xl text-xs"
@@ -1036,6 +1038,7 @@
                 </label>
                 <input
                   v-model="roomForm.room_code"
+                  @input="roomModalError = ''"
                   type="text"
                   placeholder="如: ROOM-401"
                   required
@@ -1051,6 +1054,7 @@
                 </label>
                 <input
                   v-model="roomForm.room_name"
+                  @input="roomModalError = ''"
                   type="text"
                   placeholder="如: 实训楼401 工业互联网与边缘实训室"
                   required
@@ -1065,6 +1069,7 @@
                 </label>
                 <input
                   v-model="roomForm.location"
+                  @input="roomModalError = ''"
                   type="text"
                   placeholder="如: 实训楼4层西侧401室"
                   required
@@ -1104,6 +1109,17 @@
                 </div>
               </div>
 
+              <!-- 弹窗内部操作错误与冲突提示横幅 (直接内嵌于弹窗，不关闭弹窗) -->
+              <div
+                v-if="roomModalError"
+                class="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center space-x-2 select-none"
+              >
+                <svg class="w-4 h-4 shrink-0 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span class="leading-relaxed">{{ roomModalError }}</span>
+              </div>
+
               <div class="pt-3 border-t flex items-center justify-end space-x-2" :class="isLight ? 'border-slate-200' : 'border-white/[0.08]'">
                 <button
                   type="button"
@@ -1115,6 +1131,7 @@
                 </button>
                 <button
                   type="submit"
+                  @click="handleSaveRoom"
                   :disabled="isSubmittingRoom"
                   class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-all shadow-sm disabled:opacity-50 flex items-center space-x-1"
                 >
@@ -1141,7 +1158,8 @@
         <div
           v-if="showRackModal"
           class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md"
-          @click.self="showRackModal = false"
+          @mousedown="handleRackBackdropMouseDown"
+          @mouseup="handleRackBackdropMouseUp"
         >
           <div
             class="w-full max-w-md rounded-3xl border p-5 sm:p-6 space-y-4 shadow-2xl backdrop-blur-2xl text-xs"
@@ -1197,6 +1215,7 @@
                 </label>
                 <input
                   v-model="rackForm.rack_id"
+                  @input="rackModalError = ''"
                   type="text"
                   placeholder="如: 机柜A03, 机柜B02"
                   required
@@ -1212,6 +1231,7 @@
                 </label>
                 <input
                   v-model="rackForm.rack_name"
+                  @input="rackModalError = ''"
                   type="text"
                   placeholder="如: A03 智算高通量扩展机柜"
                   required
@@ -1251,6 +1271,17 @@
                 </div>
               </div>
 
+              <!-- 弹窗内部操作错误与冲突提示横幅 (直接内嵌于弹窗，不关闭弹窗) -->
+              <div
+                v-if="rackModalError"
+                class="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center space-x-2 select-none"
+              >
+                <svg class="w-4 h-4 shrink-0 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span class="leading-relaxed">{{ rackModalError }}</span>
+              </div>
+
               <div class="pt-3 border-t flex items-center justify-end space-x-2" :class="isLight ? 'border-slate-200' : 'border-white/[0.08]'">
                 <button
                   type="button"
@@ -1262,6 +1293,7 @@
                 </button>
                 <button
                   type="submit"
+                  @click="handleSaveRack"
                   :disabled="isSubmittingRack"
                   class="px-4 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-medium transition-all shadow-sm disabled:opacity-50 flex items-center space-x-1"
                 >
@@ -1311,6 +1343,7 @@ const isLight = computed(() => {
 const showRoomModal = ref(false)
 const roomModalMode = ref('create') // 'create' | 'edit'
 const isSubmittingRoom = ref(false)
+const roomModalError = ref('')
 const roomForm = reactive({
   room_code: '',
   room_name: '',
@@ -1319,8 +1352,20 @@ const roomForm = reactive({
   power_capacity_kw: 50.0,
 })
 
+let isRoomBackdropMouseDown = false
+function handleRoomBackdropMouseDown(e) {
+  isRoomBackdropMouseDown = (e.target === e.currentTarget)
+}
+function handleRoomBackdropMouseUp(e) {
+  if (isRoomBackdropMouseDown && e.target === e.currentTarget) {
+    showRoomModal.value = false
+  }
+  isRoomBackdropMouseDown = false
+}
+
 function openRoomModal(mode, room = null) {
   roomModalMode.value = mode
+  roomModalError.value = ''
   if (mode === 'edit' && room) {
     roomForm.room_code = room.room_code
     roomForm.room_name = room.room_name
@@ -1338,36 +1383,66 @@ function openRoomModal(mode, room = null) {
 }
 
 async function handleSaveRoom() {
+  roomModalError.value = ''
   if (!roomForm.room_code || !roomForm.room_name || !roomForm.location || !roomForm.manager_teacher) {
-    showToast('请填写所有必填字段', 'error')
+    roomModalError.value = '请完整填写机房编号、显示名称、物理位置与责任教师等必填字段'
     return
   }
+
+  const targetCode = roomForm.room_code.trim()
+  const targetLocation = roomForm.location.trim()
+  const allRooms = topologyData.value?.rooms || []
+
+  // 1. 编号冲突检测：直接在弹窗内红字横幅呈现，保留弹窗输入内容，绝不关闭弹窗
+  if (roomModalMode.value === 'create') {
+    const codeConflict = allRooms.some(
+      r => (r.room_code || '').trim().toLowerCase() === targetCode.toLowerCase()
+    )
+    if (codeConflict) {
+      roomModalError.value = `机房编号「${targetCode}」已存在，请更换独立唯一的机房编号！`
+      return
+    }
+  }
+
+  // 2. 物理位置排他唯一性校验：直接在弹窗内醒目提示，不关闭弹窗
+  const locConflict = allRooms.find(r => {
+    if (roomModalMode.value === 'edit' && r.room_code === targetCode) {
+      return false // 编辑模式排除自身
+    }
+    return (r.location || '').trim().toLowerCase() === targetLocation.toLowerCase()
+  })
+  if (locConflict) {
+    roomModalError.value = `机房物理位置「${targetLocation}」已被机房【${locConflict.room_code} - ${locConflict.room_name}】占用，不可重复配置！`
+    return
+  }
+
   isSubmittingRoom.value = true
   try {
     if (roomModalMode.value === 'create') {
       await api.createRoom({
-        room_code: roomForm.room_code.trim(),
+        room_code: targetCode,
         room_name: roomForm.room_name.trim(),
-        location: roomForm.location.trim(),
+        location: targetLocation,
         manager_teacher: roomForm.manager_teacher.trim(),
         power_capacity_kw: Number(roomForm.power_capacity_kw) || 0,
       })
-      showToast(`机房 ${roomForm.room_code} 创建成功`, 'success')
-      selectedRoomCode.value = roomForm.room_code.trim()
+      showToast(`机房 ${targetCode} 创建成功`, 'success')
+      selectedRoomCode.value = targetCode
     } else {
-      await api.updateRoom(roomForm.room_code, {
+      await api.updateRoom(targetCode, {
         room_name: roomForm.room_name.trim(),
-        location: roomForm.location.trim(),
+        location: targetLocation,
         manager_teacher: roomForm.manager_teacher.trim(),
         power_capacity_kw: Number(roomForm.power_capacity_kw) || 0,
       })
-      showToast(`机房 ${roomForm.room_code} 配置更新成功`, 'success')
+      showToast(`机房 ${targetCode} 配置更新成功`, 'success')
     }
     showRoomModal.value = false
     await loadTopology()
     emit('refresh')
   } catch (err) {
-    showToast(err.message || '操作机房失败', 'error')
+    // 错误直接在弹窗内部显示，不关闭弹窗
+    roomModalError.value = err.message || '操作机房失败'
   } finally {
     isSubmittingRoom.value = false
   }
@@ -1395,6 +1470,7 @@ async function handleDeleteRoom(room) {
 const showRackModal = ref(false)
 const rackModalMode = ref('create') // 'create' | 'edit'
 const isSubmittingRack = ref(false)
+const rackModalError = ref('')
 const rackForm = reactive({
   room_code: '',
   rack_id: '',
@@ -1403,8 +1479,20 @@ const rackForm = reactive({
   power_rating_w: 4500,
 })
 
+let isRackBackdropMouseDown = false
+function handleRackBackdropMouseDown(e) {
+  isRackBackdropMouseDown = (e.target === e.currentTarget)
+}
+function handleRackBackdropMouseUp(e) {
+  if (isRackBackdropMouseDown && e.target === e.currentTarget) {
+    showRackModal.value = false
+  }
+  isRackBackdropMouseDown = false
+}
+
 function openRackModal(mode, rack = null) {
   rackModalMode.value = mode
+  rackModalError.value = ''
   if (mode === 'edit' && rack) {
     rackForm.room_code = rack.room_code
     rackForm.rack_id = rack.rack_id
@@ -1423,8 +1511,9 @@ function openRackModal(mode, rack = null) {
 }
 
 async function handleSaveRack() {
+  rackModalError.value = ''
   if (!rackForm.room_code || !rackForm.rack_id || !rackForm.rack_name) {
-    showToast('请填写所有必填字段', 'error')
+    rackModalError.value = '请完整填写所属机房、机柜编号与机柜名称等必填字段'
     return
   }
   isSubmittingRack.value = true
@@ -1454,7 +1543,7 @@ async function handleSaveRack() {
     await loadTopology()
     emit('refresh')
   } catch (err) {
-    showToast(err.message || '操作机柜失败', 'error')
+    rackModalError.value = err.message || '操作机柜失败'
   } finally {
     isSubmittingRack.value = false
   }
@@ -1528,6 +1617,24 @@ const currentRoom = computed(() => {
 const activeRoomTitle = computed(() => {
   if (selectedRoomCode.value === 'ALL') return '实训大楼全部机房'
   return currentRoom.value?.room_name || selectedRoomCode.value
+})
+
+// 机架阵列区域标题文本 (全部机房保持原样，单个机房时精简剔除房间前缀与后缀)
+const rackArraySectionTitle = computed(() => {
+  if (selectedRoomCode.value === 'ALL') {
+    return '全机房标准机架阵列 (42U)'
+  }
+  const rawName = currentRoom.value?.room_name || selectedRoomCode.value || ''
+  let cleaned = rawName.trim()
+  if (cleaned.includes(' ')) {
+    const parts = cleaned.split(/\s+/)
+    // 如 "实训楼201 人工智能与高密算力实训机房"，取第二段主体名
+    cleaned = parts.slice(1).join(' ') || cleaned
+  } else {
+    // 若无空格但包含常见楼宇房号前缀如 "实训楼201"
+    cleaned = cleaned.replace(/^(?:.+楼\d+|\d+室|ROOM[-_]?\d+)\s*/i, '') || cleaned
+  }
+  return cleaned || rawName
 })
 
 // 核心 5 磁贴大盘指标计算 (默认 3 柜，126U)

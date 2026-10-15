@@ -2,12 +2,12 @@ import hashlib
 import logging
 import re
 from typing import List, Optional, Dict
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Header, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from app.db.session import get_db
-from app.db.models import KnowledgeDocument, KnowledgeChunk
+from app.db.models import KnowledgeDocument, KnowledgeChunk, User
 from app.tools.regulation_tools import get_kb, _init_kb
 from app.rag.chunking import chunk_text
 from app.schemas.regulation import (
@@ -24,6 +24,48 @@ from app.schemas.regulation import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _verify_admin_permission(
+    operator: Optional[str] = None,
+    operator_role: Optional[str] = None,
+    header_role: Optional[str] = None,
+    db: Optional[Session] = None,
+):
+    """规章规程知识库维护操作鉴权：仅系统超级管理员(ADMIN)有权新增、编辑或废止规程。
+    普通教师(TEACHER)与学生(STUDENT)无权执行破坏性或管理操作。
+    """
+    effective_role = (operator_role or header_role or "").strip().upper()
+    effective_operator = (operator or "").strip()
+
+    if not effective_role and effective_operator and db:
+        user = (
+            db.query(User)
+            .filter(
+                or_(
+                    func.lower(User.username) == effective_operator.lower(),
+                    User.real_name == effective_operator,
+                    func.lower(User.real_name) == effective_operator.lower(),
+                )
+            )
+            .first()
+        )
+        if user and user.role:
+            effective_role = user.role.strip().upper()
+        elif effective_operator in ("系统管理员", "管理员", "admin", "王主管", "LabOps-Agent", "系统监控"):
+            effective_role = "ADMIN"
+        elif "老师" in effective_operator or "teacher" in effective_operator.lower():
+            effective_role = "TEACHER"
+        elif "同学" in effective_operator or "学生" in effective_operator.lower() or "student" in effective_operator.lower():
+            effective_role = "STUDENT"
+
+    if effective_role in ("TEACHER", "STUDENT", "GUEST", "USER"):
+        role_name = "教师" if effective_role == "TEACHER" else "学生"
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"权限不足：规章规程录入、编辑与废止下线工作仅限系统超级管理员(ADMIN)操作，{role_name}角色无权操作",
+        )
+
 
 # 预置文件名词干与规程元数据对应表 (加速 RAG 检索逆向溯源映射)
 STEM_DOC_MAP: Dict[str, Dict[str, str]] = {
@@ -98,9 +140,17 @@ def list_regulations(
     response_model=RegulationDetailResponse,
     status_code=status.HTTP_201_CREATED,
     summary="录入新规章规程 (全栈切块与向量索引闭环)",
-    description="录入新规程并自动执行语义切块，写入数据库并向量化存入 ChromaDB 向量库。",
+    description="录入新规程并自动执行语义切块，写入数据库并向量化存入 ChromaDB 向量库（仅系统超级管理员有权操作）。",
 )
-def create_regulation(payload: RegulationCreateRequest, db: Session = Depends(get_db)):
+def create_regulation(
+    payload: RegulationCreateRequest,
+    operator: Optional[str] = Query(default=None, description="操作人名称"),
+    operator_role: Optional[str] = Query(default=None, description="操作人角色（仅ADMIN有权操作）"),
+    x_user_role: Optional[str] = Header(default=None, alias="X-User-Role", description="请求头用户角色"),
+    db: Session = Depends(get_db),
+):
+    _verify_admin_permission(operator=operator, operator_role=operator_role, header_role=x_user_role, db=db)
+
     # 1. 编号处理与冲突查重
     doc_id = payload.doc_id.strip() if payload.doc_id and payload.doc_id.strip() else None
     if doc_id:
@@ -256,6 +306,115 @@ def get_regulations_summary(db: Session = Depends(get_db)):
 
 
 @router.get(
+    "/search",
+    response_model=List[RegulationSearchResult],
+    summary="规章规程语义/关键词检索 (GET 模式)",
+    description="支持通过 URL Query 参数 (q 或 query) 执行语义与关键词检索",
+)
+def search_regulations_get(
+    q: Optional[str] = Query(default=None, description="查询关键词"),
+    query: Optional[str] = Query(default=None, description="查询关键词别名"),
+    top_k: int = Query(default=5, ge=1, le=20, description="返回条数"),
+    db: Session = Depends(get_db),
+):
+    search_text = (q or query or "").strip()
+    if not search_text:
+        return []
+    req = RegulationSearchRequest(query=search_text, top_k=top_k)
+    return search_regulations(payload=req, db=db)
+
+
+@router.post(
+    "/search",
+    response_model=List[RegulationSearchResult],
+    summary="规章规程语义/关键词检索",
+    description="调用底层双模向量知识库执行 Top-K 语义检索，返回匹配条款切块、余弦相似度、溯源文档及章节标号。",
+)
+def search_regulations(payload: RegulationSearchRequest, db: Session = Depends(get_db)):
+    _init_kb()
+    kb = get_kb()
+    raw_results = kb.search(payload.query, top_k=payload.top_k)
+    if not raw_results:
+        return []
+
+    # 预加载数据库切块以匹配 chunk_id 和文档信息
+    all_chunks = db.query(KnowledgeChunk).all()
+    chunk_map_by_content = {c.chunk_content.strip(): c for c in all_chunks}
+    chunk_map_by_chroma = {c.chroma_id: c for c in all_chunks if c.chroma_id}
+
+    # 文档 ID 与标题、业务分类映射
+    all_docs = db.query(KnowledgeDocument).all()
+    doc_map_by_id = {d.doc_id: d.title for d in all_docs}
+    doc_cat_by_id = {d.doc_id: d.category for d in all_docs}
+
+    search_items: List[RegulationSearchResult] = []
+    for r in raw_results:
+        content = r.get("content", "")
+        meta = r.get("metadata", {})
+        raw_score = float(r.get("score", 0.0))
+        if raw_score <= 0.0:
+            continue
+        
+        # 规整化得分百分比
+        score_percent = f"{max(0.0, min(100.0, raw_score * 100)):.1f}%"
+
+        doc_name = meta.get("doc_name", "")
+        section = meta.get("section", "")
+        clause = meta.get("clause", "")
+
+        # 尝试匹配数据库切块记录
+        matched_chunk = chunk_map_by_content.get(content.strip())
+        if not matched_chunk and doc_name and section:
+            for idx in range(20):
+                cid = f"{doc_name}_{section}_{idx}"
+                if cid in chunk_map_by_chroma:
+                    matched_chunk = chunk_map_by_chroma[cid]
+                    break
+
+        # 逆向解析文档编号、标题与业务分类
+        doc_id = None
+        doc_title = "机房安全管理规程"
+        category = None
+        chunk_id = None
+
+        if matched_chunk:
+            doc_id = matched_chunk.document_id
+            doc_title = doc_map_by_id.get(doc_id, doc_title)
+            category = doc_cat_by_id.get(doc_id)
+            chunk_id = matched_chunk.chunk_id
+        elif doc_name in doc_map_by_id:
+            doc_id = doc_name
+            doc_title = doc_map_by_id[doc_name]
+            category = doc_cat_by_id.get(doc_name)
+        elif doc_name in STEM_DOC_MAP:
+            mapping = STEM_DOC_MAP[doc_name]
+            doc_id = mapping["doc_id"]
+            doc_title = mapping["title"]
+            category = mapping.get("category")
+
+        # 构建规范化溯源引用标签
+        clause_str = f" {clause}" if clause else ""
+        source = f"[来源:《{doc_title}》{section}{clause_str}]".strip()
+
+        search_items.append(
+            RegulationSearchResult(
+                content=content,
+                score=round(raw_score, 4),
+                score_percent=score_percent,
+                doc_id=doc_id,
+                doc_title=doc_title,
+                section=section,
+                clause=clause or None,
+                source=source,
+                chunk_id=chunk_id,
+                category=category,
+            )
+        )
+
+    return search_items
+
+
+@router.get(
     "/{doc_id}",
     response_model=RegulationDetailResponse,
     summary="获取单篇规程详情及其下属全部切块列表",
@@ -316,13 +475,18 @@ def get_regulation_detail(doc_id: str, db: Session = Depends(get_db)):
     "/{doc_id}",
     response_model=RegulationDetailResponse,
     summary="更新规章规程 (元数据与重新切块/向量同步)",
-    description="更新规程元数据；若正文 content 发生变更，重新计算哈希与字数，清理原切块，重新执行语义切块并同步更新向量库。",
+    description="更新规程元数据；若正文 content 发生变更，重新计算哈希与字数，清理原切块，重新执行语义切块并同步更新向量库（仅系统超级管理员有权操作）。",
 )
 def update_regulation(
     doc_id: str,
     payload: RegulationUpdateRequest,
+    operator: Optional[str] = Query(default=None, description="操作人名称"),
+    operator_role: Optional[str] = Query(default=None, description="操作人角色（仅ADMIN有权操作）"),
+    x_user_role: Optional[str] = Header(default=None, alias="X-User-Role", description="请求头用户角色"),
     db: Session = Depends(get_db),
 ):
+    _verify_admin_permission(operator=operator, operator_role=operator_role, header_role=x_user_role, db=db)
+
     target_id = doc_id.strip()
     query = db.query(KnowledgeDocument)
     if target_id.isdigit():
@@ -467,9 +631,17 @@ def update_regulation(
 @router.delete(
     "/{doc_id}",
     summary="下线废止规章规程",
-    description="废止并删除规程源文档，级联清理所有关联语义切块，并从 ChromaDB 向量库中完全同步移除向量。",
+    description="废止并删除规程源文档，级联清理所有关联语义切块，并从 ChromaDB 向量库中完全同步移除向量（仅系统超级管理员有权操作）。",
 )
-def delete_regulation(doc_id: str, db: Session = Depends(get_db)):
+def delete_regulation(
+    doc_id: str,
+    operator: Optional[str] = Query(default=None, description="操作人名称"),
+    operator_role: Optional[str] = Query(default=None, description="操作人角色（仅ADMIN有权操作）"),
+    x_user_role: Optional[str] = Header(default=None, alias="X-User-Role", description="请求头用户角色"),
+    db: Session = Depends(get_db),
+):
+    _verify_admin_permission(operator=operator, operator_role=operator_role, header_role=x_user_role, db=db)
+
     target_id = doc_id.strip()
     query = db.query(KnowledgeDocument)
     if target_id.isdigit():
@@ -513,93 +685,3 @@ def delete_regulation(doc_id: str, db: Session = Depends(get_db)):
         "title": saved_title,
         "deleted_chunks": chunk_count,
     }
-
-
-@router.post(
-    "/search",
-    response_model=List[RegulationSearchResult],
-    summary="规章规程语义/关键词检索",
-    description="调用底层双模向量知识库执行 Top-K 语义检索，返回匹配条款切块、余弦相似度、溯源文档及章节标号。",
-)
-def search_regulations(payload: RegulationSearchRequest, db: Session = Depends(get_db)):
-    _init_kb()
-    kb = get_kb()
-    raw_results = kb.search(payload.query, top_k=payload.top_k)
-    if not raw_results:
-        return []
-
-    # 预加载数据库切块以匹配 chunk_id 和文档信息
-    all_chunks = db.query(KnowledgeChunk).all()
-    chunk_map_by_content = {c.chunk_content.strip(): c for c in all_chunks}
-    chunk_map_by_chroma = {c.chroma_id: c for c in all_chunks if c.chroma_id}
-
-    # 文档 ID 与标题、业务分类映射
-    all_docs = db.query(KnowledgeDocument).all()
-    doc_map_by_id = {d.doc_id: d.title for d in all_docs}
-    doc_cat_by_id = {d.doc_id: d.category for d in all_docs}
-
-    search_items: List[RegulationSearchResult] = []
-    for r in raw_results:
-        content = r.get("content", "")
-        meta = r.get("metadata", {})
-        raw_score = float(r.get("score", 0.0))
-        if raw_score <= 0.0:
-            continue
-        
-        # 规整化得分百分比
-        score_percent = f"{max(0.0, min(100.0, raw_score * 100)):.1f}%"
-
-        doc_name = meta.get("doc_name", "")
-        section = meta.get("section", "")
-        clause = meta.get("clause", "")
-
-        # 尝试匹配数据库切块记录
-        matched_chunk = chunk_map_by_content.get(content.strip())
-        if not matched_chunk and doc_name and section:
-            for idx in range(20):
-                cid = f"{doc_name}_{section}_{idx}"
-                if cid in chunk_map_by_chroma:
-                    matched_chunk = chunk_map_by_chroma[cid]
-                    break
-
-        # 逆向解析文档编号、标题与业务分类
-        doc_id = None
-        doc_title = "机房安全管理规程"
-        category = None
-        chunk_id = None
-
-        if matched_chunk:
-            doc_id = matched_chunk.document_id
-            doc_title = doc_map_by_id.get(doc_id, doc_title)
-            category = doc_cat_by_id.get(doc_id)
-            chunk_id = matched_chunk.chunk_id
-        elif doc_name in doc_map_by_id:
-            doc_id = doc_name
-            doc_title = doc_map_by_id[doc_name]
-            category = doc_cat_by_id.get(doc_name)
-        elif doc_name in STEM_DOC_MAP:
-            mapping = STEM_DOC_MAP[doc_name]
-            doc_id = mapping["doc_id"]
-            doc_title = mapping["title"]
-            category = mapping.get("category")
-
-        # 构建规范化溯源引用标签
-        clause_str = f" {clause}" if clause else ""
-        source = f"[来源:《{doc_title}》{section}{clause_str}]".strip()
-
-        search_items.append(
-            RegulationSearchResult(
-                content=content,
-                score=round(raw_score, 4),
-                score_percent=score_percent,
-                doc_id=doc_id,
-                doc_title=doc_title,
-                section=section,
-                clause=clause or None,
-                source=source,
-                chunk_id=chunk_id,
-                category=category,
-            )
-        )
-
-    return search_items

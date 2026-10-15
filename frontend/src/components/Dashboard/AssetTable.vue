@@ -175,7 +175,7 @@
             <th class="w-[105px] py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产编号</th>
             <th class="w-auto min-w-[130px] py-2.5 px-3 border-b border-white/[0.06] font-medium glass-text">设备名称 / 型号规格</th>
             <th class="w-[110px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">机房机柜 / IP</th>
-            <th class="w-[86px] py-2.5 px-1 text-center border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">健康度调节</th>
+            <th class="w-[86px] py-2.5 px-1 text-center border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">健康状态</th>
             <th class="w-[130px] py-2.5 px-2 border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">借用状态</th>
             <th class="w-[140px] py-2.5 px-3 text-right border-b border-white/[0.06] font-medium glass-text whitespace-nowrap">资产操作</th>
           </tr>
@@ -203,7 +203,7 @@
                 class="hover:underline hover:text-cyan-400 cursor-pointer inline-flex items-center gap-1.5 transition-colors"
                 title="点开查看设备完整硬件参数与运行详情"
               >
-                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="a.health_status === 'HEALTHY' ? 'bg-emerald-400' : a.health_status === 'OVERHEAT' ? 'bg-rose-400 animate-ping' : a.health_status === 'WARNING' ? 'bg-amber-400' : 'bg-zinc-500'"></span>
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="getEffectiveHealthStatus(a) === 'HEALTHY' ? 'bg-emerald-400' : getEffectiveHealthStatus(a) === 'OVERHEAT' ? 'bg-rose-400 animate-ping' : getEffectiveHealthStatus(a) === 'WARNING' ? 'bg-amber-400' : 'bg-zinc-500'"></span>
                 <span class="truncate">{{ a.asset_no }}</span>
               </span>
             </td>
@@ -232,32 +232,16 @@
               </div>
             </td>
 
-            <!-- 健康状态快速调节 -->
+            <!-- 健康状态展示 (纯只读客观物理衍生徽章) -->
             <td class="py-2.5 px-1 text-center whitespace-nowrap">
-              <select
-                v-if="isAdmin"
-                :value="a.health_status"
-                @change="$emit('updateHealth', a.id, $event.target.value)"
-                :class="[
-                  'px-2 py-0.5 rounded text-[10px] font-medium font-mono border cursor-pointer focus:outline-none transition-colors shadow-sm',
-                  healthClass(a.health_status)
-                ]"
-                title="管理员可切换健康状态"
-              >
-                <option class="bg-zinc-900 text-zinc-300" value="HEALTHY">HEALTHY</option>
-                <option class="bg-zinc-900 text-zinc-300" value="WARNING">WARNING</option>
-                <option class="bg-zinc-900 text-zinc-300" value="OVERHEAT">OVERHEAT</option>
-                <option class="bg-zinc-900 text-zinc-300" value="OFFLINE">OFFLINE</option>
-              </select>
               <span
-                v-else
                 :class="[
-                  'px-2 py-0.5 rounded text-[10px] font-medium font-mono border inline-block shadow-sm select-none',
-                  healthClass(a.health_status)
+                  'px-2 py-0.5 rounded text-[10px] font-medium font-sans border inline-block shadow-sm select-none',
+                  healthClass(getEffectiveHealthStatus(a))
                 ]"
-                :title="`健康状态: ${a.health_status}`"
+                :title="`健康状态: ${getHealthLabel(getEffectiveHealthStatus(a))}`"
               >
-                {{ a.health_status }}
+                {{ getHealthLabel(getEffectiveHealthStatus(a)) }}
               </span>
 
               <!-- 核心遥测温度药丸 (可点击快捷调温校准) -->
@@ -289,6 +273,14 @@
                   :title="`⚠️ 借用已超期！约定应还: ${overdueMap[a.asset_no].expected_return_time || '已逾期'} (点击查看催告函)`"
                 >
                   <span>⚠️ 逾期 {{ overdueMap[a.asset_no].overdue_days }}天</span>
+                </span>
+                <span
+                  v-else-if="a.borrow_status === 'AVAILABLE' && isAssetBorrowBlocked(a)"
+                  class="px-2 py-0.5 rounded text-[10px] font-mono shrink-0 bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1 cursor-help"
+                  :title="`⚠️ 设备处于 ${getHealthLabel(a.health_status)} (${getAssetTemperature(a)}°C) 异常状态，依据实验室出借安全规程已锁定禁止借用`"
+                >
+                  <span>AVAILABLE</span>
+                  <span class="text-[9px] px-1 py-0.2 bg-rose-500/30 text-rose-200 rounded font-sans font-medium">锁定</span>
                 </span>
                 <span v-else :class="['px-2 py-0.5 rounded text-[10px] font-mono shrink-0', borrowClass(a.borrow_status)]">
                   {{ a.borrow_status }}
@@ -329,15 +321,15 @@
                 <!-- 3. 核心业务高频主按钮：【借用】/【归还】 -->
                 <button
                   v-if="a.borrow_status === 'AVAILABLE'"
-                  :disabled="isStudent"
-                  @click="!isStudent && openBorrowModal(a)"
+                  :disabled="isStudent || isAssetBorrowBlocked(a)"
+                  @click="!isStudent && !isAssetBorrowBlocked(a) && openBorrowModal(a)"
                   :class="[
                     'px-2 py-0.5 rounded text-[10px] transition-all font-mono border',
-                    isStudent
+                    (isStudent || isAssetBorrowBlocked(a))
                       ? 'bg-zinc-800/40 text-zinc-500 border-white/[0.04] cursor-not-allowed opacity-50'
                       : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-white/[0.08] active:scale-95 shadow-sm'
                   ]"
-                  :title="isStudent ? '学生无权借调机房资产' : '办理设备借调'"
+                  :title="borrowButtonTitle(a)"
                 >
                   借用
                 </button>
@@ -460,7 +452,7 @@
           v-if="showDeleteModal"
           @keydown.esc.window="showDeleteModal = false"
           class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-hidden"
-          @click.self="showDeleteModal = false"
+          v-backdrop-dismiss="() => showDeleteModal = false"
         >
           <div class="w-full max-w-sm rounded-3xl bg-zinc-900/95 border border-rose-500/30 ring-1 ring-rose-500/10 p-5 space-y-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
             <div class="flex items-center space-x-3 text-rose-400">
@@ -522,7 +514,7 @@
           v-if="showBorrowModal"
           @keydown.esc.window="showBorrowModal = false"
           class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-hidden"
-          @click.self="showBorrowModal = false"
+          v-backdrop-dismiss="() => showBorrowModal = false"
         >
           <div class="w-full max-w-sm rounded-3xl bg-zinc-900/95 border border-white/[0.12] ring-1 ring-white/[0.05] p-5 space-y-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
             <div class="flex items-center justify-between border-b border-white/[0.08] pb-2.5">
@@ -558,6 +550,17 @@
                 placeholder="填写借用教师姓名与部门..."
                 class="w-full bg-zinc-950/80 border border-white/[0.08] focus:border-cyan-500 rounded-xl px-3.5 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none transition-colors"
               />
+            </div>
+
+            <!-- 弹窗内部操作错误与冲突提示横幅 (直接内嵌于弹窗，不关闭弹窗) -->
+            <div
+              v-if="borrowModalError"
+              class="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center space-x-2 select-none"
+            >
+              <svg class="w-4 h-4 shrink-0 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span class="leading-relaxed">{{ borrowModalError }}</span>
             </div>
 
             <div class="flex items-center justify-end space-x-2 pt-2 border-t border-white/[0.06]">
@@ -643,6 +646,27 @@ function returnButtonTitle(asset) {
   return '办理归还'
 }
 
+function isAssetBorrowBlocked(a) {
+  if (!a) return false
+  if (a.health_status === 'OVERHEAT' || a.health_status === 'CRITICAL' || a.health_status === 'OFFLINE') {
+    return true
+  }
+  const t = getAssetTemperature(a)
+  if (t !== '-' && Number(t) >= 40.0) {
+    return true
+  }
+  return false
+}
+
+function borrowButtonTitle(a) {
+  if (isStudent.value) return '学生无权借调机房资产'
+  if (isAssetBorrowBlocked(a)) {
+    const reason = a.health_status === 'OFFLINE' ? '设备处于离线脱网状态' : `设备核心温度过高 (${getAssetTemperature(a)}°C ${getHealthLabel(a.health_status)})`
+    return `${reason}，依据实验室《设备出借安全管理条例》已锁定禁止借调`
+  }
+  return '办理设备借调'
+}
+
 function getAssetTemperature(a) {
   if (!a) return 31.5
   if (a.health_status === 'OFFLINE') return 22.0
@@ -659,6 +683,19 @@ function getAssetTempClass(a) {
   if (t >= 40.0) return 'text-rose-400 font-bold hover:text-rose-300'
   if (t >= 38.0) return 'text-amber-400 font-medium hover:text-amber-300'
   return 'text-emerald-400 hover:text-emerald-300'
+}
+
+function getEffectiveHealthStatus(a) {
+  if (!a) return 'HEALTHY'
+  if (a.health_status === 'OFFLINE') return 'OFFLINE'
+  const t = getAssetTemperature(a)
+  if (t !== undefined && t !== null && !isNaN(Number(t))) {
+    const num = Number(t)
+    if (num >= 40.0) return 'OVERHEAT'
+    if (num >= 38.0) return 'WARNING'
+    return 'HEALTHY'
+  }
+  return a.health_status || 'HEALTHY'
 }
 
 const tableContainerRef = ref(null)
@@ -773,21 +810,33 @@ async function confirmDelete() {
 const showBorrowModal = ref(false)
 const targetAsset = ref(null)
 const borrowerInput = ref('')
+const borrowModalError = ref('')
 
 function openBorrowModal(asset) {
   targetAsset.value = asset
   const name = props.currentUser?.real_name || '机房教师'
   const dept = props.currentUser?.department ? ` (${props.currentUser.department})` : ''
   borrowerInput.value = `${name}${dept}`
+  borrowModalError.value = ''
   showBorrowModal.value = true
 }
 
 function confirmBorrow() {
   if (isStudent.value) return
-  if (!targetAsset.value || !borrowerInput.value.trim()) return
+  if (!borrowerInput.value.trim()) {
+    borrowModalError.value = '请填写借用人姓名或科研教学团队'
+    return
+  }
+  if (!targetAsset.value) return
   emit('borrowAsset', targetAsset.value.asset_no, borrowerInput.value.trim())
   showBorrowModal.value = false
 }
+
+watch(borrowerInput, () => {
+  if (borrowModalError.value) {
+    borrowModalError.value = ''
+  }
+})
 
 watch(
   () => props.highlightedAssetNo,
@@ -838,8 +887,8 @@ const categoryOptions = computed(() => [
 ])
 
 const healthFilterOptions = [
-  { label: '全部健康度', value: 'ALL' },
-  { label: '良好', value: 'HEALTHY' },
+  { label: '全部状态', value: 'ALL' },
+  { label: '正常', value: 'HEALTHY' },
   { label: '预警', value: 'WARNING' },
   { label: '超温', value: 'OVERHEAT' },
   { label: '离线', value: 'OFFLINE' },
@@ -852,7 +901,7 @@ const filteredAssets = computed(() => {
     } else if (selectedCategory.value !== 'ALL' && a.category !== selectedCategory.value) {
       return false
     }
-    if (selectedHealth.value !== 'ALL' && a.health_status !== selectedHealth.value) {
+    if (selectedHealth.value !== 'ALL' && getEffectiveHealthStatus(a) !== selectedHealth.value) {
       return false
     }
     if (keyword.value.trim()) {
@@ -961,7 +1010,7 @@ function escapeCsv(val) {
 
 function getHealthLabel(status) {
   const map = {
-    HEALTHY: '良好',
+    HEALTHY: '正常',
     WARNING: '预警',
     OVERHEAT: '超温',
     OFFLINE: '离线',
@@ -996,7 +1045,7 @@ function exportAssetsCSV() {
     escapeCsv(a.name || ''),
     escapeCsv(a.category || ''),
     escapeCsv(a.location || ''),
-    escapeCsv(getHealthLabel(a.health_status)),
+    escapeCsv(getHealthLabel(getEffectiveHealthStatus(a))),
     escapeCsv(getBorrowLabel(a.borrow_status)),
     escapeCsv(a.borrower || ''),
     escapeCsv(a.detail?.management_ip || ''),
@@ -1027,11 +1076,12 @@ function printAssetsTable() {
 
   const rowsHtml = list
     .map((a, index) => {
-      const health = getHealthLabel(a.health_status)
+      const effHealth = getEffectiveHealthStatus(a)
+      const health = getHealthLabel(effHealth)
       let healthBadgeStyle = 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;'
-      if (a.health_status === 'WARNING') healthBadgeStyle = 'background:#fffbeb;color:#92400e;border:1px solid #fde68a;'
-      if (a.health_status === 'OVERHEAT') healthBadgeStyle = 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;font-weight:bold;'
-      if (a.health_status === 'OFFLINE') healthBadgeStyle = 'background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;'
+      if (effHealth === 'WARNING') healthBadgeStyle = 'background:#fffbeb;color:#92400e;border:1px solid #fde68a;'
+      if (effHealth === 'OVERHEAT') healthBadgeStyle = 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;font-weight:bold;'
+      if (effHealth === 'OFFLINE') healthBadgeStyle = 'background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;'
 
       let borrowBadgeStyle = 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;'
       if (a.borrow_status === 'IN_USE') borrowBadgeStyle = 'background:#fffbeb;color:#92400e;border:1px solid #fde68a;'

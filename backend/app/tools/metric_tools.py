@@ -7,18 +7,56 @@ from app.db.models import Asset
 from app.tools.registry import tool
 
 
-@tool(name="get_server_metrics", description="查询机房指定服务器或设备的实时健康监控指标（包括核心温度、CPU占用率、内存占用、风扇转速等），温度超过40℃将自动触发超温预警")
+def resolve_seed_asset(identifier: str) -> Optional[Dict[str, Any]]:
+    """在 SEED_ASSETS 种子数据中智能模糊匹配设备字典"""
+    from app.db.init_db import SEED_ASSETS
+    import re
+
+    if not identifier:
+        return None
+    raw = str(identifier).strip()
+    cleaned = re.sub(r"[啊呀呢吧哦吗了呗呐]+$", "", raw).strip()
+    cleaned = re.sub(r"(?<=[0-9A-Za-z])(?:号机|号|台|机)$", "", cleaned).strip()
+    if not cleaned:
+        cleaned = raw
+    c_up = cleaned.upper()
+
+    # 1. 严格全等
+    for a in SEED_ASSETS:
+        if a["asset_no"].upper() == c_up:
+            return a
+    # 2. 补全 DEV- 前缀
+    if not c_up.startswith("DEV-"):
+        for a in SEED_ASSETS:
+            if a["asset_no"].upper() == f"DEV-{c_up}":
+                return a
+    # 3. 后缀匹配 -XXX
+    for a in SEED_ASSETS:
+        if a["asset_no"].upper().endswith(f"-{c_up}"):
+            return a
+    # 4. 包含匹配
+    for a in SEED_ASSETS:
+        if c_up in a["asset_no"].upper():
+            return a
+    # 5. 名称模糊匹配
+    for a in SEED_ASSETS:
+        if cleaned in a["name"] or raw in a["name"]:
+            return a
+    return None
+
+
+@tool(name="get_server_metrics", description="查询机房指定服务器或设备的实时健康监控指标（包括核心温度、CPU占用率、内存占用、风扇转速等），支持编号全称（如 DEV-LAB-106）、口语简称（如 lab-106、106、srv-201、201）或设备名称模糊匹配，温度超过40℃将自动触发超温预警")
 def get_server_metrics(
     device_id: str,
     db: Optional[Session] = None,
 ) -> Dict[str, Any]:
     """查询指定设备的实时健康状态与传感器指标
 
-    :param device_id: 设备/资产编号，例如 DEV-SRV-201、DEV-SRV-202
+    :param device_id: 设备/资产编号或口语简称，例如 DEV-LAB-106、lab-106、106、DEV-SRV-201
     :param db: 数据库会话 (由系统自动注入)
     :return: 包含温度、CPU、内存及告警等级的指标字典
     """
-    clean_device_id = (device_id or "").strip().upper()
+    clean_device_id = (device_id or "").strip()
     if not clean_device_id:
         return {"status": "error", "message": "设备编号不能为空"}
 
@@ -29,23 +67,23 @@ def get_server_metrics(
     custom_temp = None
 
     if db is not None:
-        asset = db.query(Asset).filter(Asset.asset_no == clean_device_id).first()
+        from app.tools.asset_tools import resolve_asset
+        asset = resolve_asset(clean_device_id, db=db)
         if not asset:
             return {
                 "status": "error",
-                "message": f"未在机房资产台账中找到编号为 '{clean_device_id}' 的设备，请核实设备编号",
+                "message": f"未在机房资产台账中找到匹配 '{clean_device_id}' 的设备，请核实设备编号",
             }
+        clean_device_id = asset.asset_no
         device_name = asset.name
         location = asset.location
         health_status = asset.health_status
         custom_temp = asset.custom_temperature
     else:
         # 无 DB 注入时的纯净模拟探针兜底 (单测与纯离线传感器模拟)
-        from app.db.init_db import SEED_ASSETS
-
-        seed_map = {item["asset_no"]: item for item in SEED_ASSETS}
-        if clean_device_id in seed_map:
-            seed_asset = seed_map[clean_device_id]
+        seed_asset = resolve_seed_asset(clean_device_id)
+        if seed_asset:
+            clean_device_id = seed_asset["asset_no"]
             health_status = seed_asset["health_status"]
             device_name = seed_asset["name"]
             location = seed_asset["location"]
@@ -63,14 +101,17 @@ def get_server_metrics(
                 except Exception:
                     pass
         elif "overheat" in clean_device_id.lower():
+            clean_device_id = clean_device_id.upper()
             health_status = "OVERHEAT"
             device_name = "2号机房-GPU计算节点01"
             location = "实训楼201-机柜A01"
         elif "warning" in clean_device_id.lower():
+            clean_device_id = clean_device_id.upper()
             health_status = "WARNING"
             device_name = "机房预警设备"
             location = "实训楼201"
         elif "offline" in clean_device_id.lower():
+            clean_device_id = clean_device_id.upper()
             health_status = "OFFLINE"
             device_name = "离线设备"
             location = "实训楼备用区"
@@ -79,6 +120,7 @@ def get_server_metrics(
                 "status": "error",
                 "message": f"未在机房资产台账中找到编号为 '{clean_device_id}' 的设备，请核实设备编号",
             }
+
 
     # 动环探针遥测注入与健康指标联动推导
     if health_status == "OFFLINE":

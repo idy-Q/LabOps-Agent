@@ -5,7 +5,6 @@
       <!-- 身份权限气泡组件 -->
       <RolePermissionPopover
         :currentUser="currentUser"
-        @fill-prompt="handleFillPrompt"
       />
 
       <div class="hidden sm:flex items-center space-x-2 text-[10.5px] text-zinc-400 font-mono select-none">
@@ -23,7 +22,7 @@
         @keydown="handleKeyDown"
         :disabled="isLoading"
         rows="2"
-        placeholder="输入运维指令或提问... (可点击上方身份标签查看权限与推荐提示词)"
+        placeholder="输入运维指令或提问... (可点击上方身份标签查看权限指引)"
         class="flex-1 bg-transparent text-zinc-100 placeholder-zinc-500 text-xs sm:text-sm px-3 py-1.5 focus:outline-none resize-none disabled:opacity-50"
       ></textarea>
 

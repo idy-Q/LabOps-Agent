@@ -1,12 +1,14 @@
 import json
 import re
+import uuid
 from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc, or_
+from sqlalchemy import desc, func, or_
 from sqlalchemy.exc import IntegrityError
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.db.session import get_db
 from app.db.models import Asset, AssetDetail, ServerRoom, ServerRack, AssetBorrowLog, Ticket, TicketWorkflow
 from app.api.rooms import is_asset_in_room
@@ -36,9 +38,9 @@ def list_assets(
     borrow_status: Optional[BorrowStatusType] = Query(default=None, description="按借用状态过滤"),
     keyword: Optional[str] = Query(default=None, description="按编号、名称或规格关键词搜索"),
     skip: int = Query(default=0, ge=0, description="分页起始偏移量"),
-    limit: int = Query(default=50, ge=1, le=100, description="每页条目数"),
+    limit: int = Query(default=100, ge=1, le=500, description="每页条目数"),
     db: Session = Depends(get_db),
-):
+) -> List[AssetResponse]:
     query = db.query(Asset).options(joinedload(Asset.detail))
     if asset_no:
         query = query.filter(Asset.asset_no == asset_no)
@@ -65,6 +67,23 @@ def list_assets(
         .limit(limit)
         .all()
     )
+
+    # 动环探针遥测注入与设备健康状态一致性保障 (单向真理来源 Single Source of Truth)
+    has_mutation = False
+    for a in assets:
+        if a.health_status != "OFFLINE":
+            ct = a.custom_temperature
+            if ct is not None:
+                linked = link_temperature_to_health_status(ct, a.health_status)
+                if a.health_status != linked:
+                    a.health_status = linked
+                    has_mutation = True
+    if has_mutation:
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+
     return assets
 
 
@@ -89,6 +108,143 @@ def link_temperature_to_health_status(temperature: Optional[float], current_heal
         return "HEALTHY"
 
 
+def extract_asset_slot_info(
+    location: str,
+    extra_params_str: Optional[str] = None,
+    registered_rack_ids: Optional[List[str]] = None,
+) -> tuple[Optional[str], Optional[int], int]:
+    """从设备位置 location 及 extra_params 中解析出 (rack_id, start_u, u_height)"""
+    extra_params = {}
+    if extra_params_str:
+        try:
+            extra_params = json.loads(extra_params_str) if isinstance(extra_params_str, str) else extra_params_str
+        except Exception:
+            extra_params = {}
+
+    start_u = extra_params.get("start_u")
+    u_height = extra_params.get("u_height")
+    if u_height is None and "rack_units" in extra_params:
+        ru_str = str(extra_params["rack_units"]).upper()
+        if "U" in ru_str:
+            try:
+                u_height = int(ru_str.replace("U", "").strip())
+            except ValueError:
+                u_height = 1
+        else:
+            u_height = 1
+
+    loc = location or ""
+    if start_u is None:
+        match_u = re.search(r"-U(\d+)", loc, re.IGNORECASE)
+        if match_u:
+            start_u = int(match_u.group(1))
+
+    if u_height is None:
+        match_h = re.search(r"\((\d+)U\)", loc, re.IGNORECASE)
+        if match_h:
+            u_height = int(match_h.group(1))
+        else:
+            u_height = 1
+
+    try:
+        start_u = int(start_u) if start_u is not None else None
+    except (ValueError, TypeError):
+        start_u = None
+
+    try:
+        u_height = int(u_height) if u_height is not None else 1
+    except (ValueError, TypeError):
+        u_height = 1
+    if u_height < 1:
+        u_height = 1
+
+    target_rack_id = None
+    if loc and ("机柜" in loc or "核心柜" in loc or (start_u is not None and start_u > 0)):
+        if registered_rack_ids:
+            for rk_id in registered_rack_ids:
+                if re.search(rf"(^|[-_ ]){re.escape(rk_id)}([-_ ]|$)", loc) or rk_id in loc:
+                    target_rack_id = rk_id
+                    break
+        if not target_rack_id:
+            parts = [p.strip() for p in loc.split("-") if p.strip()]
+            if len(parts) >= 3 and (parts[-1].startswith("U") or parts[-1].startswith("u")):
+                target_rack_id = parts[1]
+            elif len(parts) >= 2 and ("机柜" in parts[1] or "柜" in parts[1]):
+                target_rack_id = parts[1]
+            elif len(parts) == 1 and ("机柜" in parts[0] or "柜" in parts[0]):
+                target_rack_id = parts[0]
+
+    return target_rack_id, start_u, u_height
+
+
+def validate_rack_u_slot_availability(
+    db: Session,
+    location: str,
+    extra_params_str: Optional[str] = None,
+    exclude_asset_id: Optional[int] = None,
+    asset_name: Optional[str] = None,
+):
+    """校验在架设备物理槽位合法性与排他性（防重复占用）"""
+    all_registered_racks = db.query(ServerRack).all()
+    registered_rack_ids_sorted = sorted([rk.rack_id for rk in all_registered_racks], key=len, reverse=True)
+    racks_map = {rk.rack_id: rk for rk in all_registered_racks}
+
+    rack_id, start_u, u_height = extract_asset_slot_info(
+        location=location,
+        extra_params_str=extra_params_str,
+        registered_rack_ids=registered_rack_ids_sorted,
+    )
+
+    # 非在架设备或未指定 start_u 时无需校验槽位
+    if not rack_id or start_u is None or start_u <= 0:
+        return
+
+    end_u = start_u + u_height - 1
+
+    # 1. 越界检查
+    rack_obj = racks_map.get(rack_id)
+    total_u = rack_obj.total_u if rack_obj and rack_obj.total_u else 42
+
+    if start_u < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"设备起始槽位 U{start_u} 非法，机柜槽位编号必须 >= 1",
+        )
+    if end_u > total_u:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"设备占用槽位 U{start_u}~U{end_u} (共 {u_height}U) 超出机柜 '{rack_id}' 的总容量 ({total_u}U)，无法存放！",
+        )
+
+    # 2. 槽位冲突重叠校验
+    query = db.query(Asset).options(joinedload(Asset.detail))
+    if exclude_asset_id:
+        query = query.filter(Asset.id != exclude_asset_id)
+    existing_assets = query.all()
+
+    for other in existing_assets:
+        other_loc = other.location or ""
+        other_extra = other.detail.extra_params if other.detail else None
+        o_rack, o_start, o_height = extract_asset_slot_info(
+            location=other_loc,
+            extra_params_str=other_extra,
+            registered_rack_ids=registered_rack_ids_sorted,
+        )
+        if not o_rack or o_start is None or o_start <= 0:
+            continue
+
+        if o_rack == rack_id:
+            o_end = o_start + o_height - 1
+            if max(start_u, o_start) <= min(end_u, o_end):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"机柜 '{rack_id}' 的物理槽位已被占用！"
+                        f"所选槽位 U{start_u}~U{end_u} 与已有设备 '{other.name}' ({other.asset_no}, 占用 U{o_start}~U{o_end}) 发生空间重叠冲突，无法存放！"
+                    ),
+                )
+
+
 @router.post(
     "/",
     response_model=AssetResponse,
@@ -108,6 +264,16 @@ def create_asset(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"资产编号 '{clean_no}' 已存在，不能重复添加",
         )
+
+    # 槽位重叠与合法性防呆硬校验
+    extra_params_str = asset_in.detail.extra_params if asset_in.detail else None
+    validate_rack_u_slot_availability(
+        db=db,
+        location=asset_in.location.strip(),
+        extra_params_str=extra_params_str,
+        exclude_asset_id=None,
+        asset_name=asset_in.name.strip(),
+    )
 
     # 提取设定的温度（支持顶层字段或 detail 嵌套字段，支持 custom_temperature 或 temperature 别名）
     temp_val = asset_in.custom_temperature if asset_in.custom_temperature is not None else asset_in.temperature
@@ -309,33 +475,68 @@ def get_rack_topology(
     all_racked_assets = []
     accounted_asset_ids = set()
 
+    # 预先查询全量在册机柜，建立机柜到机房的权威映射
+    all_registered_racks = db.query(ServerRack).all()
+    registered_rack_room_map = {rk.rack_id: rk.room_code for rk in all_registered_racks}
+    registered_rack_ids_sorted = sorted(registered_rack_room_map.keys(), key=len, reverse=True)
+
+    def resolve_asset_rack_id(loc_str: str) -> Optional[str]:
+        if not loc_str:
+            return None
+        # 1. 优先在已登记在册机柜中做边界与子串匹配
+        for rk_id in registered_rack_ids_sorted:
+            if re.search(rf"(^|[-_ ]){re.escape(rk_id)}([-_ ]|$)", loc_str):
+                return rk_id
+        for rk_id in registered_rack_ids_sorted:
+            if rk_id in loc_str:
+                return rk_id
+        # 2. 若未匹配到已登记机柜，从破折号规范位置中提取机柜标识
+        parts = [p.strip() for p in loc_str.split("-") if p.strip()]
+        if len(parts) >= 3 and (parts[-1].startswith("U") or parts[-1].startswith("u")):
+            return parts[1]
+        elif len(parts) >= 2:
+            return parts[1]
+        elif len(parts) == 1:
+            return parts[0]
+        return loc_str.strip()
+
     for room in rooms_query:
         r_code = room.room_code
-        room_assets = [
-            a for a in formatted_assets
-            if is_asset_in_room(a.get("location", ""), r_code, room.room_name)
-        ]
 
         # 区分机架内设备与周边配套/外设实验仪器
         in_rack_assets = []
         unracked_assets = []
-        for a in room_assets:
+
+        for a in formatted_assets:
+            loc = a.get("location", "")
             is_in_rack = (
                 a.get("start_u") is not None
                 and a["start_u"] > 0
-                and ("机柜" in a.get("location", "") or "核心柜" in a.get("location", ""))
+                and ("机柜" in loc or "核心柜" in loc)
             )
             if is_in_rack:
-                in_rack_assets.append(a)
-                all_racked_assets.append(a)
-                accounted_asset_ids.add(a["id"])
+                matched_rk = resolve_asset_rack_id(loc)
+                # 若设备所在机柜是系统在册登记机柜，其归属机房严格由该机柜在册的 room_code 决定！
+                if matched_rk and matched_rk in registered_rack_room_map:
+                    if registered_rack_room_map[matched_rk] == r_code:
+                        in_rack_assets.append(a)
+                        all_racked_assets.append(a)
+                        accounted_asset_ids.add(a["id"])
+                else:
+                    # 机柜未正式在册，退化使用 is_asset_in_room 判定
+                    if is_asset_in_room(loc, r_code, room.room_name):
+                        in_rack_assets.append(a)
+                        all_racked_assets.append(a)
+                        accounted_asset_ids.add(a["id"])
             else:
-                unracked_assets.append(a)
-                all_unracked_assets.append(a)
-                accounted_asset_ids.add(a["id"])
+                # 非机架设备通过 is_asset_in_room 严格归属判定
+                if is_asset_in_room(loc, r_code, room.room_name):
+                    unracked_assets.append(a)
+                    all_unracked_assets.append(a)
+                    accounted_asset_ids.add(a["id"])
 
-        # 组装机柜列表 (从 server_racks 表动态加载)
-        db_racks = db.query(ServerRack).filter(ServerRack.room_code == r_code).order_by(ServerRack.rack_id).all()
+        # 组装机柜列表 (从 server_racks 表动态加载当前机房在册机柜)
+        db_racks = [rk for rk in all_registered_racks if rk.room_code == r_code]
         rack_map = {}
         for rk in db_racks:
             rack_map[rk.rack_id] = {
@@ -357,31 +558,13 @@ def get_rack_topology(
 
         for a in in_rack_assets:
             loc = a["location"] or ""
-            # 优先匹配已登记机柜编号 (长名称优先匹配，并结合边界匹配)
-            matched_rack_id = None
-            for rk_id in sorted(rack_map.keys(), key=len, reverse=True):
-                if re.search(rf"(^|[-_ ]){re.escape(rk_id)}([-_ ]|$)", loc):
-                    matched_rack_id = rk_id
-                    break
-            if not matched_rack_id:
-                for rk_id in sorted(rack_map.keys(), key=len, reverse=True):
-                    if rk_id in loc:
-                        matched_rack_id = rk_id
-                        break
+            rack_id = resolve_asset_rack_id(loc)
+            if not rack_id:
+                continue
 
-            if matched_rack_id:
-                rack_id = matched_rack_id
-            else:
-                # 规范提取机柜编号，防止将尾部 U位 (如 U28(4U)) 误截断为机柜名
-                parts = [p.strip() for p in loc.split("-") if p.strip()]
-                if len(parts) >= 3 and (parts[-1].startswith("U") or parts[-1].startswith("u")):
-                    rack_id = parts[1]
-                elif len(parts) >= 2:
-                    rack_id = parts[1]
-                elif len(parts) == 1:
-                    rack_id = parts[0]
-                else:
-                    rack_id = loc.strip()
+            # 安全隔离保护：如果该机柜是其他机房的在册机柜，绝不允许跨机房在当前机房生成克隆！
+            if rack_id in registered_rack_room_map and registered_rack_room_map[rack_id] != r_code:
+                continue
 
             if rack_id not in rack_map:
                 rack_map[rack_id] = {
@@ -845,6 +1028,19 @@ def get_asset(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"ID 为 {asset_id} 的资产不存在",
         )
+
+    # 动环探针遥测注入与设备健康状态一致性保障
+    if asset.health_status != "OFFLINE":
+        ct = asset.custom_temperature
+        if ct is not None:
+            linked = link_temperature_to_health_status(ct, asset.health_status)
+            if asset.health_status != linked:
+                asset.health_status = linked
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
     return asset
 
 
@@ -873,6 +1069,22 @@ def update_asset(
 
     update_data = asset_update.model_dump(exclude_unset=True)
     detail_data = update_data.pop("detail", None)
+
+    # 槽位重叠与合法性防呆硬校验 (排除当前被编辑资产自身)
+    target_loc = update_data.get("location", asset.location)
+    target_extra = None
+    if detail_data is not None and "extra_params" in detail_data:
+        target_extra = detail_data["extra_params"]
+    elif asset.detail and asset.detail.extra_params:
+        target_extra = asset.detail.extra_params
+
+    validate_rack_u_slot_availability(
+        db=db,
+        location=target_loc,
+        extra_params_str=target_extra,
+        exclude_asset_id=asset.id,
+        asset_name=update_data.get("name", asset.name),
+    )
 
     # 提取设定的温度（支持顶层字段或 detail 嵌套字段，支持 custom_temperature 或 temperature，且支持显式设为 None 清除）
     temp_val = None
@@ -984,6 +1196,14 @@ def delete_asset(
             detail=f"ID 为 {asset_id} 的资产不存在",
         )
 
+    # 借出状态安全联锁校验：在用借调设备禁止物理删除
+    if asset.borrow_status == "IN_USE":
+        borrower_info = f" (借用人: {asset.borrower})" if asset.borrower else ""
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"资产 [{asset.asset_no}] 当前处于借出使用中{borrower_info}，禁止删除！请先办理归还登记。",
+        )
+
     try:
         db.delete(asset)
         db.commit()
@@ -994,3 +1214,140 @@ def delete_asset(
             detail=f"删除资产失败: {str(exc)}",
         )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class AssetBorrowRequest(BaseModel):
+    borrower: str = Field(..., description="借用人姓名或所属团队")
+    purpose: Optional[str] = Field(default="高校科研与教学实验领用", description="借用用途")
+    expected_days: Optional[int] = Field(default=14, ge=1, le=90, description="预计借用天数")
+
+
+@router.post(
+    "/{asset_no_or_id}/return",
+    summary="快捷办理设备资产归还登记",
+    description="将设备状态恢复为可借用 (AVAILABLE)，清空借用人，自动闭环更新借调日志实际归还时间。支持幂等调用。",
+)
+def return_asset_endpoint(
+    asset_no_or_id: str,
+    db: Session = Depends(get_db),
+):
+    clean_val = asset_no_or_id.strip()
+    query = db.query(Asset)
+    if clean_val.isdigit():
+        asset = query.filter((Asset.id == int(clean_val)) | (Asset.asset_no == clean_val)).first()
+    else:
+        asset = query.filter(func.upper(Asset.asset_no) == clean_val.upper()).first()
+
+    if not asset:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"未找到资产 '{clean_val}'",
+        )
+
+    prev_borrower = asset.borrower
+    now = datetime.now()
+
+    # 更新资产状态
+    asset.borrow_status = "AVAILABLE"
+    asset.borrower = None
+
+    # 自动闭环对应的借调流水日志
+    pending_logs = (
+        db.query(AssetBorrowLog)
+        .filter(
+            AssetBorrowLog.asset_id == asset.asset_no,
+            AssetBorrowLog.return_status.in_(["BORROWING", "OVERDUE"]),
+        )
+        .all()
+    )
+    for log in pending_logs:
+        log.actual_return_time = now
+        log.return_status = "RETURNED"
+        log.approver = "系统管理员"
+
+    db.commit()
+    db.refresh(asset)
+
+    return {
+        "status": "success",
+        "message": f"设备 '{asset.name}' ({asset.asset_no}) 归还成功，状态已恢复为可借用 (AVAILABLE)",
+        "asset": {
+            "id": asset.id,
+            "asset_no": asset.asset_no,
+            "name": asset.name,
+            "borrow_status": asset.borrow_status,
+            "borrower": asset.borrower,
+        },
+    }
+
+
+@router.post(
+    "/{asset_no_or_id}/borrow",
+    summary="快捷办理设备资产借出登记",
+    description="登记设备借出状态为在用 (IN_USE)，记录借用人并生成规范借调流水。",
+)
+def borrow_asset_endpoint(
+    asset_no_or_id: str,
+    payload: AssetBorrowRequest,
+    db: Session = Depends(get_db),
+):
+    clean_val = asset_no_or_id.strip()
+    query = db.query(Asset)
+    if clean_val.isdigit():
+        asset = query.filter((Asset.id == int(clean_val)) | (Asset.asset_no == clean_val)).first()
+    else:
+        asset = query.filter(func.upper(Asset.asset_no) == clean_val.upper()).first()
+
+    if not asset:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"未找到资产 '{clean_val}'",
+        )
+
+    if asset.borrow_status == "IN_USE":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"设备 '{asset.asset_no}' 当前已被借出 (借用人: {asset.borrower})，不可重复借用！",
+        )
+
+    clean_borrower = payload.borrower.strip()
+    if not clean_borrower:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="借用人姓名不能为空",
+        )
+
+    now = datetime.now()
+    asset.borrow_status = "IN_USE"
+    asset.borrower = clean_borrower
+
+    prefix = f"LOG-BRW-{now.strftime('%Y%m%d')}-"
+    log_no = f"{prefix}{uuid.uuid4().hex[:6].upper()}"
+
+    borrow_log = AssetBorrowLog(
+        log_no=log_no,
+        asset_id=asset.asset_no,
+        borrower_username=clean_borrower,
+        borrower_name=clean_borrower,
+        purpose=payload.purpose or "高校科研与教学实验领用",
+        borrow_time=now,
+        expected_return_time=now + timedelta(days=payload.expected_days or 14),
+        return_status="BORROWING",
+        approver="系统管理员",
+    )
+    db.add(borrow_log)
+    db.commit()
+    db.refresh(asset)
+
+    return {
+        "status": "success",
+        "message": f"设备 '{asset.name}' ({asset.asset_no}) 成功借出，借用人：{clean_borrower}",
+        "asset": {
+            "id": asset.id,
+            "asset_no": asset.asset_no,
+            "name": asset.name,
+            "borrow_status": asset.borrow_status,
+            "borrower": asset.borrower,
+        },
+    }
+

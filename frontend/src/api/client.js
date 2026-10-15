@@ -91,6 +91,7 @@ export const api = {
     const qs = query.toString()
     return request(`/assets/${qs ? `?${qs}` : ''}`)
   },
+  getAssets: (params = {}) => api.listAssets(params),
   getAsset: (assetId) => request(`/assets/${assetId}`),
   getAssetTimeline: (assetNo) => request(`/assets/${assetNo}/timeline`),
   createAsset: (payload) =>
@@ -111,6 +112,15 @@ export const api = {
     request(`/assets/topology${roomCode ? `?room_code=${encodeURIComponent(roomCode)}` : ''}`),
   getOverdueAssets: () => request('/assets/overdue'),
   getOverdueNotice: (assetNo) => request(`/assets/${encodeURIComponent(assetNo)}/overdue-notice`),
+  returnAsset: (assetNoOrId) =>
+    request(`/assets/${encodeURIComponent(assetNoOrId)}/return`, {
+      method: 'POST',
+    }),
+  borrowAsset: (assetNoOrId, payload) =>
+    request(`/assets/${encodeURIComponent(assetNoOrId)}/borrow`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   // 4. 会话与历史
   getChatHistory: (sessionId) =>
@@ -153,20 +163,38 @@ export const api = {
     return request(`/regulations${qs ? `?${qs}` : ''}`)
   },
   getRegulationDetail: (docId) => request(`/regulations/${encodeURIComponent(docId)}`),
-  createRegulation: (payload) =>
-    request('/regulations', {
+  createRegulation: (payload, params = {}) => {
+    const query = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') query.append(k, String(v))
+    })
+    const qs = query.toString()
+    return request(`/regulations${qs ? `?${qs}` : ''}`, {
       method: 'POST',
       body: JSON.stringify(payload),
-    }),
-  updateRegulation: (docId, payload) =>
-    request(`/regulations/${encodeURIComponent(docId)}`, {
+    })
+  },
+  updateRegulation: (docId, payload, params = {}) => {
+    const query = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') query.append(k, String(v))
+    })
+    const qs = query.toString()
+    return request(`/regulations/${encodeURIComponent(docId)}${qs ? `?${qs}` : ''}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
-    }),
-  deleteRegulation: (docId) =>
-    request(`/regulations/${encodeURIComponent(docId)}`, {
+    })
+  },
+  deleteRegulation: (docId, params = {}) => {
+    const query = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') query.append(k, String(v))
+    })
+    const qs = query.toString()
+    return request(`/regulations/${encodeURIComponent(docId)}${qs ? `?${qs}` : ''}`, {
       method: 'DELETE',
-    }),
+    })
+  },
   searchRegulations: (payload) =>
     request('/regulations/search', {
       method: 'POST',
